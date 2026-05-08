@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
@@ -14,7 +12,7 @@ datasource db {
 
 model Vehiculo {
   idVehiculo       Int      @id @default(autoincrement()) @map("id_vehiculo")
-  patente          String
+  patente          String   @unique
   tipo             String
   capacidadBidones Int      @map("capacidad_bidones")
   idVendedor       Int      @map("id_vendedor")
@@ -30,8 +28,49 @@ model Chofer {
   estado     String
   idVehiculo Int      @map("id_vehiculo")
   vehiculo   Vehiculo @relation(fields: [idVehiculo], references: [idVehiculo])
+  rutas      Ruta[]
 
   @@map("chofer")
+}
+
+model UserRole {
+  id          Int     @id @default(autoincrement())
+  clerkUserId String  @unique @map("clerk_user_id")
+  role        String
+  idVendedor  Int     @map("id_vendedor")
+  
+  @@map("user_role")
+}
+
+model AdminDelivery {
+  idAdmin     Int     @id @default(autoincrement()) @map("id_admin")
+  clerkUserId String  @unique @map("clerk_user_id")
+  nombre      String
+
+  @@map("admin_delivery")
+}
+
+model Ruta {
+  idRuta      Int            @id @default(autoincrement()) @map("id_ruta")
+  idChofer    Int            @map("id_chofer")
+  idVendedor  Int            @map("id_vendedor")
+  fecha       DateTime
+  horaInicio  DateTime?      @map("hora_inicio")
+  horaFin     DateTime?      @map("hora_fin")
+  estado      String         @default("pendiente")
+  chofer      Chofer         @relation(fields: [idChofer], references: [idChofer])
+  rutaPedidos RutaPedido[]
+
+  @@map("ruta")
+}
+
+model RutaPedido {
+  idRuta   Int  @map("id_ruta")
+  idPedido Int  @map("id_pedido")
+  ruta     Ruta @relation(fields: [idRuta], references: [idRuta])
+
+  @@id([idRuta, idPedido])
+  @@map("ruta_pedido")
 }
 
 
