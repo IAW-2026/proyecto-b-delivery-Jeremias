@@ -11,3 +11,27 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Vehiculo {
+  idVehiculo       Int      @id @default(autoincrement()) @map("id_vehiculo")
+  patente          String
+  tipo             String
+  capacidadBidones Int      @map("capacidad_bidones")
+  idVendedor       Int      @map("id_vendedor")
+  choferes         Chofer[]
+
+  @@map("vehiculo")
+}
+
+model Chofer {
+  idChofer   Int      @id @default(autoincrement()) @map("id_chofer")
+  telefono   String
+  nombre     String
+  estado     String
+  idVehiculo Int      @map("id_vehiculo")
+  vehiculo   Vehiculo @relation(fields: [idVehiculo], references: [idVehiculo])
+
+  @@map("chofer")
+}
+
+
