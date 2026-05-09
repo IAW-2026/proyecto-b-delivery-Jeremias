@@ -25,7 +25,6 @@ export default async function DashboardPage() {
       {/* Top bar */}
       <div className="border-b border-zinc-200 bg-white px-8 py-4 shadow-sm flex justify-between items-center">
         <h2 className="text-xl font-semibold" style={{ color: "#00AEEF" }}>
-          Pagina Principal
         </h2>
         <UserMenuClient />
       </div>
