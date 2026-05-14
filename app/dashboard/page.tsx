@@ -17,8 +17,8 @@ export default async function DashboardPage() {
     console.error("Error fetching user role:", error);
   }
 
-  const isAdmin = userRole?.role === "admin_delivery";
-  const isChofer = userRole?.role === "chofer";
+  const isLogistic_admin = userRole?.role === "logistic_admin";
+  const isDelivery = userRole?.role === "delivery";
 
   return (
     <div className="flex flex-col h-full bg-white text-zinc-950">
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
             Rol: {userRole?.role || "sin asignar"}
           </p>
 
-          {isAdmin && (
+          {isLogistic_admin && (
             <div className="mt-6 p-4 bg-blue-100 rounded-lg border border-blue-200">
               <p className="text-blue-900 font-medium">
                 Panel de Administrador
@@ -50,10 +50,10 @@ export default async function DashboardPage() {
             </div>
           )}
 
-          {isChofer && (
+          {isDelivery && (
             <div className="mt-6 p-4 bg-orange-100 rounded-lg border border-orange-200">
               <p className="text-orange-900 font-medium">
-                Panel de Chofer
+                Panel de Delivery
               </p>
               <p className="text-orange-800 text-sm mt-2">
                 Puedes ver tus rutas y pedidos asignados.
