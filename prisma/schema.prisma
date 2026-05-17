@@ -54,11 +54,13 @@ model Ruta {
   idRuta      Int            @id @default(autoincrement()) @map("id_ruta")
   idChofer    Int            @map("id_chofer")
   idVendedor  Int            @map("id_vendedor")
+  idZona      Int            @map("id_zona")  // NUEVA
   fecha       DateTime
   horaInicio  DateTime?      @map("hora_inicio")
   horaFin     DateTime?      @map("hora_fin")
   estado      String         @default("pendiente")
   chofer      Chofer         @relation(fields: [idChofer], references: [idChofer])
+  zona        Zona           @relation(fields: [idZona], references: [idZona])  // NUEVA
   rutaPedidos RutaPedido[]
 
   @@map("ruta")
@@ -66,11 +68,31 @@ model Ruta {
 
 model RutaPedido {
   idRuta   Int  @map("id_ruta")
-  idPedido Int  @map("id_pedido")
+  idPedido Int  @map("id_pedido")  // NUEVA
   ruta     Ruta @relation(fields: [idRuta], references: [idRuta])
+  pedido   Pedido @relation(fields: [idPedido], references: [idPedido])  // NUEVA
 
   @@id([idRuta, idPedido])
   @@map("ruta_pedido")
 }
 
+model Zona {
+  idZona      Int      @id @default(autoincrement())
+  nombre      String   @unique  // "Palihue", "12 de Octubre", etc.
+  rutas       Ruta[]
 
+  @@map("zona")
+}
+
+model Pedido {
+  idPedido    Int      @id @default(autoincrement())
+  estado      String   @default("pendiente")  // "pendiente", "ready", "entregado"
+  direccion   String
+  cliente     String
+  telefono    String?
+  cantBidones Int
+  zona        String   // nombre del barrio
+  rutaPedidos RutaPedido[]
+
+  @@map("pedido")
+}
