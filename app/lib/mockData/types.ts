@@ -7,7 +7,7 @@ export interface Pedido {
   telefono: string;
   cantBidones: number;
   zona: string;
-  estado: "ready" | "entregado" | "cancelado";
+  estado: "ready" | "en_camino" | "entregado" | "cancelado";
 }
 
 export interface Vehiculo {

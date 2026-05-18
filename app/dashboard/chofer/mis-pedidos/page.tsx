@@ -9,7 +9,7 @@ import { Pedido } from "@/app/lib/mockData/types";
 
 export default function MisPedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>(pedidosDelDia);
-  const [filtro, setFiltro] = useState<"todos" | "ready" | "entregado">(
+  const [filtro, setFiltro] = useState<"todos" | "ready" | "en_camino" | "entregado">(
     "todos"
   );
 
@@ -20,10 +20,10 @@ export default function MisPedidosPage() {
 
   const totalBidones = getTotalBidones(pedidosFiltrados);
 
-  const handleMarcarEntregado = (idPedido: number) => {
+  const handleCambiarEstado = (idPedido: number, nuevoEstado: "ready" | "en_camino" | "entregado" | "cancelado") => {
     setPedidos(
       pedidos.map((p) =>
-        p.idPedido === idPedido ? { ...p, estado: "entregado" } : p
+        p.idPedido === idPedido ? { ...p, estado: nuevoEstado } : p
       )
     );
   };
@@ -63,7 +63,7 @@ export default function MisPedidosPage() {
 
           {/* Filtros */}
           <div className="flex gap-2">
-            {(["todos", "ready", "entregado"] as const).map((f) => (
+            {(["todos", "ready", "en_camino", "entregado"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFiltro(f)}
@@ -77,6 +77,8 @@ export default function MisPedidosPage() {
                   ? "Todos"
                   : f === "ready"
                   ? "Ready"
+                  : f === "en_camino"
+                  ? "En Camino"
                   : "Entregados"}
               </button>
             ))}
@@ -144,25 +146,35 @@ export default function MisPedidosPage() {
                       className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${
                         pedido.estado === "ready"
                           ? "bg-blue-100 text-blue-800"
+                          : pedido.estado === "en_camino"
+                          ? "bg-yellow-100 text-yellow-800"
                           : pedido.estado === "entregado"
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {pedido.estado}
+                      {pedido.estado === "en_camino" ? "En Camino" : pedido.estado}
                     </span>
                   </td>
                   <td className="py-4 px-4 text-center">
                     {pedido.estado === "ready" && (
                       <button
-                        onClick={() => handleMarcarEntregado(pedido.idPedido)}
+                        onClick={() => handleCambiarEstado(pedido.idPedido, "en_camino")}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        🚚 En Camino
+                      </button>
+                    )}
+                    {pedido.estado === "en_camino" && (
+                      <button
+                        onClick={() => handleCambiarEstado(pedido.idPedido, "entregado")}
                         className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
                       >
                         ✓ Entregar
                       </button>
                     )}
                     {pedido.estado === "entregado" && (
-                      <span className="text-green-600 font-medium">✓</span>
+                      <span className="text-green-600 font-medium">✓ Entregado</span>
                     )}
                   </td>
                 </tr>
