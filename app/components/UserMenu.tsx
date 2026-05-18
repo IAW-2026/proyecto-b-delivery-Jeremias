@@ -17,7 +17,7 @@ export default function UserMenu() {
   return (
     <div className="flex justify-center">
       <UserButton 
-        afterSignOutUrl="/signin"
+        signOutUrl="/signin"
         appearance={{
           elements: {
             avatarBox: "w-10 h-10"
