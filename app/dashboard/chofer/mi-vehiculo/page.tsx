@@ -22,7 +22,7 @@ export default function MiVehiculoPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2" style={{ color: "#00AEEF" }}>
-          🚛 Mi Vehículo
+          🚛 Vehículo
         </h1>
         <p className="text-gray-600">Detalles del vehículo asignado</p>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import {
   rutaDelDia,
   pedidosDelDia,
@@ -10,7 +10,6 @@ import {
 export default function MiZonaPage() {
   const cantidadPedidos = getCantidadPedidos(pedidosDelDia);
   
-  const [mounted, setMounted] = useState(false);
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFin, setHoraFin] = useState("");
   const [fechaFormato, setFechaFormato] = useState("");
@@ -22,14 +21,14 @@ export default function MiZonaPage() {
         minute: "2-digit",
       }) || ""
     );
-    
+
     setHoraFin(
       rutaDelDia.horaFin?.toLocaleTimeString("es-AR", {
         hour: "2-digit",
         minute: "2-digit",
       }) || ""
     );
-    
+
     setFechaFormato(
       rutaDelDia.fecha.toLocaleDateString("es-AR", {
         weekday: "short",
@@ -37,8 +36,6 @@ export default function MiZonaPage() {
         month: "short",
       })
     );
-    
-    setMounted(true);
   }, []);
 
   return (
@@ -46,7 +43,7 @@ export default function MiZonaPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2" style={{ color: "#00AEEF" }}>
-          🗺️ Mi Zona
+          🗺️ Zona
         </h1>
         <p className="text-gray-600">Información de la zona asignada para hoy</p>
       </div>
@@ -70,9 +67,7 @@ export default function MiZonaPage() {
             <span className="text-3xl">🕐</span>
             <h3 className="font-semibold text-gray-900">Hora de Inicio</h3>
           </div>
-          <p className="text-2xl font-bold text-blue-600">
-            {mounted ? horaInicio : "cargando..."}
-          </p>
+          <p className="text-2xl font-bold text-blue-600">{horaInicio || "cargando..."}</p>
           <p className="text-xs text-gray-600 mt-2">Hora a la que inicia la ruta</p>
         </div>
 
@@ -82,9 +77,7 @@ export default function MiZonaPage() {
             <span className="text-3xl">🕕</span>
             <h3 className="font-semibold text-gray-900">Hora de Fin</h3>
           </div>
-          <p className="text-2xl font-bold text-red-600">
-            {mounted ? horaFin : "cargando..."}
-          </p>
+          <p className="text-2xl font-bold text-red-600">{horaFin || "cargando..."}</p>
           <p className="text-xs text-gray-600 mt-2">Hora estimada de termino</p>
         </div>
 
@@ -114,9 +107,9 @@ export default function MiZonaPage() {
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-600 mb-2">Fecha</p>
-            <p className="text-lg font-semibold">
-              {mounted ? fechaFormato : "cargando..."}
-            </p>
+              <p className="text-lg font-semibold">
+                <span suppressHydrationWarning>{fechaFormato || "cargando..."}</span>
+              </p>
           </div>
         </div>
       </div>

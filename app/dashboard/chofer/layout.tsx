@@ -14,23 +14,28 @@ export default function ChoferLayout({
   const navigationItems = [
     {
       href: "/dashboard/chofer",
-      label: "Dashboard",
+      label: "Inicio",
       icon: "📊",
     },
     {
       href: "/dashboard/chofer/mis-pedidos",
-      label: "Mis Pedidos",
+      label: "Pedidos",
       icon: "📦",
     },
     {
       href: "/dashboard/chofer/mi-zona",
-      label: "Mi Zona",
+      label: "Zona",
       icon: "🗺️",
     },
     {
       href: "/dashboard/chofer/mi-vehiculo",
-      label: "Mi Vehículo",
+      label: "Vehículo",
       icon: "🚛",
+    },
+    {
+      href: "/dashboard/chofer/perfil",
+      label: "Perfil",
+      icon: "👤",
     },
   ];
 
@@ -39,10 +44,7 @@ export default function ChoferLayout({
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold" style={{ color: "#00AEEF" }}>
-            Delivery
-          </h1>
-          <p className="text-sm text-gray-600 mt-2">Panel del Chofer</p>
+          <UserMenu />
         </div>
 
         {/* Navigation */}
@@ -71,7 +73,7 @@ export default function ChoferLayout({
       <main className="flex-1 flex flex-col">
         {/* Top Bar */}
         <div className="bg-white shadow-sm p-4 flex justify-end items-center">
-          <UserMenu />
+          {/* menú superior derecho eliminado */}
         </div>
 
         {/* Content */}

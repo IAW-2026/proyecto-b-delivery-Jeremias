@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import {
   rutaDelDia,
@@ -16,7 +16,6 @@ export default function ChoferDashboard() {
   const totalBidones = getTotalBidones(pedidosDelDia);
   const cantidadPedidos = getCantidadPedidos(pedidosDelDia);
   
-  const [mounted, setMounted] = useState(false);
   const [fechaFormato, setFechaFormato] = useState("");
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFin, setHoraFin] = useState("");
@@ -29,22 +28,20 @@ export default function ChoferDashboard() {
         month: "long",
       })
     );
-    
+
     setHoraInicio(
       rutaDelDia.horaInicio?.toLocaleTimeString("es-AR", {
         hour: "2-digit",
         minute: "2-digit",
       }) || ""
     );
-    
+
     setHoraFin(
       rutaDelDia.horaFin?.toLocaleTimeString("es-AR", {
         hour: "2-digit",
         minute: "2-digit",
       }) || ""
     );
-    
-    setMounted(true);
   }, []);
 
   const userNombre = user ? `${user.firstName} ${user.lastName}`.trim() : "Usuario";
@@ -58,9 +55,7 @@ export default function ChoferDashboard() {
         </h1>
         <p className="text-gray-600">
           Hoy es{" "}
-          <span className="font-semibold">
-            {mounted ? fechaFormato : "cargando..."}
-          </span>
+          <span suppressHydrationWarning className="font-semibold">{fechaFormato || "cargando..."}</span>
         </p>
       </div>
 
@@ -75,7 +70,6 @@ export default function ChoferDashboard() {
                 {cantidadPedidos}
               </p>
             </div>
-            <div className="text-4xl">📦</div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Para entregar hoy</p>
         </div>
@@ -89,7 +83,6 @@ export default function ChoferDashboard() {
                 {totalBidones}
               </p>
             </div>
-            <div className="text-4xl">🛢️</div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Total a llevar</p>
         </div>
@@ -103,7 +96,6 @@ export default function ChoferDashboard() {
                 {rutaDelDia.zona}
               </p>
             </div>
-            <div className="text-4xl">🗺️</div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Zona de entrega</p>
         </div>
@@ -117,7 +109,6 @@ export default function ChoferDashboard() {
                 {vehiculoAsignado.patente}
               </p>
             </div>
-            <div className="text-4xl">🚛</div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Vehículo asignado</p>
         </div>
@@ -131,15 +122,11 @@ export default function ChoferDashboard() {
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-gray-600 text-sm">Hora Inicio</p>
-            <p className="text-lg font-bold">
-              {mounted ? horaInicio : "cargando..."}
-            </p>
+            <p className="text-lg font-bold">{horaInicio || "cargando..."}</p>
           </div>
           <div>
             <p className="text-gray-600 text-sm">Hora Fin</p>
-            <p className="text-lg font-bold">
-              {mounted ? horaFin : "cargando..."}
-            </p>
+            <p className="text-lg font-bold">{horaFin || "cargando..."}</p>
           </div>
           <div>
             <p className="text-gray-600 text-sm">Estado</p>
