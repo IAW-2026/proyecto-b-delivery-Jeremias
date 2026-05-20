@@ -4,7 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 export default async function DashboardPage() {
   const user = await currentUser();
 
-  let userRole = null;
+  let userRole: { role?: string[] } | null = null;
 
   try {
     const response = await fetch(
@@ -13,6 +13,7 @@ export default async function DashboardPage() {
         headers: {
           "X-User-ID": user?.id || "",
         },
+        cache: "no-store",
       }
     );
 
@@ -21,12 +22,12 @@ export default async function DashboardPage() {
     console.error("Error fetching user role:", error);
   }
 
-  if (userRole?.role === "delivery") {
-    redirect("/dashboard/chofer");
+  if (userRole?.role?.includes("logistic_admin")) {
+    redirect("/dashboard/logistic-admin");
   }
 
-  if (userRole?.role === "logistic_admin") {
-    redirect("/dashboard/rutas");
+  if (userRole?.role?.includes("delivery")) {
+    redirect("/dashboard/chofer");
   }
 
   return (

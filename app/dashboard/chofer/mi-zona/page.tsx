@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   rutaDelDia,
   pedidosDelDia,
@@ -8,35 +9,39 @@ import {
 } from "@/app/lib/mockData/choferData";
 
 export default function MiZonaPage() {
+  const router = useRouter();
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const cantidadPedidos = getCantidadPedidos(pedidosDelDia);
-  
-  const [horaInicio, setHoraInicio] = useState("");
-  const [horaFin, setHoraFin] = useState("");
-  const [fechaFormato, setFechaFormato] = useState("");
+  const fechaFormato = rutaDelDia.fecha.toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 
   useEffect(() => {
-    setHoraInicio(
-      rutaDelDia.horaInicio?.toLocaleTimeString("es-AR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }) || ""
-    );
+    async function checkAccess() {
+      try {
+        const response = await fetch("/api/chofer/status", { cache: "no-store" });
+        const data = (await response.json()) as { canOperate?: boolean };
 
-    setHoraFin(
-      rutaDelDia.horaFin?.toLocaleTimeString("es-AR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }) || ""
-    );
+        if (!data.canOperate) {
+          router.replace("/dashboard/chofer");
+          return;
+        }
+      } catch {
+        router.replace("/dashboard/chofer");
+        return;
+      }
 
-    setFechaFormato(
-      rutaDelDia.fecha.toLocaleDateString("es-AR", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      })
-    );
-  }, []);
+      setIsCheckingAccess(false);
+    }
+
+    void checkAccess();
+  }, [router]);
+
+  if (isCheckingAccess) {
+    return <p className="text-gray-600">Validando acceso...</p>;
+  }
 
   return (
     <div>
@@ -61,25 +66,6 @@ export default function MiZonaPage() {
 
       {/* Información de la Ruta */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {/* Hora Inicio */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl">🕐</span>
-            <h3 className="font-semibold text-gray-900">Hora de Inicio</h3>
-          </div>
-          <p className="text-2xl font-bold text-blue-600">{horaInicio || "cargando..."}</p>
-          <p className="text-xs text-gray-600 mt-2">Hora a la que inicia la ruta</p>
-        </div>
-
-        {/* Hora Fin */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl">🕕</span>
-            <h3 className="font-semibold text-gray-900">Hora de Fin</h3>
-          </div>
-          <p className="text-2xl font-bold text-red-600">{horaFin || "cargando..."}</p>
-          <p className="text-xs text-gray-600 mt-2">Hora estimada de termino</p>
-        </div>
 
         {/* Pedidos en Zona */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
@@ -107,9 +93,9 @@ export default function MiZonaPage() {
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-600 mb-2">Fecha</p>
-              <p className="text-lg font-semibold">
-                <span suppressHydrationWarning>{fechaFormato || "cargando..."}</span>
-              </p>
+            <p className="text-lg font-semibold">
+              <span suppressHydrationWarning>{fechaFormato}</span>
+            </p>
           </div>
         </div>
       </div>

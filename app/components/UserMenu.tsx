@@ -1,42 +1,52 @@
 'use client';
 
 import { UserButton, useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
+
+function resolveRoleLabel(roles: string[]) {
+  if (roles.includes("logistic_admin")) return "Logistic admin";
+  if (roles.includes("delivery")) return "Delivery";
+  if (roles.includes("seller")) return "Seller";
+  return roles[0] ?? "Sin rol";
+}
 
 export default function UserMenu() {
   const { isSignedIn, isLoaded, user } = useUser();
-  const router = useRouter();
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [resolvedRole, setResolvedRole] = useState<string>("Sin rol");
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/signin");
-    }
-  }, [isLoaded, isSignedIn, router]);
+    if (!isLoaded || !isSignedIn || !user?.id) return;
 
-  function triggerUserButtonClick() {
-    const el = containerRef.current;
-    const btn = el?.querySelector("button");
-    if (btn && typeof (btn as HTMLButtonElement).click === "function") {
-      (btn as HTMLButtonElement).click();
+    const uid = user.id;
+
+    async function loadRole() {
+      try {
+        const response = await fetch("/api/user-role", {
+          headers: {
+            "X-User-ID": uid,
+          },
+          cache: "no-store",
+        });
+
+        const data = (await response.json()) as { role?: string[] };
+        const roles = Array.isArray(data.role) ? data.role : [];
+        setResolvedRole(resolveRoleLabel(roles));
+      } catch {
+        setResolvedRole("Sin rol");
+      }
     }
-  }
+
+    void loadRole();
+  }, [isLoaded, isSignedIn, user?.id]);
 
   return (
-    <div
-      ref={containerRef}
-      className="flex items-center gap-3 p-1 rounded-md hover:bg-gray-100 cursor-pointer"
-      onClick={(e) => {
-        // If the user clicked directly on the internal button, avoid double-trigger
-        if ((e.target as HTMLElement).closest("button")) return;
-        triggerUserButtonClick();
-      }}
-    >
+    <div className="flex items-center gap-3 p-1 rounded-md">
       <UserButton appearance={{ elements: { avatarBox: "w-12 h-12 rounded-full" } }} />
       <div className="select-none">
-        <p className="font-semibold text-gray-900">{user?.firstName || "Usuario"}</p>
-        <p className="text-sm text-gray-500">{String(user?.publicMetadata?.role ?? "Chofer")}</p>
+        <p className="font-semibold text-gray-900">
+          {`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Usuario"}
+        </p>
+        <p className="text-sm text-gray-500">{resolvedRole}</p>
       </div>
     </div>
   );

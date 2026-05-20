@@ -1,7 +1,92 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
 
-const CLERK_API_BASE = "https://api.clerk.com";
+type ChoferProfilePayload = {
+  nombre?: string;
+  apellido?: string;
+  telefono?: string;
+  disponible?: boolean;
+  cbuCvu?: string;
+  alias?: string;
+  cuilCuit?: string;
+};
+
+function normalizeText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeBoolean(value: unknown): boolean | null {
+  if (typeof value !== "boolean") return null;
+  return value;
+}
+
+async function updateClerkName(userId: string, firstName: string, lastName?: string) {
+  const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
+
+  if (!secretKey) {
+    throw new Error("Missing Clerk secret key");
+  }
+
+  const response = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      first_name: firstName,
+      ...(lastName !== undefined ? { last_name: lastName } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Clerk update failed: ${response.status} ${text}`);
+  }
+}
+
+export async function GET() {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const chofer = await prisma.chofer.findUnique({
+      where: { clerkUserId: userId },
+      select: {
+        nombre: true,
+        telefono: true,
+        disponible: true,
+        cbuCvu: true,
+        alias: true,
+        cuilCuit: true,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        ok: true,
+        chofer: {
+          nombre: chofer?.nombre ?? "",
+          telefono: chofer?.telefono ?? "",
+          disponible: chofer?.disponible ?? true,
+          cbuCvu: chofer?.cbuCvu ?? "",
+          alias: chofer?.alias ?? "",
+          cuilCuit: chofer?.cuilCuit ?? "",
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("update-profile GET error", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -9,46 +94,58 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { firstName, lastName, phone } = body;
+    const payload = body as ChoferProfilePayload;
 
-    const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
-    if (!secretKey) return NextResponse.json({ error: "Missing Clerk secret" }, { status: 500 });
+    const nombre = normalizeText(payload.nombre);
+    const apellido = normalizeText(payload.apellido);
+    const telefono = normalizeText(payload.telefono);
+    const cbuCvu = normalizeText(payload.cbuCvu);
+    const alias = normalizeText(payload.alias);
+    const cuilCuit = normalizeText(payload.cuilCuit);
+    const disponible = normalizeBoolean(payload.disponible);
 
-    // Obtener metadata actual
-    const getRes = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
-      headers: { Authorization: `Bearer ${secretKey}`, Accept: "application/json" },
+    const existingChofer = await prisma.chofer.findUnique({
+      where: { clerkUserId: userId },
+      select: { idChofer: true },
     });
-    if (!getRes.ok) {
-      const txt = await getRes.text();
-      console.error("Clerk GET user error:", getRes.status, txt);
-      return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
+
+    if (existingChofer) {
+      await prisma.chofer.update({
+        where: { clerkUserId: userId },
+        data: {
+          ...(nombre !== null ? { nombre } : {}),
+          ...(telefono !== null ? { telefono } : {}),
+          ...(disponible !== null ? { disponible } : {}),
+          ...(cbuCvu !== null ? { cbuCvu } : {}),
+          ...(alias !== null ? { alias } : {}),
+          ...(cuilCuit !== null ? { cuilCuit } : {}),
+        },
+      });
+    } else {
+      // Determine idVendedor from UserRole if available; fallback to 0
+      const userRole = await prisma.userRole.findUnique({
+        where: { clerkUserId: userId },
+        select: { idVendedor: true },
+      });
+
+      const idVendedorForCreate = userRole?.idVendedor ?? 0;
+
+      await prisma.chofer.create({
+        data: {
+          clerkUserId: userId,
+          idVendedor: idVendedorForCreate,
+          ...(nombre !== null ? { nombre } : {}),
+          ...(telefono !== null ? { telefono } : {}),
+          ...(disponible !== null ? { disponible } : {}),
+          ...(cbuCvu !== null ? { cbuCvu } : {}),
+          ...(alias !== null ? { alias } : {}),
+          ...(cuilCuit !== null ? { cuilCuit } : {}),
+        },
+      });
     }
-    const user = await getRes.json();
-    const currentMeta = user.public_metadata ?? user.publicMetadata ?? user.public_metadata ?? {};
 
-    // PATCH para actualizar usuario (nombres y public_metadata.phone)
-    const patchBody: {
-        first_name?: string;
-        last_name?: string;
-        public_metadata?: Record<string, unknown>;
-    } = {};
-    if (firstName !== undefined) patchBody.first_name = firstName;
-    if (lastName !== undefined) patchBody.last_name = lastName;
-    patchBody.public_metadata = { ...currentMeta, ...(phone ? { phone } : {}) };
-
-    const patchRes = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(patchBody),
-    });
-
-    if (!patchRes.ok) {
-      const txt = await patchRes.text();
-      console.error("Clerk PATCH user error:", patchRes.status, txt);
-      return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+    if (nombre !== null || apellido !== null) {
+      await updateClerkName(userId, nombre ?? "", apellido ?? "");
     }
 
     return NextResponse.json({ ok: true });

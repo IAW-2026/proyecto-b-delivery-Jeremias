@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import UserMenu from "@/app/components/UserMenu";
 
 export default function ChoferLayout({
@@ -10,6 +11,7 @@ export default function ChoferLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [canOperate, setCanOperate] = useState(false);
 
   const navigationItems = [
     {
@@ -21,16 +23,19 @@ export default function ChoferLayout({
       href: "/dashboard/chofer/mis-pedidos",
       label: "Pedidos",
       icon: "📦",
+      requiresVerification: true,
     },
     {
       href: "/dashboard/chofer/mi-zona",
       label: "Zona",
       icon: "🗺️",
+      requiresVerification: true,
     },
     {
       href: "/dashboard/chofer/mi-vehiculo",
       label: "Vehículo",
       icon: "🚛",
+      requiresVerification: true,
     },
     {
       href: "/dashboard/chofer/perfil",
@@ -38,6 +43,20 @@ export default function ChoferLayout({
       icon: "👤",
     },
   ];
+
+  useEffect(() => {
+    async function loadStatus() {
+      try {
+        const response = await fetch("/api/chofer/status", { cache: "no-store" });
+        const data = (await response.json()) as { canOperate?: boolean };
+        setCanOperate(Boolean(data.canOperate));
+      } catch {
+        setCanOperate(false);
+      }
+    }
+
+    void loadStatus();
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -51,6 +70,22 @@ export default function ChoferLayout({
         <nav className="p-4">
           {navigationItems.map((item) => {
             const isActive = pathname === item.href;
+            const isLocked = Boolean(item.requiresVerification) && !canOperate;
+
+            if (isLocked) {
+              return (
+                <div
+                  key={item.href}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg mb-2 text-gray-400 bg-gray-50 cursor-not-allowed"
+                  title="Disponible cuando logística verifique tu solicitud"
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                  <span className="ml-auto text-xs">🔒</span>
+                </div>
+              );
+            }
+
             return (
               <Link key={item.href} href={item.href}>
                 <div

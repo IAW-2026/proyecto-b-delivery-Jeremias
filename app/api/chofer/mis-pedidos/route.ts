@@ -1,14 +1,4 @@
-type PedidoEntrante = {
-  idPedido: number;
-  estado: string;
-  direccion: string;
-  cliente: string;
-  telefono?: string;
-  cantBidones: number;
-  zona: string;
-};
-
-const pedidosListos: PedidoEntrante[] = [];
+import { type PedidoEntrante, upsertReadyOrders } from "@/lib/logisticAdminStore";
 
 function validarPedido(data: unknown): data is PedidoEntrante {
   if (!data || typeof data !== "object") return false;
@@ -44,21 +34,13 @@ export async function POST(request: Request) {
     }
 
     const pedidosValidados = pedidos as PedidoEntrante[];
-
-    for (const pedido of pedidosValidados) {
-      const index = pedidosListos.findIndex((item) => item.idPedido === pedido.idPedido);
-      if (index >= 0) {
-        pedidosListos[index] = pedido;
-      } else {
-        pedidosListos.push(pedido);
-      }
-    }
+    const total = upsertReadyOrders(pedidosValidados).length;
 
     return Response.json({
       ok: true,
       action: "upsert_ready_orders",
       received: pedidosValidados.length,
-      total: pedidosListos.length,
+      total,
     });
   } catch {
     return Response.json(
