@@ -1,6 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+// Import dynamically to avoid surface type mismatches on some build environments (Vercel)
+// Use a runtime-resolved constructor so TypeScript doesn't fail when declaration shapes differ.
+import * as PrismaPkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+
+// runtime constructor (any) — prefer named export, fallback to default or module itself
+const PrismaClientCtor: any = (PrismaPkg as any).PrismaClient ?? (PrismaPkg as any).default ?? PrismaPkg;
 
 function normalizeConnectionString(raw: string) {
   try {
@@ -29,7 +34,7 @@ const prismaClientSingleton = () => {
   const pool = new Pool({ connectionString: normalizedConnectionString });
   const adapter = new PrismaPg(pool);
 
-  return new PrismaClient({ adapter });
+  return new PrismaClientCtor({ adapter });
 };
 
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
