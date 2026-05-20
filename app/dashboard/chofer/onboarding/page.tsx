@@ -42,6 +42,21 @@ export default function OnboardingPage() {
     }
 
     async function loadProfile() {
+      // If user is logistic_admin, redirect to admin panel
+      try {
+        const roleResp = await fetch("/api/user-role", { cache: "no-store" });
+        if (roleResp.ok) {
+          const roleData = await roleResp.json();
+          const roles: string[] = Array.isArray(roleData.role) ? roleData.role : [];
+          if (roles.includes("logistic_admin")) {
+            router.replace("/dashboard/logistic-admin");
+            return;
+          }
+        }
+      } catch (err) {
+        // ignore and continue
+      }
+
       const result = await getChoferProfile();
 
       if (result.chofer) {

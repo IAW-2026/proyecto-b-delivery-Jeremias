@@ -32,6 +32,31 @@ const vendorsMock: Vendor[] = [
   },
 ];
 
-export async function GET() {
-  return NextResponse.json(vendorsMock, { status: 200 });
+export async function GET(request: Request) {
+  try {
+    const reqUrl = new URL(request.url);
+    const userId = reqUrl.searchParams.get("userId");
+
+    const sellerBase = process.env.SELLER_BASE_URL;
+    if (sellerBase) {
+      const sellerUrl = new URL("/api/vendors", sellerBase);
+      if (userId) sellerUrl.searchParams.set("userId", userId);
+
+      const headers: Record<string, string> = {};
+      if (process.env.SELLER_SERVICE_KEY) {
+        headers["Authorization"] = `Bearer ${process.env.SELLER_SERVICE_KEY}`;
+      }
+
+      const resp = await fetch(sellerUrl.toString(), { headers, cache: "no-store" });
+      if (resp.ok) {
+        const data = await resp.json();
+        return NextResponse.json(data, { status: 200 });
+      }
+    }
+
+    return NextResponse.json(vendorsMock, { status: 200 });
+  } catch (err) {
+    console.error("vendors GET error:", err);
+    return NextResponse.json(vendorsMock, { status: 200 });
+  }
 }

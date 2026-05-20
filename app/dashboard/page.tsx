@@ -1,34 +1,38 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
   const user = await currentUser();
 
-  let userRole: { role?: string[] } | null = null;
+  // Prefer DB mapping for role resolution (authoritative)
+  let roleRow: { role?: string } | null = null;
+  if (user?.id) {
+    try {
+      roleRow = await prisma.userRole.findUnique({ where: { clerkUserId: user.id } });
+    } catch (err) {
+      console.error("Error reading userRole from DB:", err);
+    }
+  }
 
+  if (roleRow?.role === "logistic_admin") redirect("/dashboard/logistic-admin");
+  if (roleRow?.role === "delivery") redirect("/dashboard/chofer");
+
+  // Fallback: use API which reads Clerk metadata
+  let userRole: { role?: string[] } | null = null;
   try {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/user-role`,
-      {
-        headers: {
-          "X-User-ID": user?.id || "",
-        },
-        cache: "no-store",
-      }
+      { headers: { "X-User-ID": user?.id || "" }, cache: "no-store" }
     );
 
     userRole = await response.json();
   } catch (error) {
-    console.error("Error fetching user role:", error);
+    console.error("Error fetching user role (fallback):", error);
   }
 
-  if (userRole?.role?.includes("logistic_admin")) {
-    redirect("/dashboard/logistic-admin");
-  }
-
-  if (userRole?.role?.includes("delivery")) {
-    redirect("/dashboard/chofer");
-  }
+  if (userRole?.role?.includes("logistic_admin")) redirect("/dashboard/logistic-admin");
+  if (userRole?.role?.includes("delivery")) redirect("/dashboard/chofer");
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-8 py-12 text-zinc-950">

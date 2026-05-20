@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
 
 const CLERK_API_BASE = "https://api.clerk.com";
 const DEFAULT_ROLE = "delivery";
@@ -42,6 +43,17 @@ export async function GET(request: NextRequest) {
     const userId = request.headers.get("X-User-ID") || authUserId;
     if (!userId) {
       return NextResponse.json({ role: [] }, { status: 200 });
+    }
+
+    // Consultar mapeo en la BD primero (si existe, respetarlo)
+    try {
+      const roleRow = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
+      if (roleRow && roleRow.role) {
+        // devolver como array para compatibilidad con el frontend
+        return NextResponse.json({ role: [roleRow.role] }, { status: 200 });
+      }
+    } catch (err) {
+      console.debug("user-role DB lookup failed, falling back to Clerk:", err);
     }
       // Obtener usuario de Clerk
     const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
@@ -93,5 +105,51 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching user role:", error);
     return NextResponse.json({ role: [], error: "Error fetching role" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await request.json();
+    const idVendedor = Number(body.idVendedor ?? body.id_vendedor ?? 0);
+    const role = typeof body.role === "string" ? body.role : LOGISTIC_ADMIN_ROLE;
+
+    if (!idVendedor) return NextResponse.json({ error: "Missing idVendedor" }, { status: 400 });
+
+    await prisma.userRole.upsert({
+      where: { clerkUserId: userId },
+      update: { idVendedor, role },
+      create: { clerkUserId: userId, idVendedor, role },
+    });
+
+    // Also update Clerk public metadata so Clerk-based reads see the role
+    try {
+      const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
+      if (secretKey) {
+        const clerkRes = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ public_metadata: { role: [role] } }),
+        });
+
+        if (!clerkRes.ok) {
+          const txt = await clerkRes.text();
+          console.debug("Clerk patch returned: ", clerkRes.status, txt);
+        }
+      }
+    } catch (err) {
+      console.debug("Failed to patch Clerk metadata:", err);
+    }
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (err) {
+    console.error("user-role POST error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

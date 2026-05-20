@@ -12,10 +12,11 @@ export default function ChoferLayout({
 }) {
   const pathname = usePathname();
   const [canOperate, setCanOperate] = useState(false);
+  const [isLogisticAdmin, setIsLogisticAdmin] = useState(false);
 
   const navigationItems = [
     {
-      href: "/dashboard/chofer",
+      href: isLogisticAdmin ? "/dashboard/logistic-admin" : "/dashboard/chofer",
       label: "Inicio",
       icon: "📊",
     },
@@ -56,6 +57,22 @@ export default function ChoferLayout({
     }
 
     void loadStatus();
+  }, []);
+
+  useEffect(() => {
+    async function loadRole() {
+      try {
+        const resp = await fetch("/api/user-role", { cache: "no-store" });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const roles: string[] = Array.isArray(data.role) ? data.role : [];
+        setIsLogisticAdmin(roles.includes("logistic_admin"));
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    void loadRole();
   }, []);
 
   return (

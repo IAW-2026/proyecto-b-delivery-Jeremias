@@ -37,6 +37,7 @@ type Order = {
 type Props = {
   userName: string;
   companyId: number | null;
+  inferredVendor?: { id: number; nombre?: string } | undefined;
   choferes: Chofer[];
   vehiculos: Vehiculo[];
   orders: Order[];
@@ -53,7 +54,7 @@ function roleBadgeClass(status: string) {
   }
 }
 
-export default function LogisticAdminBoard({ userName, companyId, choferes, vehiculos, orders }: Props) {
+export default function LogisticAdminBoard({ userName, companyId, inferredVendor, choferes, vehiculos, orders }: Props) {
   const router = useRouter();
 
   async function runAction(payload: Record<string, string | number | null>) {
@@ -73,6 +74,33 @@ export default function LogisticAdminBoard({ userName, companyId, choferes, vehi
 
   return (
     <div className="space-y-8">
+      {/* Banner: inferred vendor - allow confirm */}
+      {companyId === null && inferredVendor ? (
+        <div className="rounded-lg p-4 bg-yellow-50 border-l-4 border-yellow-400">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-yellow-900">Empresa inferida: {inferredVendor.nombre ?? `#${inferredVendor.id}`}</p>
+              <p className="text-sm text-yellow-800">¿Confirmar que esta es tu empresa? Se guardará la asociación para futuras sesiones.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch("/api/user-role", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ idVendedor: inferredVendor.id, role: "logistic_admin" }),
+                  });
+                  router.refresh();
+                }}
+                className="rounded-full bg-yellow-500 text-white px-4 py-2 font-medium"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <section className="mb-6">
         <div className="flex items-start justify-between">
           <div>
