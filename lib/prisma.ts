@@ -43,7 +43,33 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClientSingleton;
 };
 
-export const prisma =
-  globalForPrisma.prisma ?? prismaClientSingleton();
+let _prismaInstance: PrismaClientSingleton | undefined = globalForPrisma.prisma;
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+function createPrismaInstance(): PrismaClientSingleton {
+  if (_prismaInstance) return _prismaInstance;
+  _prismaInstance = prismaClientSingleton();
+  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = _prismaInstance;
+  return _prismaInstance;
+}
+
+// Export a lazy proxy that constructs the real Prisma client on first access.
+// This prevents throwing at module-import time when DATABASE_URL isn't set
+// (e.g., during Vercel build). Accessing any property will trigger creation.
+export const prisma = new Proxy(
+  {},
+  {
+    get(_, prop) {
+      try {
+        // If DATABASE_URL is missing, let the caller handle the absent client by
+        // receiving an error when attempting to use it. Construct when needed.
+        return (createPrismaInstance() as any)[prop];
+      } catch (err) {
+        // Re-throw with clearer message to aid debugging during build/runtime.
+        throw new Error(`Prisma client not available: ${String(err)}`);
+      }
+    },
+    apply(_, thisArg, args) {
+      return (createPrismaInstance() as any).apply(thisArg, args);
+    },
+  }
+) as unknown as PrismaClientSingleton;
