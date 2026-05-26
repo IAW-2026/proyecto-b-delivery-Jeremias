@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { currentUser, auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import {
   assignOrder,
@@ -8,10 +8,6 @@ import {
   syncAutomaticZoneAssignments,
   unassignOrder,
 } from "@/lib/logisticAdminStore";
-
-type RolePayload = {
-  role?: string[] | string;
-};
 
 function normalizeRoles(rawRole: unknown): string[] {
   if (Array.isArray(rawRole)) {
@@ -25,47 +21,30 @@ function normalizeRoles(rawRole: unknown): string[] {
   return [];
 }
 
-async function safeCurrentUser() {
-  try {
-    return await currentUser();
-  } catch (error) {
-    console.error("Clerk currentUser failed in logistic-admin API:", error);
-    return null;
-  }
-}
-
-async function getCompanyContext() {
-  const { userId } = await auth();
+async function getCompanyContext(request: NextRequest) {
+  const { userId } = getAuth(request);
   if (!userId) return null;
 
-  const [clerkUser, userRole] = await Promise.all([
-    safeCurrentUser(),
-    prisma.userRole.findUnique({
-      where: { clerkUserId: userId },
-      select: { idVendedor: true, role: true },
-    }),
-  ]);
+  const userRole = await prisma.userRole.findUnique({
+    where: { clerkUserId: userId },
+    select: { idVendedor: true, role: true },
+  });
 
-  const clerkRoles = normalizeRoles((clerkUser?.publicMetadata as RolePayload | undefined)?.role);
   const dbRoles = normalizeRoles(userRole?.role);
-  const canAccess =
-    clerkRoles.includes("logistic_admin") ||
-    clerkRoles.includes("seller") ||
-    dbRoles.includes("logistic_admin") ||
-    dbRoles.includes("seller");
+  const canAccess = dbRoles.includes("logistic_admin") || dbRoles.includes("seller");
 
   if (!canAccess) return null;
 
-  const roles = [...new Set([...clerkRoles, ...dbRoles])];
+  const roles = [...new Set(dbRoles)];
 
   if (!userRole) return { userId, roles, idVendedor: null };
 
   return { userId, roles, idVendedor: userRole.idVendedor };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const context = await getCompanyContext();
+    const context = await getCompanyContext(request);
     if (!context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -111,9 +90,9 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const context = await getCompanyContext();
+    const context = await getCompanyContext(request);
     if (!context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

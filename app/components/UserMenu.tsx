@@ -17,14 +17,9 @@ export default function UserMenu() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user?.id) return;
 
-    const uid = user.id;
-
     async function loadRole() {
       try {
         const response = await fetch("/api/user-role", {
-          headers: {
-            "X-User-ID": uid,
-          },
           cache: "no-store",
         });
 

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 
 export default async function DashboardPage() {
@@ -10,9 +11,13 @@ export default async function DashboardPage() {
 
   let userRole: { role?: string[] } | null = null;
   try {
+    const cookieHeader = cookies().toString();
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/user-role`,
-      { headers: { "X-User-ID": userId }, cache: "no-store" }
+      {
+        cache: "no-store",
+        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+      }
     );
 
     userRole = await response.json();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
 const CLERK_API_BASE = "https://api.clerk.com";
@@ -38,11 +38,9 @@ function getEffectiveRoles(rawRoles: string[]): string[] {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId: authUserId } = await auth();
-    // Compatibilidad: si llega por header lo usamos, si no usamos la sesión.
-    const userId = request.headers.get("X-User-ID") || authUserId;
+    const { userId } = getAuth(request);
     if (!userId) {
-      return NextResponse.json({ role: [] }, { status: 200 });
+      return NextResponse.json({ role: [] }, { status: 401 });
     }
 
     // Obtener usuario de Clerk como fuente de verdad para el rol.
@@ -110,7 +108,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId } = getAuth(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
