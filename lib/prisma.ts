@@ -30,8 +30,12 @@ const prismaClientSingleton = () => {
   }
 
   const normalizedConnectionString = normalizeConnectionString(connectionString);
+  const connectTimeoutMs = Number.parseInt(process.env.PG_CONNECT_TIMEOUT_MS ?? "5000", 10);
 
-  const pool = new Pool({ connectionString: normalizedConnectionString });
+  const pool = new Pool({
+    connectionString: normalizedConnectionString,
+    connectionTimeoutMillis: Number.isFinite(connectTimeoutMs) ? connectTimeoutMs : 5000,
+  });
   const adapter = new PrismaPg(pool);
 
   return new PrismaClientCtor({ adapter });

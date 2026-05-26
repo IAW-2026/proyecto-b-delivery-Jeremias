@@ -1,45 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   pedidosDelDia,
   getTotalBidones,
-} from "@/app/lib/mockData/choferData";
-import { Pedido } from "@/app/lib/mockData/types";
+} from "@/lib/mocks/chofer";
+import { Pedido } from "@/lib/mocks/chofer";
 
 export default function MisPedidosPage() {
-  const router = useRouter();
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const [pedidos, setPedidos] = useState<Pedido[]>(pedidosDelDia);
   const [filtro, setFiltro] = useState<"todos" | "ready" | "en_camino" | "entregado">(
     "todos"
   );
-
-  useEffect(() => {
-    async function checkAccess() {
-      try {
-        const response = await fetch("/api/chofer/status", { cache: "no-store" });
-        const data = (await response.json()) as { canOperate?: boolean };
-
-        if (!data.canOperate) {
-          router.replace("/dashboard/chofer");
-          return;
-        }
-      } catch {
-        router.replace("/dashboard/chofer");
-        return;
-      }
-
-      setIsCheckingAccess(false);
-    }
-
-    void checkAccess();
-  }, [router]);
-
-  if (isCheckingAccess) {
-    return <p className="text-gray-600">Validando acceso...</p>;
-  }
 
   const pedidosFiltrados =
     filtro === "todos"

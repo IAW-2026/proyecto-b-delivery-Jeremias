@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import UserMenu from "@/app/components/UserMenu";
 
 export default function ChoferLayout({
@@ -11,8 +10,8 @@ export default function ChoferLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [canOperate, setCanOperate] = useState(false);
-  const [isLogisticAdmin, setIsLogisticAdmin] = useState(false);
+  const canOperate = true;
+  const isLogisticAdmin = false;
 
   const navigationItems = [
     {
@@ -44,36 +43,6 @@ export default function ChoferLayout({
       icon: "👤",
     },
   ];
-
-  useEffect(() => {
-    async function loadStatus() {
-      try {
-        const response = await fetch("/api/chofer/status", { cache: "no-store" });
-        const data = (await response.json()) as { canOperate?: boolean };
-        setCanOperate(Boolean(data.canOperate));
-      } catch {
-        setCanOperate(false);
-      }
-    }
-
-    void loadStatus();
-  }, []);
-
-  useEffect(() => {
-    async function loadRole() {
-      try {
-        const resp = await fetch("/api/user-role", { cache: "no-store" });
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const roles: string[] = Array.isArray(data.role) ? data.role : [];
-        setIsLogisticAdmin(roles.includes("logistic_admin"));
-      } catch (err) {
-        // ignore
-      }
-    }
-
-    void loadRole();
-  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-100">

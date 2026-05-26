@@ -5,7 +5,7 @@ import {
   pedidosDelDia,
   getTotalBidones,
   getBidonesDisponibles,
-} from "@/app/lib/mockData/choferData";
+} from "@/lib/mocks/chofer";
 
 export default function MiVehiculoPage() {
   const totalBidones = getTotalBidones(pedidosDelDia);

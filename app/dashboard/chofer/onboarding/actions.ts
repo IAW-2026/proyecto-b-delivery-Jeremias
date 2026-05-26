@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { getVendors as getVendorsFromLib } from "@/lib/vendors";
 
 export async function createChoferProfile(data: {
   nombre: string;
@@ -58,5 +59,15 @@ export async function getChoferProfile() {
   } catch (error) {
     console.error("getChoferProfile error:", error);
     return { chofer: null, error: "Error al obtener el perfil" };
+  }
+}
+
+export async function fetchVendorsForClient() {
+  try {
+    const vendors = await getVendorsFromLib();
+    return vendors;
+  } catch (error) {
+    console.error("Error fetching vendors:", error);
+    return [];
   }
 }

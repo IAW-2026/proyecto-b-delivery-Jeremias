@@ -1,29 +1,18 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
 
 export default async function DashboardPage() {
-  const user = await currentUser();
+  const { userId } = await auth();
 
-  // Prefer DB mapping for role resolution (authoritative)
-  let roleRow: { role?: string } | null = null;
-  if (user?.id) {
-    try {
-      roleRow = await prisma.userRole.findUnique({ where: { clerkUserId: user.id } });
-    } catch (err) {
-      console.error("Error reading userRole from DB:", err);
-    }
+  if (!userId) {
+    redirect("/signin");
   }
 
-  if (roleRow?.role === "logistic_admin") redirect("/dashboard/logistic-admin");
-  if (roleRow?.role === "delivery") redirect("/dashboard/chofer");
-
-  // Fallback: use API which reads Clerk metadata
   let userRole: { role?: string[] } | null = null;
   try {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/user-role`,
-      { headers: { "X-User-ID": user?.id || "" }, cache: "no-store" }
+      { headers: { "X-User-ID": userId }, cache: "no-store" }
     );
 
     userRole = await response.json();

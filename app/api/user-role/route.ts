@@ -45,17 +45,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ role: [] }, { status: 200 });
     }
 
-    // Consultar mapeo en la BD primero (si existe, respetarlo)
-    try {
-      const roleRow = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
-      if (roleRow && roleRow.role) {
-        // devolver como array para compatibilidad con el frontend
-        return NextResponse.json({ role: [roleRow.role] }, { status: 200 });
-      }
-    } catch (err) {
-      console.debug("user-role DB lookup failed, falling back to Clerk:", err);
-    }
-      // Obtener usuario de Clerk
+    // Obtener usuario de Clerk como fuente de verdad para el rol.
     const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
     if (!secretKey) {
       return NextResponse.json({ role: [] }, { status: 200 });
@@ -78,6 +68,18 @@ export async function GET(request: NextRequest) {
     const role = normalizeRoles(metadata.role);
     const updatedRole = getEffectiveRoles(role);
 
+    try {
+      const roleRow = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
+      if (roleRow && roleRow.role !== updatedRole[0]) {
+        await prisma.userRole.update({
+          where: { clerkUserId: userId },
+          data: { role: updatedRole[0] },
+        });
+      }
+    } catch (err) {
+      console.debug("user-role DB sync failed:", err);
+    }
+
     if (updatedRole.length !== role.length || updatedRole.some((value, index) => value !== role[index])) {
       const patchRes = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
         method: "PATCH",
@@ -93,12 +95,10 @@ export async function GET(request: NextRequest) {
         }),
       });
 
-      if (patchRes.ok) {
-        return NextResponse.json({ role: updatedRole }, { status: 200 });
+      if (!patchRes.ok) {
+        const text = await patchRes.text();
+        console.error("Error assigning default role:", patchRes.status, text);
       }
-
-      const text = await patchRes.text();
-      console.error("Error assigning default role:", patchRes.status, text);
     }
 
     return NextResponse.json({ role: updatedRole }, { status: 200 });

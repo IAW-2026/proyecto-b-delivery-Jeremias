@@ -23,23 +23,27 @@ model Chofer {
   nombre      String    @default("Chofer")
   estado      String    @default("pendiente")
   idVehiculo  Int?      @map("id_vehiculo")
+  idZona      Int?      @map("id_zona")
   alias       String?
   cbuCvu      String?   @map("cbu_cvu")
   clerkUserId String    @unique @map("clerk_user_id")
   cuilCuit    String?   @map("cuil_cuit")
   disponible  Boolean   @default(true)
   idVendedor  Int       @map("id_vendedor")
+  nombreEmpresa String? @map("nombre_empresa")
   vehiculo    Vehiculo? @relation(fields: [idVehiculo], references: [idVehiculo])
+  zona        zona?     @relation(fields: [idZona], references: [idZona])
   ruta        ruta[]
 
   @@map("chofer")
 }
 
 model UserRole {
-  id          Int    @id @default(autoincrement())
-  clerkUserId String @unique @map("clerk_user_id")
-  role        String
-  idVendedor  Int    @map("id_vendedor")
+  id              Int     @id @default(autoincrement())
+  clerkUserId     String  @unique @map("clerk_user_id")
+  role            String
+  idVendedor      Int     @map("id_vendedor")
+  nombreEmpresa   String? @map("nombre_empresa")
 
   @@map("user_role")
 }
@@ -91,5 +95,6 @@ model ruta_pedido {
 model zona {
   idZona Int    @id @default(autoincrement())
   nombre String @unique
+  choferes Chofer[]
   ruta   ruta[]
 }

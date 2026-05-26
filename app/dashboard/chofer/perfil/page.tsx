@@ -1,7 +1,7 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { perfilChoferMock } from "@/lib/mocks/chofer";
 
 type ChoferProfileForm = {
   nombre: string;
@@ -11,16 +11,6 @@ type ChoferProfileForm = {
   cbuCvu: string;
   alias: string;
   cuilCuit: string;
-};
-
-const emptyProfile: ChoferProfileForm = {
-  nombre: "",
-  apellido: "",
-  telefono: "",
-  disponible: true,
-  cbuCvu: "",
-  alias: "",
-  cuilCuit: "",
 };
 
 function normalizeProfile(
@@ -40,57 +30,33 @@ function normalizeProfile(
 }
 
 export default function PerfilPage() {
-  const { user, isLoaded } = useUser();
+  const initialProfile: ChoferProfileForm = {
+    nombre: perfilChoferMock.nombre,
+    apellido: perfilChoferMock.apellido,
+    telefono: perfilChoferMock.telefono,
+    disponible: perfilChoferMock.disponible,
+    cbuCvu: perfilChoferMock.cbuCvu,
+    alias: perfilChoferMock.alias,
+    cuilCuit: perfilChoferMock.cuilCuit,
+  };
 
-  const [profile, setProfile] = useState<ChoferProfileForm>(emptyProfile);
-  const [form, setForm] = useState<ChoferProfileForm>(emptyProfile);
+  const [profile, setProfile] = useState<ChoferProfileForm>(initialProfile);
+  const [form, setForm] = useState<ChoferProfileForm>(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    let cancelled = false;
-
-    async function loadProfile() {
-      try {
-        const response = await fetch("/api/update-profile");
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data?.error || "Error");
-        }
-
-        const nextProfile = normalizeProfile(data?.chofer, user?.firstName, user?.lastName);
-
-        if (!cancelled) {
-          setProfile(nextProfile);
-          setForm(nextProfile);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    void loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, user?.firstName, user?.lastName]);
 
   function handleChange<K extends keyof ChoferProfileForm>(field: K, value: ChoferProfileForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   function handleEditClick() {
-    setForm(normalizeProfile(profile, user?.firstName, user?.lastName));
+    setForm(normalizeProfile(profile));
     setIsEditing(true);
     setStatus("idle");
   }
 
   function handleCancelClick() {
-    setForm(normalizeProfile(profile, user?.firstName, user?.lastName));
+    setForm(normalizeProfile(profile));
     setIsEditing(false);
     setStatus("idle");
   }
@@ -98,22 +64,9 @@ export default function PerfilPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("saving");
-    try {
-      const res = await fetch("/api/update-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Error");
-      await user?.reload?.();
-      setProfile(form);
-      setIsEditing(false);
-      setStatus("saved");
-    } catch (err) {
-      console.error(err);
-      setStatus("error");
-    }
+    setProfile(form);
+    setIsEditing(false);
+    setStatus("saved");
   }
 
   return (
@@ -121,9 +74,7 @@ export default function PerfilPage() {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold mb-1">Perfil del Chofer</h2>
-          <p className="text-sm text-gray-600">
-            {`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || user?.fullName || "Usuario"}
-          </p>
+          <p className="text-sm text-gray-600">{`${profile.nombre} ${profile.apellido}`.trim()}</p>
         </div>
         {!isEditing ? (
           <button

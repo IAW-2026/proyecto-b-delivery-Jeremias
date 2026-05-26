@@ -24,8 +24,9 @@
 .DS_Store
 *.pem
 
-#IA Planing
+#Carpetas
 /PlanesIA
+/Tareas a hacer
 
 # debug
 npm-debug.log*

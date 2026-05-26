@@ -15,6 +15,14 @@ export type LogisticOrder = PedidoEntrante & {
   updatedAt: string;
 };
 
+type ChoferWithZona = {
+  idChofer: number;
+  nombre: string;
+  estado: string;
+  disponible: boolean;
+  zona: { nombre: string } | null;
+};
+
 type LogisticAdminStore = {
   orders: LogisticOrder[];
 };
@@ -39,11 +47,54 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function normalizeZonaName(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function applyAutomaticZoneAssignments(choferes: ChoferWithZona[]) {
+  const choferByZone = new Map<string, ChoferWithZona>();
+
+  for (const chofer of choferes.sort((a, b) => a.idChofer - b.idChofer)) {
+    if (chofer.estado !== "activo" || !chofer.disponible || !chofer.zona) {
+      continue;
+    }
+
+    const key = normalizeZonaName(chofer.zona.nombre);
+    if (!key || choferByZone.has(key)) {
+      continue;
+    }
+
+    choferByZone.set(key, chofer);
+  }
+
+  for (const order of store.orders) {
+    if (order.status !== "ready" || order.assignedToChoferId !== null) {
+      continue;
+    }
+
+    const chofer = choferByZone.get(normalizeZonaName(order.zona));
+    if (!chofer) {
+      continue;
+    }
+
+    order.assignedToChoferId = chofer.idChofer;
+    order.assignedToChoferName = chofer.nombre;
+    order.status = "assigned";
+    order.updatedAt = nowIso();
+  }
+
+  return getOrders();
+}
+
 export function getOrders() {
   return store.orders.map(cloneOrder);
 }
 
-export function upsertReadyOrders(pedidos: PedidoEntrante[]) {
+export function syncAutomaticZoneAssignments(choferes: ChoferWithZona[]) {
+  return applyAutomaticZoneAssignments(choferes);
+}
+
+export function upsertReadyOrders(pedidos: PedidoEntrante[], choferes: ChoferWithZona[] = []) {
   for (const pedido of pedidos) {
     const index = store.orders.findIndex((item) => item.idPedido === pedido.idPedido);
     const currentOrder = index >= 0 ? store.orders[index] : null;
@@ -70,7 +121,7 @@ export function upsertReadyOrders(pedidos: PedidoEntrante[]) {
     }
   }
 
-  return getOrders();
+  return choferes.length > 0 ? applyAutomaticZoneAssignments(choferes) : getOrders();
 }
 
 export function assignOrder(

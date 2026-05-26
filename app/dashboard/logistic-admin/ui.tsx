@@ -37,7 +37,9 @@ type Order = {
 type Props = {
   userName: string;
   companyId: number | null;
+  companyName: string | null;
   inferredVendor?: { id: number; nombre?: string } | undefined;
+  databaseUnavailable: boolean;
   choferes: Chofer[];
   vehiculos: Vehiculo[];
   orders: Order[];
@@ -54,7 +56,7 @@ function roleBadgeClass(status: string) {
   }
 }
 
-export default function LogisticAdminBoard({ userName, companyId, inferredVendor, choferes, vehiculos, orders }: Props) {
+export default function LogisticAdminBoard({ userName, companyId, companyName, inferredVendor, databaseUnavailable, choferes, vehiculos, orders }: Props) {
   const router = useRouter();
 
   async function runAction(payload: Record<string, string | number | null>) {
@@ -74,6 +76,15 @@ export default function LogisticAdminBoard({ userName, companyId, inferredVendor
 
   return (
     <div className="space-y-8">
+      {databaseUnavailable ? (
+        <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4 text-amber-900">
+          <p className="font-semibold">No se pudo conectar a la base de datos</p>
+          <p className="text-sm">
+            Mostramos una vista limitada temporalmente. Reintentá en unos segundos mientras se restablece la conexión.
+          </p>
+        </div>
+      ) : null}
+
       {/* Banner: inferred vendor - allow confirm */}
       {companyId === null && inferredVendor ? (
         <div className="rounded-lg p-4 bg-yellow-50 border-l-4 border-yellow-400">
@@ -86,10 +97,9 @@ export default function LogisticAdminBoard({ userName, companyId, inferredVendor
               <button
                 type="button"
                 onClick={async () => {
-                  await fetch("/api/user-role", {
+                  await fetch(`/api/vendors/${inferredVendor.id}/link`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ idVendedor: inferredVendor.id, role: "logistic_admin" }),
                   });
                   router.refresh();
                 }}
@@ -114,7 +124,7 @@ export default function LogisticAdminBoard({ userName, companyId, inferredVendor
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
             <p className="font-medium">Empresa vinculada</p>
-            <p className="text-slate-500">{companyId !== null ? `Vendedor #${companyId}` : "Sin empresa asignada"}</p>
+            <p className="text-slate-500">{companyName || "Sin empresa asignada"}</p>
           </div>
         </div>
       </section>

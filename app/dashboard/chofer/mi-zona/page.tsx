@@ -1,47 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   rutaDelDia,
   pedidosDelDia,
   getCantidadPedidos,
-} from "@/app/lib/mockData/choferData";
+} from "@/lib/mocks/chofer";
 
 export default function MiZonaPage() {
-  const router = useRouter();
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
   const cantidadPedidos = getCantidadPedidos(pedidosDelDia);
   const fechaFormato = rutaDelDia.fecha.toLocaleDateString("es-AR", {
     weekday: "short",
     day: "numeric",
     month: "short",
   });
-
-  useEffect(() => {
-    async function checkAccess() {
-      try {
-        const response = await fetch("/api/chofer/status", { cache: "no-store" });
-        const data = (await response.json()) as { canOperate?: boolean };
-
-        if (!data.canOperate) {
-          router.replace("/dashboard/chofer");
-          return;
-        }
-      } catch {
-        router.replace("/dashboard/chofer");
-        return;
-      }
-
-      setIsCheckingAccess(false);
-    }
-
-    void checkAccess();
-  }, [router]);
-
-  if (isCheckingAccess) {
-    return <p className="text-gray-600">Validando acceso...</p>;
-  }
 
   return (
     <div>

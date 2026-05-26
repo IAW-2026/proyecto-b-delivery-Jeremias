@@ -1,49 +1,14 @@
 import Link from "next/link";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import {
+  choferActivoMock,
   rutaDelDia,
   vehiculoAsignado,
   pedidosDelDia,
   getTotalBidones,
   getCantidadPedidos,
-} from "@/app/lib/mockData/choferData";
-
-async function getChoferWithTimeout(userId: string, timeoutMs = 5000) {
-  const timeoutPromise = new Promise<null>((resolve) => {
-    setTimeout(() => resolve(null), timeoutMs);
-  });
-
-  const choferPromise = prisma.chofer.findUnique({
-    where: { clerkUserId: userId },
-    include: { vehiculo: true },
-  });
-
-  return Promise.race([choferPromise, timeoutPromise]);
-}
+} from "@/lib/mocks/chofer";
 
 export default async function ChoferDashboard() {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/signin");
-  }
-
-  const clerkUser = await currentUser();
-
-  let chofer: Awaited<ReturnType<typeof getChoferWithTimeout>> = null;
-  try {
-    chofer = await getChoferWithTimeout(userId);
-  } catch (error) {
-    console.error("Error fetching chofer profile:", error);
-    chofer = null;
-  }
-
-  if (!chofer) {
-    redirect("/dashboard/chofer/onboarding");
-  }
-
   const totalBidones = getTotalBidones(pedidosDelDia);
   const cantidadPedidos = getCantidadPedidos(pedidosDelDia);
   const fechaFormato = new Date().toLocaleDateString("es-AR", {
@@ -52,11 +17,9 @@ export default async function ChoferDashboard() {
     month: "long",
   });
 
-  const userNombre = clerkUser
-    ? `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || "Usuario"
-    : "Usuario";
+  const userNombre = choferActivoMock.nombre;
 
-  if (chofer.idVehiculo === null) {
+  if (choferActivoMock.idVehiculo === null) {
     return (
       <div>
         <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
@@ -173,7 +136,7 @@ export default async function ChoferDashboard() {
             <div className="text-3xl mb-3">🚛</div>
             <h3 className="font-semibold text-orange-900">Mi Vehículo</h3>
             <p className="text-sm text-orange-700 mt-1">
-              {chofer.vehiculo?.patente ?? vehiculoAsignado.patente} - {chofer.vehiculo?.tipo ?? vehiculoAsignado.tipo}
+              {choferActivoMock.vehiculo?.patente ?? vehiculoAsignado.patente} - {choferActivoMock.vehiculo?.tipo ?? vehiculoAsignado.tipo}
             </p>
           </div>
         </Link>
