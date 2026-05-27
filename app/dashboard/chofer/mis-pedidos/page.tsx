@@ -1,24 +1,56 @@
 "use client";
 
-import { useState } from "react";
-import {
-  pedidosDelDia,
-  getTotalBidones,
-} from "@/lib/mocks/chofer";
-import { Pedido } from "@/lib/mocks/chofer";
+import { useEffect, useState } from "react";
+
+type Pedido = {
+  idPedido: number;
+  cliente: string;
+  direccion: string;
+  telefono: string;
+  cantBidones: number;
+  zona: string;
+  estado: "ready" | "en_camino" | "entregado" | "cancelado";
+};
 
 export default function MisPedidosPage() {
-  const [pedidos, setPedidos] = useState<Pedido[]>(pedidosDelDia);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<"todos" | "ready" | "en_camino" | "entregado">(
     "todos"
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOrders() {
+      try {
+        const response = await fetch("/api/chofer/status", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as { pedidos?: Pedido[] };
+        if (!cancelled) {
+          setPedidos(data.pedidos ?? []);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadOrders();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pedidosFiltrados =
     filtro === "todos"
       ? pedidos
       : pedidos.filter((p) => p.estado === filtro);
 
-  const totalBidones = getTotalBidones(pedidosFiltrados);
+  const totalBidones = pedidosFiltrados.reduce((sum, pedido) => sum + pedido.cantBidones, 0);
 
   const handleCambiarEstado = (idPedido: number, nuevoEstado: "ready" | "en_camino" | "entregado" | "cancelado") => {
     setPedidos(
@@ -87,7 +119,11 @@ export default function MisPedidosPage() {
       </div>
 
       {/* Tabla de Pedidos */}
-      {pedidosFiltrados.length > 0 ? (
+      {loading ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <p className="text-gray-600 text-lg">Cargando pedidos asignados...</p>
+        </div>
+      ) : pedidosFiltrados.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -184,7 +220,7 @@ export default function MisPedidosPage() {
         </div>
       ) : (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600 text-lg">No hay pedidos para mostrar</p>
+          <p className="text-gray-600 text-lg">No hay pedidos asignados para mostrar</p>
         </div>
       )}
 
@@ -192,8 +228,8 @@ export default function MisPedidosPage() {
       <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
           <span className="font-semibold">ℹ️ Nota:</span> Los datos mostrados
-          son datos de ejemplo (mock data). En producción, estos datos vendrán
-          de la API.
+          vienen de la API local compartida de chofer. Los vendedores siguen
+          siendo el único dato mockeado.
         </p>
       </div>
     </div>

@@ -1,21 +1,41 @@
 "use client";
 
-import {
-  vehiculoAsignado,
-  pedidosDelDia,
-  getTotalBidones,
-  getBidonesDisponibles,
-} from "@/lib/mocks/chofer";
+import { useEffect, useState } from "react";
+
+type ChoferStatusResponse = {
+  vehiculo: {
+    patente: string;
+    tipo: string;
+    capacidadBidones: number;
+  } | null;
+  totalBidones: number;
+};
 
 export default function MiVehiculoPage() {
-  const totalBidones = getTotalBidones(pedidosDelDia);
-  const bidonesDisponibles = getBidonesDisponibles(
-    pedidosDelDia,
-    vehiculoAsignado.capacidadBidones
-  );
-  const porcentajeUsado = Math.round(
-    (totalBidones / vehiculoAsignado.capacidadBidones) * 100
-  );
+  const [data, setData] = useState<ChoferStatusResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStatus() {
+      const response = await fetch("/api/chofer/status", { cache: "no-store" });
+      if (!response.ok) return;
+
+      const payload = (await response.json()) as ChoferStatusResponse;
+      if (!cancelled) setData(payload);
+    }
+
+    void loadStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const vehiculo = data?.vehiculo;
+  const totalBidones = data?.totalBidones ?? 0;
+  const bidonesDisponibles = vehiculo ? vehiculo.capacidadBidones - totalBidones : 0;
+  const porcentajeUsado = vehiculo ? Math.round((totalBidones / vehiculo.capacidadBidones) * 100) : 0;
 
   return (
     <div>
@@ -35,7 +55,7 @@ export default function MiVehiculoPage() {
               Patente del Vehículo
             </p>
             <h2 className="text-5xl font-bold text-orange-600">
-              {vehiculoAsignado.patente}
+              {vehiculo?.patente ?? "Sin vehículo"}
             </h2>
           </div>
           <div className="text-7xl opacity-30">🚛</div>
@@ -48,7 +68,7 @@ export default function MiVehiculoPage() {
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <p className="text-gray-600 text-sm font-medium mb-2">Tipo</p>
           <p className="text-2xl font-bold text-gray-900">
-            {vehiculoAsignado.tipo}
+            {vehiculo?.tipo ?? "Sin tipo"}
           </p>
           <p className="text-xs text-gray-600 mt-2">Clasificación del vehículo</p>
         </div>
@@ -57,7 +77,7 @@ export default function MiVehiculoPage() {
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <p className="text-gray-600 text-sm font-medium mb-2">Capacidad</p>
           <p className="text-2xl font-bold text-blue-600">
-            {vehiculoAsignado.capacidadBidones}
+            {vehiculo?.capacidadBidones ?? 0}
           </p>
           <p className="text-xs text-gray-600 mt-2">Bidones máximos</p>
         </div>
@@ -115,7 +135,7 @@ export default function MiVehiculoPage() {
           <div>
             <p className="text-xs text-gray-600 mb-1">Capacidad</p>
             <p className="text-xl font-bold text-blue-600">
-              {vehiculoAsignado.capacidadBidones}
+              {vehiculo?.capacidadBidones ?? 0}
             </p>
           </div>
         </div>
@@ -129,7 +149,7 @@ export default function MiVehiculoPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <p className="text-green-800 font-medium">Disponible</p>
+            <p className="text-green-800 font-medium">{vehiculo ? "Disponible" : "Sin vehículo asignado"}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>

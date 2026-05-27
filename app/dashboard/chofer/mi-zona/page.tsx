@@ -1,18 +1,46 @@
 "use client";
 
-import {
-  rutaDelDia,
-  pedidosDelDia,
-  getCantidadPedidos,
-} from "@/lib/mocks/chofer";
+import { useEffect, useState } from "react";
+
+type ChoferStatusResponse = {
+  ruta: {
+    idZona: number;
+    idRuta: number;
+    zona: string;
+    estado: string;
+    fecha: string;
+  };
+  cantidadPedidos: number;
+};
 
 export default function MiZonaPage() {
-  const cantidadPedidos = getCantidadPedidos(pedidosDelDia);
-  const fechaFormato = rutaDelDia.fecha.toLocaleDateString("es-AR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  const [data, setData] = useState<ChoferStatusResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStatus() {
+      const response = await fetch("/api/chofer/status", { cache: "no-store" });
+      if (!response.ok) return;
+
+      const payload = (await response.json()) as ChoferStatusResponse;
+      if (!cancelled) setData(payload);
+    }
+
+    void loadStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const fechaFormato = data
+    ? new Date(data.ruta.fecha).toLocaleDateString("es-AR", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    : "cargando...";
 
   return (
     <div>
@@ -29,7 +57,7 @@ export default function MiZonaPage() {
         <div className="text-center">
           <p className="text-gray-600 text-sm font-medium mb-2">Zona Asignada</p>
           <h2 className="text-5xl font-bold text-purple-600 mb-2">
-            {rutaDelDia.zona}
+            {data?.ruta.zona ?? "Sin zona asignada"}
           </h2>
           <p className="text-gray-600">Zona para entrega hoy</p>
         </div>
@@ -44,7 +72,7 @@ export default function MiZonaPage() {
             <span className="text-3xl">📦</span>
             <h3 className="font-semibold text-gray-900">Pedidos</h3>
           </div>
-          <p className="text-2xl font-bold text-green-600">{cantidadPedidos}</p>
+          <p className="text-2xl font-bold text-green-600">{data?.cantidadPedidos ?? 0}</p>
           <p className="text-xs text-gray-600 mt-2">Pedidos en esta zona</p>
         </div>
       </div>
@@ -58,7 +86,7 @@ export default function MiZonaPage() {
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               <p className="text-lg font-semibold text-green-600 capitalize">
-                {rutaDelDia.estado}
+                {data?.ruta.estado ?? "sin estado"}
               </p>
             </div>
           </div>
@@ -80,13 +108,13 @@ export default function MiZonaPage() {
           <div>
             <p className="text-sm text-gray-600 mb-1">Zona ID</p>
             <p className="text-lg font-semibold text-gray-900">
-              {rutaDelDia.idZona}
+              {data?.ruta.idZona ?? "-"}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Ruta ID</p>
             <p className="text-lg font-semibold text-gray-900">
-              {rutaDelDia.idRuta}
+              {data?.ruta.idRuta ?? "-"}
             </p>
           </div>
         </div>
@@ -116,7 +144,7 @@ export default function MiZonaPage() {
       <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
           <span className="font-semibold">ℹ️ Nota:</span> Los datos mostrados
-          son datos de ejemplo. Próximamente se mostrará un mapa interactivo.
+          ahora provienen del estado compartido de pedidos asignados.
         </p>
       </div>
     </div>

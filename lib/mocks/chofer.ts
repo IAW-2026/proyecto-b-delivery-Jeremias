@@ -1,3 +1,5 @@
+import { getMockPedidos } from "@/lib/mocks/pedidos";
+
 export type Pedido = {
   idPedido: number;
   cliente: string;
@@ -153,53 +155,22 @@ export const rutaDelDia: Ruta = {
   zona: "Palihue",
 };
 
-export const pedidosDelDia: Pedido[] = [
-  {
-    idPedido: 5,
-    cliente: "Juan García",
-    direccion: "Calle 123, Apto 4",
-    telefono: "1111111",
-    cantBidones: 2,
-    zona: "Palihue",
-    estado: "ready",
-  },
-  {
-    idPedido: 6,
-    cliente: "María López",
-    direccion: "Avenida 456, Casa 2",
-    telefono: "2222222",
-    cantBidones: 3,
-    zona: "Palihue",
-    estado: "ready",
-  },
-  {
-    idPedido: 7,
-    cliente: "Carlos Ruiz",
-    direccion: "Calle Principal 789",
-    telefono: "3333333",
-    cantBidones: 1,
-    zona: "Palihue",
-    estado: "ready",
-  },
-  {
-    idPedido: 8,
-    cliente: "Ana Martínez",
-    direccion: "Pasaje San Martín 321",
-    telefono: "4444444",
-    cantBidones: 4,
-    zona: "Palihue",
-    estado: "ready",
-  },
-  {
-    idPedido: 9,
-    cliente: "Roberto Díaz",
-    direccion: "Calle Moreno 654",
-    telefono: "5555555",
-    cantBidones: 2,
-    zona: "Palihue",
-    estado: "ready",
-  },
-];
+function mapAdminEstadoToChoferEstado(estado: ReturnType<typeof getMockPedidos>[number]["estado"]): Pedido["estado"] {
+  if (estado === "assigned") return "en_camino";
+  if (estado === "delivered") return "entregado";
+  if (estado === "cancelled") return "cancelado";
+  return "ready";
+}
+
+export const pedidosDelDia: Pedido[] = getMockPedidos().map((pedido) => ({
+  idPedido: pedido.idPedido,
+  cliente: pedido.cliente,
+  direccion: pedido.direccion,
+  telefono: pedido.telefono ?? "",
+  cantBidones: pedido.cantBidones,
+  zona: pedido.zona,
+  estado: mapAdminEstadoToChoferEstado(pedido.estado),
+}));
 
 export const getTotalBidones = (pedidos: Pedido[]): number => {
   return pedidos.reduce((sum, pedido) => sum + pedido.cantBidones, 0);

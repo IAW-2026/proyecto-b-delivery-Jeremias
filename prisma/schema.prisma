@@ -48,6 +48,23 @@ model UserRole {
   @@map("user_role")
 }
 
+model ChoferRequest {
+  id           Int      @id @default(autoincrement())
+  clerkUserId  String   @unique @map("clerk_user_id")
+  nombre       String
+  telefono     String
+  idVendedor   Int      @map("id_vendedor")
+  vendorName   String   @map("vendor_name")
+  status       String   @default("pending")
+  reviewedBy   String?  @map("reviewed_by")
+  reviewedAt   DateTime? @map("reviewed_at")
+  reason       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("chofer_request")
+}
+
 model AdminDelivery {
   idAdmin     Int    @id @default(autoincrement()) @map("id_admin")
   clerkUserId String @unique @map("clerk_user_id")

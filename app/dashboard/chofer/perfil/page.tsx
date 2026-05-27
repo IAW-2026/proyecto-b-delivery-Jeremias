@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { perfilChoferMock } from "@/lib/mocks/chofer";
+import { useUser } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
 
 type ChoferProfileForm = {
   nombre: string;
@@ -30,20 +30,46 @@ function normalizeProfile(
 }
 
 export default function PerfilPage() {
+  const { user } = useUser();
   const initialProfile: ChoferProfileForm = {
-    nombre: perfilChoferMock.nombre,
-    apellido: perfilChoferMock.apellido,
-    telefono: perfilChoferMock.telefono,
-    disponible: perfilChoferMock.disponible,
-    cbuCvu: perfilChoferMock.cbuCvu,
-    alias: perfilChoferMock.alias,
-    cuilCuit: perfilChoferMock.cuilCuit,
+    nombre: `${user?.firstName ?? ""}`.trim(),
+    apellido: `${user?.lastName ?? ""}`.trim(),
+    telefono: "",
+    disponible: true,
+    cbuCvu: "",
+    alias: "",
+    cuilCuit: "",
   };
 
   const [profile, setProfile] = useState<ChoferProfileForm>(initialProfile);
   const [form, setForm] = useState<ChoferProfileForm>(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  useEffect(() => {
+    const nombre = `${user?.firstName ?? ""}`.trim();
+    const apellido = `${user?.lastName ?? ""}`.trim();
+
+    if (!nombre && !apellido) return;
+
+    setProfile((current) => {
+      if (current.nombre || current.apellido) return current;
+      return {
+        ...current,
+        nombre,
+        apellido,
+      };
+    });
+
+    setForm((current) => {
+      if (current.nombre || current.apellido) return current;
+      return {
+        ...current,
+        nombre,
+        apellido,
+      };
+    });
+  }, [user?.firstName, user?.lastName]);
 
   function handleChange<K extends keyof ChoferProfileForm>(field: K, value: ChoferProfileForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));

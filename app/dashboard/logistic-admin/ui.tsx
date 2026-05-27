@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Vehiculo = {
@@ -34,6 +35,21 @@ type Order = {
   updatedAt: string;
 };
 
+type ChoferRequest = {
+  id: number;
+  clerkUserId: string;
+  nombre: string;
+  telefono: string;
+  idVendedor: number;
+  vendorName: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  updatedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reason: string | null;
+};
+
 type Props = {
   userName: string;
   companyId: number | null;
@@ -56,8 +72,21 @@ function roleBadgeClass(status: string) {
   }
 }
 
+function driverBadgeClass(status: string) {
+  switch (status) {
+    case "activo":
+      return "bg-emerald-100 text-emerald-700";
+    case "rechazado":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-amber-100 text-amber-700";
+  }
+}
+
 export default function LogisticAdminBoard({ userName, companyId, companyName, inferredVendor, databaseUnavailable, choferes, vehiculos, orders }: Props) {
   const router = useRouter();
+  const [requests, setRequests] = useState<ChoferRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
 
   async function runAction(payload: Record<string, string | number | null>) {
     await fetch("/api/logistic-admin", {
@@ -66,6 +95,46 @@ export default function LogisticAdminBoard({ userName, companyId, companyName, i
       body: JSON.stringify(payload),
     });
 
+    router.refresh();
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRequests() {
+      try {
+        const response = await fetch("/api/logistic-admin/chofer-requests", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as { requests?: ChoferRequest[] };
+        if (!cancelled) {
+          setRequests(payload.requests ?? []);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRequests(false);
+        }
+      }
+    }
+
+    void loadRequests();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function reviewRequest(id: number, action: "approve" | "reject") {
+    const response = await fetch(`/api/logistic-admin/chofer-requests/${id}/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    setRequests((current) => current.filter((request) => request.id !== id));
     router.refresh();
   }
 
@@ -236,22 +305,91 @@ export default function LogisticAdminBoard({ userName, companyId, companyName, i
                       <div>
                         <h3 className="font-semibold text-slate-900">{chofer.nombre}</h3>
                         <p className="text-sm text-slate-600">{chofer.telefono || "Sin teléfono"}</p>
-                        <p className="mt-1 text-xs text-slate-500">Estado: {chofer.estado}</p>
+                        <p className="mt-1 text-xs text-slate-500">Estado:</p>
+                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${driverBadgeClass(chofer.estado)}`}>
+                          {chofer.estado}
+                        </span>
                         <p className="text-xs text-slate-500">
                           Vehículo: {chofer.vehiculo?.patente || "sin asignar"}
                         </p>
                       </div>
                       <div className="flex flex-col gap-2">
+                        {chofer.estado === "activo" ? (
+                          <button
+                            type="button"
+                            onClick={() => runAction({ action: "reject_delivery", idChofer: chofer.idChofer })}
+                            className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100"
+                          >
+                            Desactivar
+                          </button>
+                        ) : chofer.estado === "pendiente" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => runAction({ action: "accept_delivery", idChofer: chofer.idChofer })}
+                              className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                            >
+                              Aprobar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => runAction({ action: "reject_delivery", idChofer: chofer.idChofer })}
+                              className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100"
+                            >
+                              Rechazar
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => runAction({ action: "accept_delivery", idChofer: chofer.idChofer })}
+                            className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                          >
+                            Reactivar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900">Solicitudes de chofer</h2>
+            <p className="mt-1 text-sm text-slate-500">Aprobar o rechazar choferes que pidieron unirse a la empresa.</p>
+
+            <div className="mt-4 space-y-3">
+              {loadingRequests ? (
+                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                  Cargando solicitudes...
+                </p>
+              ) : requests.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                  No hay solicitudes pendientes.
+                </p>
+              ) : (
+                requests.map((request) => (
+                  <article key={request.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-slate-900">{request.nombre}</h3>
+                        <p className="text-sm text-slate-600">{request.telefono}</p>
+                        <p className="mt-1 text-xs text-slate-500">Empresa: {request.vendorName}</p>
+                        <p className="text-xs text-slate-500">Estado: {request.status}</p>
+                      </div>
+                      <div className="flex flex-col gap-2">
                         <button
                           type="button"
-                          onClick={() => runAction({ action: "accept_delivery", idChofer: chofer.idChofer })}
+                          onClick={() => reviewRequest(request.id, "approve")}
                           className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
                         >
-                          Aceptar
+                          Aprobar
                         </button>
                         <button
                           type="button"
-                          onClick={() => runAction({ action: "reject_delivery", idChofer: chofer.idChofer })}
+                          onClick={() => reviewRequest(request.id, "reject")}
                           className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100"
                         >
                           Rechazar

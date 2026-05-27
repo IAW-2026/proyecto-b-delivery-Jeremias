@@ -1,5 +1,6 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 const CLERK_API_BASE = "https://api.clerk.com";
 const DEFAULT_ROLE = "delivery";
@@ -79,13 +80,32 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   const isAdmin = isLogisticAdmin || isSeller;
 
   if (pathname === "/dashboard") {
-    if (isDelivery) return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
+    if (isDelivery) {
+      // Check whether the delivery user already has a Chofer record or a pending request.
+      const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
+
+      if (dbChofer) return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
+      // If there's a pending request, or no chofer yet, send to onboarding (selection or waiting view)
+      return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
+    }
     if (isAdmin) return NextResponse.redirect(new URL("/dashboard/logistic-admin", request.url));
     return NextResponse.redirect(new URL("/signin", request.url));
   }
 
-  if (pathname.startsWith("/dashboard/chofer") && !isDelivery) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (pathname.startsWith("/dashboard/chofer")) {
+    if (!isDelivery) return NextResponse.redirect(new URL("/dashboard", request.url));
+
+    // If the user is a delivery role, ensure they either have a Chofer record
+    // or allow only the onboarding flow until they create/request association.
+    const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
+    const pendingRequest = await prisma.choferRequest.findFirst({ where: { clerkUserId: userId, status: "pending" } }).catch(() => null);
+
+    if (!dbChofer && !pendingRequest) {
+      // Allow the onboarding page, but block other chofer subroutes until association.
+      if (!pathname.startsWith("/dashboard/chofer/onboarding")) {
+        return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
+      }
+    }
   }
 
   if (pathname.startsWith("/dashboard/logistic-admin") && !isAdmin) {

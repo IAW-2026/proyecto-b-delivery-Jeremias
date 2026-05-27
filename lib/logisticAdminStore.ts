@@ -8,6 +8,8 @@ export type PedidoEntrante = {
   zona: string;
 };
 
+import { getMockPedidos } from "@/lib/mocks/pedidos";
+
 export type LogisticOrder = PedidoEntrante & {
   assignedToChoferId: number | null;
   assignedToChoferName: string | null;
@@ -31,8 +33,31 @@ const globalForLogisticAdmin = globalThis as unknown as {
   logisticAdminStore?: LogisticAdminStore;
 };
 
+function mapMockPedidoToLogisticOrder(pedido: ReturnType<typeof getMockPedidos>[number]): LogisticOrder {
+  const normalizedStatus =
+    pedido.estado === "assigned"
+      ? "assigned"
+      : pedido.estado === "cancelled"
+      ? "cancelled"
+      : "ready";
+
+  return {
+    idPedido: pedido.idPedido,
+    estado: pedido.estado,
+    direccion: pedido.direccion,
+    cliente: pedido.cliente,
+    telefono: pedido.telefono,
+    cantBidones: pedido.cantBidones,
+    zona: pedido.zona,
+    assignedToChoferId: null,
+    assignedToChoferName: null,
+    status: normalizedStatus,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 const store: LogisticAdminStore = globalForLogisticAdmin.logisticAdminStore ?? {
-  orders: [],
+  orders: getMockPedidos().map(mapMockPedidoToLogisticOrder),
 };
 
 if (process.env.NODE_ENV !== "production") {
@@ -88,6 +113,10 @@ function applyAutomaticZoneAssignments(choferes: ChoferWithZona[]) {
 
 export function getOrders() {
   return store.orders.map(cloneOrder);
+}
+
+export function getOrdersForChofer(choferId: number) {
+  return store.orders.filter((order) => order.assignedToChoferId === choferId).map(cloneOrder);
 }
 
 export function syncAutomaticZoneAssignments(choferes: ChoferWithZona[]) {

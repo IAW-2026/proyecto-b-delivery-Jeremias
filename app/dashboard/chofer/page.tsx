@@ -1,25 +1,20 @@
 import Link from "next/link";
-import {
-  choferActivoMock,
-  rutaDelDia,
-  vehiculoAsignado,
-  pedidosDelDia,
-  getTotalBidones,
-  getCantidadPedidos,
-} from "@/lib/mocks/chofer";
+import { auth } from "@clerk/nextjs/server";
+import { getChoferStatus } from "@/lib/choferStatus";
 
 export default async function ChoferDashboard() {
-  const totalBidones = getTotalBidones(pedidosDelDia);
-  const cantidadPedidos = getCantidadPedidos(pedidosDelDia);
+  const { userId } = await auth();
+  const data = await getChoferStatus(userId);
   const fechaFormato = new Date().toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
 
-  const userNombre = choferActivoMock.nombre;
+  const userNombre = data.chofer.nombre;
+  const isPendingApproval = data.chofer.estado === "pendiente";
 
-  if (choferActivoMock.idVehiculo === null) {
+  if (isPendingApproval) {
     return (
       <div>
         <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
@@ -65,7 +60,7 @@ export default async function ChoferDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Pedidos</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{cantidadPedidos}</p>
+              <p className="text-3xl font-bold text-blue-600 mt-2">{data.cantidadPedidos}</p>
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Para entregar hoy</p>
@@ -75,7 +70,7 @@ export default async function ChoferDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Bidones</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">{totalBidones}</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">{data.totalBidones}</p>
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Total a llevar</p>
@@ -85,7 +80,7 @@ export default async function ChoferDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Zona</p>
-              <p className="text-2xl font-bold text-purple-600 mt-2">{rutaDelDia.zona}</p>
+              <p className="text-2xl font-bold text-purple-600 mt-2">{data.ruta.zona}</p>
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Zona de entrega</p>
@@ -95,7 +90,7 @@ export default async function ChoferDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Vehículo</p>
-              <p className="text-2xl font-bold text-orange-600 mt-2">{vehiculoAsignado.patente}</p>
+              <p className="text-2xl font-bold text-orange-600 mt-2">{data.vehiculo?.patente ?? "Sin vehículo"}</p>
             </div>
           </div>
           <p className="text-xs text-gray-600 mt-3">Vehículo asignado</p>
@@ -109,7 +104,7 @@ export default async function ChoferDashboard() {
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-gray-600 text-sm">Estado</p>
-            <p className="text-lg font-bold text-green-600 capitalize">{rutaDelDia.estado}</p>
+            <p className="text-lg font-bold text-green-600 capitalize">{data.ruta.estado}</p>
           </div>
         </div>
       </div>
@@ -119,7 +114,7 @@ export default async function ChoferDashboard() {
           <div className="bg-blue-50 hover:bg-blue-100 rounded-lg p-6 cursor-pointer transition-colors border-l-4 border-blue-500">
             <div className="text-3xl mb-3">📦</div>
             <h3 className="font-semibold text-blue-900">Ver Mis Pedidos</h3>
-            <p className="text-sm text-blue-700 mt-1">{cantidadPedidos} pedidos pendientes</p>
+            <p className="text-sm text-blue-700 mt-1">{data.cantidadPedidos} pedidos pendientes</p>
           </div>
         </Link>
 
@@ -127,7 +122,7 @@ export default async function ChoferDashboard() {
           <div className="bg-purple-50 hover:bg-purple-100 rounded-lg p-6 cursor-pointer transition-colors border-l-4 border-purple-500">
             <div className="text-3xl mb-3">🗺️</div>
             <h3 className="font-semibold text-purple-900">Mi Zona</h3>
-            <p className="text-sm text-purple-700 mt-1">Información de la zona {rutaDelDia.zona}</p>
+            <p className="text-sm text-purple-700 mt-1">Información de la zona {data.ruta.zona}</p>
           </div>
         </Link>
 
@@ -136,7 +131,7 @@ export default async function ChoferDashboard() {
             <div className="text-3xl mb-3">🚛</div>
             <h3 className="font-semibold text-orange-900">Mi Vehículo</h3>
             <p className="text-sm text-orange-700 mt-1">
-              {choferActivoMock.vehiculo?.patente ?? vehiculoAsignado.patente} - {choferActivoMock.vehiculo?.tipo ?? vehiculoAsignado.tipo}
+              {data.vehiculo?.patente ?? "Sin vehículo"} - {data.vehiculo?.tipo ?? "Sin tipo"}
             </p>
           </div>
         </Link>

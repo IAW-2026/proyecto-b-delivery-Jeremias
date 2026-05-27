@@ -2,7 +2,7 @@ import { getMockVendors, Vendor as MockVendor } from "@/lib/mocks/vendors";
 
 export type Vendor = MockVendor & { id_usuario?: number; id_vendedor?: number };
 
-export async function getVendors(): Promise<Vendor[]> {
+export async function fetchVendors(): Promise<Vendor[]> {
   const vendorsApiUrl = process.env.VENDORS_API_URL;
 
   // If an external Seller API is configured, try it, otherwise return local mocks.
@@ -17,4 +17,8 @@ export async function getVendors(): Promise<Vendor[]> {
   } catch {
     return getMockVendors();
   }
+}
+
+export async function getVendors(): Promise<Vendor[]> {
+  return fetchVendors();
 }

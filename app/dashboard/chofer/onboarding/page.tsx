@@ -1,47 +1,159 @@
 "use client";
 
-import { useState } from "react";
-import {
-  choferActivoMock,
-  choferPendienteMock,
-  vendorsMockeados,
-  type ChoferOnboardingProfile,
-} from "@/lib/mocks/chofer";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getMockVendors, type Vendor as MockVendor } from "@/lib/mocks/vendors";
 
-type State = "selection" | "waiting" | "active";
+type State = "selection" | "waiting";
+
+type ChoferRequest = {
+  id: number;
+  nombre: string;
+  telefono: string;
+  idVendedor: number;
+  vendorName: string;
+  status: "pending" | "approved" | "rejected";
+  reason: string | null;
+};
+
+type VendorOption = {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  direccion?: string;
+};
 
 export default function OnboardingPage() {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
   const [state, setState] = useState<State>("selection");
-  const [choferProfile, setChoferProfile] = useState<ChoferOnboardingProfile | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
   const [formData, setFormData] = useState({ nombre: "", telefono: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vendorName, setVendorName] = useState<string>("");
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [existingRequest, setExistingRequest] = useState<ChoferRequest | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRequestStatus() {
+      try {
+        const response = await fetch("/api/chofer-requests", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as { request?: ChoferRequest | null };
+        if (cancelled || !payload.request) return;
+
+        setExistingRequest(payload.request);
+        setVendorName(payload.request.vendorName);
+
+        if (payload.request.status === "pending") {
+          setState("waiting");
+        }
+
+        if (payload.request.status === "approved") {
+          router.replace("/dashboard/chofer");
+        }
+
+        if (payload.request.status === "rejected") {
+          setErrorMessage(
+            payload.request.reason
+              ? `Tu solicitud fue rechazada: ${payload.request.reason}`
+              : "Tu solicitud fue rechazada. Podés enviar una nueva solicitud."
+          );
+        }
+      } catch {
+        // If status lookup fails, keep the selection flow available.
+      }
+    }
+
+    void loadRequestStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
+    if (fullName) {
+      setFormData((current) => (current.nombre ? current : { ...current, nombre: fullName }));
+    }
+  }, [isLoaded, user?.firstName, user?.lastName]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVendors() {
+      try {
+        const response = await fetch("/api/vendors", { cache: "no-store" });
+        if (!response.ok) throw new Error("vendors response not ok");
+
+        const payload = (await response.json()) as { vendors?: VendorOption[] };
+        if (!cancelled && Array.isArray(payload.vendors) && payload.vendors.length > 0) {
+          setVendors(payload.vendors);
+        }
+      } catch {
+        if (!cancelled) {
+          setVendors(getMockVendors().map((vendor: MockVendor) => ({
+            id: vendor.id,
+            nombre: vendor.nombre,
+            descripcion: vendor.descripcion,
+            direccion: vendor.direccion,
+          })));
+        }
+      }
+    }
+
+    void loadVendors();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedVendor || !formData.nombre || !formData.telefono) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
-      const vendor = vendorsMockeados.find((entry) => entry.id_vendedor === selectedVendor);
+      const vendor = vendors.find((entry) => entry.id === selectedVendor);
 
-      const mockProfile: ChoferOnboardingProfile = {
-        ...choferPendienteMock,
-        nombre: formData.nombre,
-        telefono: formData.telefono,
-        idVendedor: selectedVendor,
-      };
+      const response = await fetch("/api/chofer-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: formData.nombre,
+          telefono: formData.telefono,
+          idVendedor: selectedVendor,
+          vendorName: vendor?.nombre ?? "",
+        }),
+      });
 
-      setChoferProfile(mockProfile);
-      setVendorName(vendor?.nombre ?? "Empresa seleccionada");
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "No se pudo enviar la solicitud");
+      }
+
+      const request = (await response.json()) as { request?: ChoferRequest };
+      setExistingRequest(request.request ?? null);
+      setVendorName(vendor?.nombre ?? request.request?.vendorName ?? "Empresa seleccionada");
       setState("waiting");
     } catch (error) {
-      console.error("Error:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Error inesperado");
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  const isWaiting = state === "waiting";
 
   if (state === "selection") {
     return (
@@ -89,22 +201,22 @@ export default function OnboardingPage() {
                   Selecciona la empresa donde trabajarás
                 </label>
                 <div className="grid grid-cols-1 gap-4">
-                  {vendorsMockeados.map((vendor) => (
+                  {vendors.map((vendor) => (
                     <div
-                      key={vendor.id_vendedor}
+                      key={vendor.id}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        selectedVendor === vendor.id_vendedor
+                        selectedVendor === vendor.id
                           ? "border-blue-500 bg-blue-50"
                           : "border-gray-300 hover:border-gray-400"
                       }`}
-                      onClick={() => setSelectedVendor(vendor.id_vendedor)}
+                      onClick={() => setSelectedVendor(vendor.id)}
                     >
                       <div className="flex items-start gap-3">
                         <input
                           type="radio"
                           name="vendor"
-                          checked={selectedVendor === vendor.id_vendedor}
-                          onChange={() => setSelectedVendor(vendor.id_vendedor)}
+                          checked={selectedVendor === vendor.id}
+                          onChange={() => setSelectedVendor(vendor.id)}
                           className="mt-1"
                         />
                         <div className="flex-1">
@@ -120,11 +232,17 @@ export default function OnboardingPage() {
 
               <button
                 type="submit"
-                disabled={isSubmitting || !selectedVendor || !formData.nombre || !formData.telefono}
+                disabled={isSubmitting || !selectedVendor || !formData.nombre || !formData.telefono || isWaiting}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition-colors"
               >
                 {isSubmitting ? "Creando perfil..." : "Crear perfil"}
               </button>
+
+              {existingRequest?.status === "pending" ? (
+                <p className="text-sm text-amber-700">Ya tenés una solicitud pendiente para {existingRequest.vendorName}.</p>
+              ) : null}
+
+              {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
             </form>
           </div>
         </div>
@@ -132,92 +250,21 @@ export default function OnboardingPage() {
     );
   }
 
-  if (state === "waiting" && choferProfile) {
+  if (state === "waiting") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 flex items-center">
         <div className="max-w-md mx-auto text-center">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="text-6xl mb-4">⏳</div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Solicitud en proceso</h1>
-            <p className="text-xl text-gray-700 mb-2">Tu solicitud está siendo procesada por</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Solicitud enviada</h1>
+            <p className="text-xl text-gray-700 mb-2">Tu solicitud está siendo revisada por</p>
             <p className="text-2xl font-bold mb-6" style={{ color: "#00AEEF" }}>
               {vendorName}
             </p>
-            <p className="text-gray-600 mb-6">Pronto se te asignará un vehículo.</p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setChoferProfile({ ...choferActivoMock, nombre: choferProfile.nombre, telefono: choferProfile.telefono, idVendedor: choferProfile.idVendedor });
-                setState("active");
-                setVendorName(vendorName || "Distribuciones Norte");
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
-            >
-              Simular asignación de vehículo
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (state === "active" && choferProfile) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 p-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">{choferProfile.nombre}</h1>
-            <p className="text-gray-600 mb-6">Empresa: {vendorName}</p>
-
-            {choferProfile.vehiculo && (
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-6 mb-6 border-l-4 border-orange-500">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  🚛 Tu Vehículo
-                </h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Patente</p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {choferProfile.vehiculo.patente}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Tipo</p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {choferProfile.vehiculo.tipo}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-blue-50 rounded-lg p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Información de Contacto
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Teléfono:</span>
-                  <span className="font-medium">{choferProfile.telefono}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Estado:</span>
-                  <span className="font-medium text-green-600">
-                    {choferProfile.estado}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center mt-6">
-              <p className="text-gray-600">
-                ¡Estás listo para empezar!{" "}
-                <a href="/dashboard/chofer" className="text-blue-600 font-semibold">
-                  Ir al dashboard
-                </a>
-              </p>
-            </div>
+            <p className="text-gray-600 mb-2">
+              Cuando el logistic_admin la apruebe, vas a quedar asociado a esa empresa y vas a ver tus datos operativos.
+            </p>
+            <p className="text-gray-500 text-sm">Por ahora solo queda esperar la aprobación.</p>
           </div>
         </div>
       </div>
