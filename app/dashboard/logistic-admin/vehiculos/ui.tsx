@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
 
@@ -18,6 +19,14 @@ type Vehiculo = {
 
 type Props = {
   vehiculos: Vehiculo[];
+  searchQuery: string;
+  statusFilter: "todos" | VehiculoStatus;
+  page: number;
+  totalPages: number;
+  totalFilteredVehiculos: number;
+  totalVehiculos: number;
+  activosCount: number;
+  pausadosCount: number;
 };
 
 type FormState = {
@@ -26,13 +35,54 @@ type FormState = {
   capacidadBidones: string;
 };
 
+type VehiculoStatus = "todos" | "activo" | "pausado";
+
+const statusOptions: Array<{ value: Exclude<VehiculoStatus, "todos">; label: string }> = [
+  { value: "activo", label: "Activos" },
+  { value: "pausado", label: "Pausados" },
+];
+
+const pageSize = 8;
+
 const emptyForm: FormState = {
   patente: "",
   tipo: "",
   capacidadBidones: "",
 };
 
-export default function VehiculosManager({ vehiculos }: Props) {
+function buildQueryHref(nextValues: { query?: string; status?: VehiculoStatus; page?: number }, searchQuery: string, statusFilter: VehiculoStatus, page: number) {
+  const params = new URLSearchParams();
+  const nextQuery = nextValues.query ?? searchQuery;
+  const nextStatus = nextValues.status ?? statusFilter;
+  const nextPage = nextValues.page ?? page;
+
+  if (nextQuery.trim()) {
+    params.set("query", nextQuery.trim());
+  }
+
+  if (nextStatus !== "todos") {
+    params.set("status", nextStatus);
+  }
+
+  if (nextPage > 1) {
+    params.set("page", String(nextPage));
+  }
+
+  const queryString = params.toString();
+  return queryString ? `/dashboard/logistic-admin/vehiculos?${queryString}` : "/dashboard/logistic-admin/vehiculos";
+}
+
+export default function VehiculosManager({
+  vehiculos,
+  searchQuery,
+  statusFilter,
+  page,
+  totalPages,
+  totalFilteredVehiculos,
+  totalVehiculos,
+  activosCount,
+  pausadosCount,
+}: Props) {
   const router = useRouter();
   const [addForm, setAddForm] = useState<FormState>(emptyForm);
   const [editForm, setEditForm] = useState<FormState>(emptyForm);
@@ -215,6 +265,9 @@ export default function VehiculosManager({ vehiculos }: Props) {
     setError(null);
   }
 
+  const pageStart = vehiculos.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const pageEnd = Math.min(totalFilteredVehiculos, page * pageSize);
+
   return (
     <div className={`mx-auto max-w-7xl p-4 text-slate-800 md:p-6 ${adminPageShell}`}>
       <header className={adminHeaderClass}>
@@ -230,13 +283,84 @@ export default function VehiculosManager({ vehiculos }: Props) {
       <section className="grid gap-4 md:grid-cols-2">
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Vehículos totales</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{vehiculos.length}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalVehiculos}</p>
         </div>
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Estado</p>
           <p className="mt-1 text-2xl font-semibold text-amber-600">
-            {vehiculos.filter((vehiculo) => vehiculo.estado === "pausado").length}
+            {pausadosCount}
           </p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <div className={adminStatCardClass}>
+          <p className="text-sm text-slate-500">Activos</p>
+          <p className="mt-1 text-2xl font-semibold text-emerald-600">{activosCount}</p>
+        </div>
+        <div className={adminStatCardClass}>
+          <p className="text-sm text-slate-500">Pausados</p>
+          <p className="mt-1 text-2xl font-semibold text-amber-600">{pausadosCount}</p>
+        </div>
+      </section>
+
+      <section className={`${adminCardClass} bg-slate-50 p-5`}>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Buscar vehículos</p>
+            <p className="text-xs text-slate-500">Buscá por patente o tipo.</p>
+          </div>
+          <form action="/dashboard/logistic-admin/vehiculos" method="get" className="w-full max-w-md">
+            <input type="hidden" name="page" value="1" />
+            {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
+            <label className="sr-only" htmlFor="vehiculos-search">
+              Buscar vehículos
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="vehiculos-search"
+                name="query"
+                defaultValue={searchQuery}
+                placeholder="Buscar por patente o tipo"
+                className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+            </div>
+          </form>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href={buildQueryHref({ status: "todos", page: 1 }, searchQuery, statusFilter, page)}
+            className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
+              statusFilter === "todos"
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Todos
+          </Link>
+          {statusOptions.map((option) => (
+            <Link
+              key={option.value}
+              href={buildQueryHref({ status: option.value, page: 1 }, searchQuery, statusFilter, page)}
+              className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
+                statusFilter === option.value
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {option.label}
+            </Link>
+          ))}
+          {searchQuery ? (
+            <Link
+              href={buildQueryHref({ query: "", page: 1 }, searchQuery, statusFilter, page)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Limpiar búsqueda
+            </Link>
+          ) : null}
         </div>
       </section>
 
@@ -285,10 +409,20 @@ export default function VehiculosManager({ vehiculos }: Props) {
 
       {vehiculos.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          No hay vehículos asociados a la empresa.
+          {searchQuery || statusFilter !== "todos"
+            ? `No hay resultados para ${searchQuery ? `"${searchQuery}"` : "el filtro seleccionado"}.`
+            : "No hay vehículos asociados a la empresa."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Mostrando {pageStart}-{pageEnd} de {totalFilteredVehiculos} vehículos
+            </p>
+            <p>
+              Página {page} de {totalPages}
+            </p>
+          </div>
           <table className="w-full table-fixed">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -438,6 +572,25 @@ export default function VehiculosManager({ vehiculos }: Props) {
               ))}
             </tbody>
           </table>
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredVehiculos}</p>
+            <div className="flex items-center gap-2">
+              <Link
+                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, statusFilter, page)}
+                aria-disabled={page <= 1}
+                className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Anterior
+              </Link>
+              <Link
+                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, statusFilter, page)}
+                aria-disabled={page >= totalPages}
+                className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Siguiente
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
 
@@ -27,6 +28,15 @@ type ZonaFueraCatalogo = {
 type Props = {
   zonas: Zona[];
   zonasFueraCatalogo: ZonaFueraCatalogo[];
+  searchQuery: string;
+  page: number;
+  totalPages: number;
+  totalFilteredZonas: number;
+  totalZonas: number;
+  zonasConPedidos: number;
+  zonasSinPedidos: number;
+  totalPedidos: number;
+  totalRutas: number;
 };
 
 type FormState = {
@@ -50,26 +60,42 @@ function statCardClass(kind: "blue" | "emerald" | "amber" | "slate") {
   }
 }
 
-export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
+function buildQueryHref(nextValues: { query?: string; page?: number }, searchQuery: string, page: number) {
+  const params = new URLSearchParams();
+  const nextQuery = nextValues.query ?? searchQuery;
+  const nextPage = nextValues.page ?? page;
+
+  if (nextQuery.trim()) {
+    params.set("query", nextQuery.trim());
+  }
+
+  if (nextPage > 1) {
+    params.set("page", String(nextPage));
+  }
+
+  const queryString = params.toString();
+  return queryString ? `/dashboard/logistic-admin/zonas?${queryString}` : "/dashboard/logistic-admin/zonas";
+}
+
+export default function ZonasManager({
+  zonas,
+  zonasFueraCatalogo,
+  searchQuery,
+  page,
+  totalPages,
+  totalFilteredZonas,
+  totalZonas,
+  zonasConPedidos,
+  zonasSinPedidos,
+  totalPedidos,
+  totalRutas,
+}: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editForm, setEditForm] = useState<FormState>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [editingZonaId, setEditingZonaId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const summary = useMemo(() => {
-    const zonasConPedidos = zonas.filter((zona) => zona.pedidosTotales > 0).length;
-    const totalPedidos = zonas.reduce((accumulator, zona) => accumulator + zona.pedidosTotales, 0);
-    const totalRutas = zonas.reduce((accumulator, zona) => accumulator + zona.rutasAsignadas, 0);
-
-    return {
-      totalPedidos,
-      totalRutas,
-      zonasConPedidos,
-      zonasSinPedidos: zonas.length - zonasConPedidos,
-    };
-  }, [zonas]);
 
   async function runAction(payload: Record<string, unknown>) {
     const response = await fetch("/api/logistic-admin", {
@@ -174,22 +200,26 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <div className={`${adminStatCardClass} ${statCardClass("blue")}`}>
           <p className="text-sm opacity-80">Barrios registrados</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{zonas.length}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalZonas}</p>
         </div>
         <div className={`${adminStatCardClass} ${statCardClass("emerald")}`}>
           <p className="text-sm opacity-80">Con pedidos</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.zonasConPedidos}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{zonasConPedidos}</p>
         </div>
         <div className={`${adminStatCardClass} ${statCardClass("amber")}`}>
           <p className="text-sm opacity-80">Sin pedidos</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.zonasSinPedidos}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{zonasSinPedidos}</p>
         </div>
         <div className={`${adminStatCardClass} ${statCardClass("slate")}`}>
           <p className="text-sm opacity-80">Pedidos totales</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalPedidos}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalPedidos}</p>
+        </div>
+        <div className={`${adminStatCardClass} ${statCardClass("blue")}`}>
+          <p className="text-sm opacity-80">Rutas totales</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalRutas}</p>
         </div>
       </section>
 
@@ -218,12 +248,55 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       </section>
 
+      <section className={`${adminCardClass} bg-slate-50 p-5`}>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Buscar barrios</p>
+            <p className="text-xs text-slate-500">Buscá por nombre del barrio.</p>
+          </div>
+          <form action="/dashboard/logistic-admin/zonas" method="get" className="w-full max-w-md">
+            <input type="hidden" name="page" value="1" />
+            <label className="sr-only" htmlFor="zonas-search">
+              Buscar barrios
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="zonas-search"
+                name="query"
+                defaultValue={searchQuery}
+                placeholder="Buscar por barrio"
+                className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+            </div>
+          </form>
+        </div>
+        {searchQuery ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={buildQueryHref({ query: "", page: 1 }, searchQuery, page)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Limpiar búsqueda
+            </Link>
+          </div>
+        ) : null}
+      </section>
+
       {zonas.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          Todavía no hay barrios cargados.
+          {searchQuery ? `No hay resultados para "${searchQuery}".` : "Todavía no hay barrios cargados."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Mostrando {zonas.length === 0 ? 0 : (page - 1) * 8 + 1}-{Math.min(totalFilteredZonas, page * 8)} de {totalFilteredZonas} barrios
+            </p>
+            <p>
+              Página {page} de {totalPages}
+            </p>
+          </div>
           <table className="w-full table-fixed">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -308,6 +381,25 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
               ))}
             </tbody>
           </table>
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredZonas}</p>
+            <div className="flex items-center gap-2">
+              <Link
+                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, page)}
+                aria-disabled={page <= 1}
+                className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Anterior
+              </Link>
+              <Link
+                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, page)}
+                aria-disabled={page >= totalPages}
+                className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Siguiente
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 

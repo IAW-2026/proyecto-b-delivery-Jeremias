@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
@@ -15,6 +16,13 @@ type Chofer = {
 type Props = {
   orders: LogisticOrder[];
   choferes: Chofer[];
+  searchQuery: string;
+  choferQuery: string;
+  assignmentFilter: "todos" | "sin_asignar";
+  statusFilter: "todos" | OrderStatus;
+  page: number;
+  totalPages: number;
+  totalFilteredOrders: number;
 };
 
 const statusOptions: Array<{ value: OrderStatus; label: string }> = [
@@ -25,6 +33,8 @@ const statusOptions: Array<{ value: OrderStatus; label: string }> = [
   { value: "cancelado", label: "Cancelado" },
   { value: "revision", label: "Revisión" },
 ];
+
+const pageSize = 8;
 
 function statusBadgeClass(status: OrderStatus) {
   if (status === "ready") return "bg-blue-100 text-blue-700";
@@ -48,10 +58,19 @@ function statusNeedsChofer(status: OrderStatus) {
   return status === "en_camino" || status === "entregado";
 }
 
-export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
+export default function LogisticAdminPedidosUi({
+  orders,
+  choferes,
+  searchQuery,
+  choferQuery,
+  assignmentFilter,
+  statusFilter,
+  page,
+  totalPages,
+  totalFilteredOrders,
+}: Props) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"todos" | OrderStatus>("todos");
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [choferSelection, setChoferSelection] = useState<Record<number, string>>(() => {
     const initial: Record<number, string> = {};
@@ -81,10 +100,40 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
     );
   }, [orders]);
 
-  const filteredOrders = useMemo(() => {
-    if (statusFilter === "todos") return orders;
-    return orders.filter((order) => order.status === statusFilter);
-  }, [orders, statusFilter]);
+  const pageStart = orders.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const pageEnd = Math.min(totalFilteredOrders, page * pageSize);
+
+  function buildQueryHref(nextValues: { query?: string; chofer?: string; assign?: "todos" | "sin_asignar"; status?: "todos" | OrderStatus; page?: number }) {
+    const params = new URLSearchParams();
+    const nextQuery = nextValues.query ?? searchQuery;
+    const nextChofer = nextValues.chofer ?? choferQuery;
+    const nextAssign = nextValues.assign ?? assignmentFilter;
+    const nextStatus = nextValues.status ?? statusFilter;
+    const nextPage = nextValues.page ?? page;
+
+    if (nextQuery.trim()) {
+      params.set("query", nextQuery.trim());
+    }
+
+    if (nextChofer.trim()) {
+      params.set("chofer", nextChofer.trim());
+    }
+
+    if (nextAssign !== "todos") {
+      params.set("assign", nextAssign);
+    }
+
+    if (nextStatus !== "todos") {
+      params.set("status", nextStatus);
+    }
+
+    if (nextPage > 1) {
+      params.set("page", String(nextPage));
+    }
+
+    const queryString = params.toString();
+    return queryString ? `/dashboard/logistic-admin/pedidos?${queryString}` : "/dashboard/logistic-admin/pedidos";
+  }
 
   async function runAction(payload: Record<string, unknown>) {
     const response = await fetch("/api/logistic-admin", {
@@ -200,48 +249,105 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-700">Filtrar pedidos</p>
-            <p className="text-xs text-slate-500">Mostrá todos o solo los pedidos de un estado específico.</p>
+            <p className="text-sm font-medium text-slate-700">Buscar pedidos</p>
+            <p className="text-xs text-slate-500">Usá un campo para cliente/calle y otro para chofer.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {/* CORREGIDO: Ahora usa border-blue-600 y bg-blue-600 cuando está seleccionado */}
-            <button 
-              type="button" 
-              onClick={() => setStatusFilter("todos")} 
+          <form action="/dashboard/logistic-admin/pedidos" method="get" className="w-full max-w-2xl">
+            <input type="hidden" name="page" value="1" />
+            {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
+            <label className="sr-only" htmlFor="pedidos-search">
+              Buscar pedidos
+            </label>
+            <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+              <input
+                id="pedidos-search"
+                name="query"
+                defaultValue={searchQuery}
+                placeholder="Cliente o dirección"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <input
+                name="chofer"
+                defaultValue={choferQuery}
+                placeholder="Chofer"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+            </div>
+          </form>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href={buildQueryHref({ status: "todos", page: 1 })}
+            className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
+              statusFilter === "todos"
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Todos
+          </Link>
+          <Link
+            href={buildQueryHref({ assign: assignmentFilter === "sin_asignar" ? "todos" : "sin_asignar", page: 1 })}
+            className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
+              assignmentFilter === "sin_asignar"
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Sin asignar
+          </Link>
+          {statusOptions.map((option) => (
+            <Link
+              key={option.value}
+              href={buildQueryHref({ status: option.value, page: 1 })}
               className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
-                statusFilter === "todos" 
-                  ? "border-blue-600 bg-blue-600 text-white" 
+                statusFilter === option.value
+                  ? "border-blue-600 bg-blue-600 text-white"
                   : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
-              Todos
-            </button>
-            {statusOptions.map((option) => (
-              <button 
-                key={option.value} 
-                type="button" 
-                onClick={() => setStatusFilter(option.value)} 
-                className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
-                  statusFilter === option.value 
-                    ? "border-blue-600 bg-blue-600 text-white" 
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+              {option.label}
+            </Link>
+          ))}
+          {searchQuery ? (
+            <Link
+              href={buildQueryHref({ query: "", page: 1 })}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Limpiar búsqueda
+            </Link>
+          ) : null}
+          {choferQuery ? (
+            <Link
+              href={buildQueryHref({ chofer: "", page: 1 })}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Limpiar chofer
+            </Link>
+          ) : null}
         </div>
       </section>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      {filteredOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          {statusFilter === "todos" ? "No hay pedidos cargados en este momento." : `No hay pedidos en estado ${formatStatus(statusFilter)}.`}
+          {searchQuery || statusFilter !== "todos"
+            ? `No hay resultados para ${searchQuery ? `"${searchQuery}"` : "el filtro seleccionado"}.`
+            : "No hay pedidos cargados en este momento."}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Mostrando {pageStart}-{pageEnd} de {totalFilteredOrders} pedidos
+            </p>
+            <p>
+              Página {page} de {totalPages}
+            </p>
+          </div>
           <table className="w-full table-fixed">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -255,7 +361,7 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order) => (
+              {orders.map((order) => (
                 <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
                   <td className="w-[80px] px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
                   <td className="w-[220px] px-3 py-3">
@@ -356,6 +462,25 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
               ))}
             </tbody>
           </table>
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredOrders}</p>
+            <div className="flex items-center gap-2">
+              <Link
+                href={buildQueryHref({ page: Math.max(1, page - 1) })}
+                aria-disabled={page <= 1}
+                className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Anterior
+              </Link>
+              <Link
+                href={buildQueryHref({ page: Math.min(totalPages, page + 1) })}
+                aria-disabled={page >= totalPages}
+                className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Siguiente
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </div>

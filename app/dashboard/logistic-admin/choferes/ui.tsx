@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
 
@@ -37,7 +38,27 @@ type Props = {
   choferes: Chofer[];
   zonas: Zona[];
   vehiculos: Vehiculo[];
+  searchQuery: string;
+  statusFilter: "todos" | ChoferStatus;
+  page: number;
+  totalPages: number;
+  totalFilteredChoferes: number;
+  totalChoferes: number;
+  activeCount: number;
+  withZoneCount: number;
+  withoutZoneCount: number;
 };
+
+type ChoferStatus = "todos" | "activo" | "inactivo" | "pendiente" | "rechazado";
+
+const statusOptions: Array<{ value: Exclude<ChoferStatus, "todos">; label: string }> = [
+  { value: "activo", label: "Activos" },
+  { value: "inactivo", label: "Inactivos" },
+  { value: "pendiente", label: "Pendientes" },
+  { value: "rechazado", label: "Rechazados" },
+];
+
+const pageSize = 8;
 
 type ChoferRequest = {
   id: number;
@@ -51,10 +72,54 @@ type ChoferRequest = {
 function estadoClass(estado: string) {
   if (estado === "activo") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
   if (estado === "rechazado" || estado === "inactivo") return "bg-amber-50 text-amber-700 border border-amber-200";
+  if (estado === "pendiente") return "bg-violet-50 text-violet-700 border border-violet-200";
   return "bg-slate-50 text-slate-700 border border-slate-200";
 }
 
-export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
+function formatEstado(estado: string) {
+  if (estado === "activo") return "Activo";
+  if (estado === "inactivo") return "Inactivo";
+  if (estado === "pendiente") return "Pendiente";
+  if (estado === "rechazado") return "Rechazado";
+  return estado.charAt(0).toUpperCase() + estado.slice(1);
+}
+
+function buildQueryHref(nextValues: { query?: string; status?: ChoferStatus; page?: number }, searchQuery: string, statusFilter: ChoferStatus, page: number) {
+  const params = new URLSearchParams();
+  const nextQuery = nextValues.query ?? searchQuery;
+  const nextStatus = nextValues.status ?? statusFilter;
+  const nextPage = nextValues.page ?? page;
+
+  if (nextQuery.trim()) {
+    params.set("query", nextQuery.trim());
+  }
+
+  if (nextStatus !== "todos") {
+    params.set("status", nextStatus);
+  }
+
+  if (nextPage > 1) {
+    params.set("page", String(nextPage));
+  }
+
+  const queryString = params.toString();
+  return queryString ? `/dashboard/logistic-admin/choferes?${queryString}` : "/dashboard/logistic-admin/choferes";
+}
+
+export default function ChoferesManager({
+  choferes,
+  zonas,
+  vehiculos,
+  searchQuery,
+  statusFilter,
+  page,
+  totalPages,
+  totalFilteredChoferes,
+  totalChoferes,
+  activeCount,
+  withZoneCount,
+  withoutZoneCount,
+}: Props) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<number | null>(null);
   const [editingChoferId, setEditingChoferId] = useState<number | null>(null);
@@ -85,8 +150,6 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
     }
     return ids;
   }, [choferes]);
-
-  const activeCount = useMemo(() => choferes.filter((chofer) => chofer.estado === "activo").length, [choferes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,7 +288,7 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Total choferes</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{choferes.length}</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalChoferes}</p>
         </div>
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Activos</p>
@@ -233,15 +296,11 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
         </div>
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Con zona</p>
-          <p className="mt-1 text-2xl font-semibold text-blue-600">
-            {choferes.filter((chofer) => chofer.idZona !== null).length}
-          </p>
+          <p className="mt-1 text-2xl font-semibold text-blue-600">{withZoneCount}</p>
         </div>
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Sin zona</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-600">
-            {choferes.filter((chofer) => chofer.idZona === null).length}
-          </p>
+          <p className="mt-1 text-2xl font-semibold text-amber-600">{withoutZoneCount}</p>
         </div>
       </section>
 
@@ -296,14 +355,84 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
         </div>
       </section>
 
+      <section className={`${adminCardClass} bg-slate-50 p-5`}>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Buscar choferes</p>
+            <p className="text-xs text-slate-500">Buscá por nombre o teléfono.</p>
+          </div>
+          <form action="/dashboard/logistic-admin/choferes" method="get" className="w-full max-w-md">
+            <input type="hidden" name="page" value="1" />
+            {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
+            <label className="sr-only" htmlFor="choferes-search">
+              Buscar choferes
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="choferes-search"
+                name="query"
+                defaultValue={searchQuery}
+                placeholder="Buscar por nombre o teléfono"
+                className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+            </div>
+          </form>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href={buildQueryHref({ status: "todos", page: 1 }, searchQuery, statusFilter, page)}
+            className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
+              statusFilter === "todos"
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Todos
+          </Link>
+          {statusOptions.map((option) => (
+            <Link
+              key={option.value}
+              href={buildQueryHref({ status: option.value, page: 1 }, searchQuery, statusFilter, page)}
+              className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
+                statusFilter === option.value
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {option.label}
+            </Link>
+          ))}
+          {searchQuery ? (
+            <Link
+              href={buildQueryHref({ query: "", page: 1 }, searchQuery, statusFilter, page)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Limpiar búsqueda
+            </Link>
+          ) : null}
+        </div>
+      </section>
+
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       {choferes.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          No hay choferes asociados a la empresa.
+          {searchQuery || statusFilter !== "todos"
+            ? `No hay resultados para ${searchQuery ? `"${searchQuery}"` : "el filtro seleccionado"}.`
+            : "No hay choferes asociados a la empresa."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Mostrando {choferes.length === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(totalFilteredChoferes, page * pageSize)} de {totalFilteredChoferes} choferes
+            </p>
+            <p>
+              Página {page} de {totalPages}
+            </p>
+          </div>
           <table className="w-full table-fixed">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -324,7 +453,7 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
                     </td>
                     <td className="px-3 py-4">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
-                        {chofer.estado}
+                        {formatEstado(chofer.estado)}
                       </span>
                     </td>
                     <td className="px-3 py-4">
@@ -426,6 +555,25 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
               ))}
             </tbody>
           </table>
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredChoferes}</p>
+            <div className="flex items-center gap-2">
+              <Link
+                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, statusFilter, page)}
+                aria-disabled={page <= 1}
+                className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Anterior
+              </Link>
+              <Link
+                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, statusFilter, page)}
+                aria-disabled={page >= totalPages}
+                className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Siguiente
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </div>
