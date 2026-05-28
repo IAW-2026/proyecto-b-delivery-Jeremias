@@ -52,7 +52,6 @@ function statCardClass(kind: "blue" | "emerald" | "amber" | "slate") {
 export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,32 +93,15 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
 
     setIsSaving(true);
     try {
-      if (editingId === null) {
-        await runAction({ action: "create_zone", nombre });
-      } else {
-        await runAction({ action: "update_zone", idZona: editingId, nombre });
-      }
+      await runAction({ action: "create_zone", nombre });
 
       setForm(emptyForm);
-      setEditingId(null);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
     } finally {
       setIsSaving(false);
     }
-  }
-
-  function startEdit(zona: Zona) {
-    setEditingId(zona.idZona);
-    setForm({ nombre: zona.zona });
-    setError(null);
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setForm(emptyForm);
-    setError(null);
   }
 
   async function handleDelete(zona: Zona) {
@@ -135,9 +117,6 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
     setError(null);
     try {
       await runAction({ action: "delete_zone", idZona: zona.idZona });
-      if (editingId === zona.idZona) {
-        cancelEdit();
-      }
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar la zona");
@@ -178,9 +157,7 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-        <h2 className="text-lg font-semibold text-slate-900">
-          {editingId === null ? "Agregar barrio" : `Editar barrio #${editingId}`}
-        </h2>
+        <h2 className="text-lg font-semibold text-slate-900">Agregar barrio</h2>
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 md:flex-row md:items-center">
           <input
@@ -196,18 +173,8 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
               disabled={isSaving}
               className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60"
             >
-              {editingId === null ? "Agregar" : "Guardar"}
+              Agregar
             </button>
-            {editingId !== null ? (
-              <button
-                type="button"
-                onClick={cancelEdit}
-                disabled={isSaving}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
-              >
-                Cancelar
-              </button>
-            ) : null}
           </div>
         </form>
 
@@ -228,14 +195,6 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">ID {zona.idZona}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(zona)}
-                    disabled={isSaving}
-                    className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
-                  >
-                    Editar
-                  </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(zona)}

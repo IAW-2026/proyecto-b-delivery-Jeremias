@@ -13,14 +13,29 @@ type ChoferProfileForm = {
   cuilCuit: string;
 };
 
+function splitFullName(fullName: string) {
+  const trimmed = fullName.trim();
+  if (!trimmed) {
+    return { nombre: "", apellido: "" };
+  }
+
+  const parts = trimmed.split(/\s+/);
+  const nombre = parts.shift() ?? "";
+  const apellido = parts.join(" ");
+
+  return { nombre, apellido };
+}
+
 function normalizeProfile(
   profile: Partial<ChoferProfileForm> | null | undefined,
-  userFirstName?: string | null,
-  userLastName?: string | null
+  fallbackName?: string | null
 ): ChoferProfileForm {
+  const combinedName = [profile?.nombre ?? "", profile?.apellido ?? ""].filter(Boolean).join(" ").trim();
+  const { nombre, apellido } = splitFullName(combinedName || fallbackName || "");
+
   return {
-    nombre: userFirstName ?? profile?.nombre ?? "",
-    apellido: userLastName ?? profile?.apellido ?? "",
+    nombre,
+    apellido,
     telefono: profile?.telefono ?? "",
     disponible: profile?.disponible ?? true,
     cbuCvu: profile?.cbuCvu ?? "",
@@ -31,9 +46,9 @@ function normalizeProfile(
 
 export default function PerfilPage() {
   const { user } = useUser();
+  const fallbackName = user?.fullName?.trim() ?? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
   const initialProfile: ChoferProfileForm = {
-    nombre: `${user?.firstName ?? ""}`.trim(),
-    apellido: `${user?.lastName ?? ""}`.trim(),
+    ...splitFullName(fallbackName),
     telefono: "",
     disponible: true,
     cbuCvu: "",
@@ -45,31 +60,47 @@ export default function PerfilPage() {
   const [form, setForm] = useState<ChoferProfileForm>(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const nombre = `${user?.firstName ?? ""}`.trim();
-    const apellido = `${user?.lastName ?? ""}`.trim();
+    let cancelled = false;
 
-    if (!nombre && !apellido) return;
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/chofer/profile", { cache: "no-store" });
+        const payload = (await response.json().catch(() => null)) as
+          | { chofer?: Partial<ChoferProfileForm> | null }
+          | null;
 
-    setProfile((current) => {
-      if (current.nombre || current.apellido) return current;
-      return {
-        ...current,
-        nombre,
-        apellido,
-      };
-    });
+        if (cancelled) return;
 
-    setForm((current) => {
-      if (current.nombre || current.apellido) return current;
-      return {
-        ...current,
-        nombre,
-        apellido,
-      };
-    });
-  }, [user?.firstName, user?.lastName]);
+        if (response.ok && payload?.chofer) {
+          const loadedProfile = normalizeProfile(payload.chofer, fallbackName);
+          setProfile(loadedProfile);
+          setForm(loadedProfile);
+          return;
+        }
+
+        const baseProfile = normalizeProfile(null, fallbackName);
+        setProfile(baseProfile);
+        setForm(baseProfile);
+      } catch {
+        if (!cancelled) {
+          const baseProfile = normalizeProfile(null, fallbackName);
+          setProfile(baseProfile);
+          setForm(baseProfile);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fallbackName]);
 
   function handleChange<K extends keyof ChoferProfileForm>(field: K, value: ChoferProfileForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -82,7 +113,7 @@ export default function PerfilPage() {
   }
 
   function handleCancelClick() {
-    setForm(normalizeProfile(profile));
+    setForm(normalizeProfile(profile, fallbackName));
     setIsEditing(false);
     setStatus("idle");
   }
@@ -90,9 +121,36 @@ export default function PerfilPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("saving");
-    setProfile(form);
-    setIsEditing(false);
-    setStatus("saved");
+
+    try {
+      const response = await fetch("/api/chofer/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { chofer?: Partial<ChoferProfileForm> | null; error?: string }
+        | null;
+
+      if (!response.ok || !payload?.chofer) {
+        throw new Error(payload?.error ?? "No se pudo guardar el perfil");
+      }
+
+      const savedProfile = normalizeProfile(payload.chofer, fallbackName);
+      setProfile(savedProfile);
+      setForm(savedProfile);
+      setIsEditing(false);
+      setStatus("saved");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  if (isLoading) {
+    return <div>Cargando perfil...</div>;
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { OrderStatus } from "@/lib/logisticAdminStore";
 
 type Vehiculo = {
   idVehiculo: number;
@@ -29,7 +30,7 @@ type Order = {
   telefono?: string;
   cantBidones: number;
   zona: string;
-  status: "ready" | "assigned" | "cancelled";
+  status: OrderStatus;
   assignedToChoferId: number | null;
   assignedToChoferName: string | null;
   updatedAt: string;
@@ -63,9 +64,9 @@ type Props = {
 
 function roleBadgeClass(status: string) {
   switch (status) {
-    case "assigned":
+    case "asignado":
       return "bg-blue-100 text-blue-800";
-    case "cancelled":
+    case "cancelado":
       return "bg-red-100 text-red-800";
     default:
       return "bg-emerald-100 text-emerald-800";
@@ -138,10 +139,11 @@ export default function LogisticAdminBoard({ userName, companyId, companyName, i
     router.refresh();
   }
 
-  const pendingOrders = orders.filter((order) => order.status !== "cancelled");
-  const activeOrders = orders.filter((order) => order.status === "assigned");
+  const pendingOrders = orders.filter((order) => order.status !== "cancelado");
+  const activeOrders = orders.filter((order) => order.status === "asignado");
   const activeDrivers = choferes.filter((driver) => driver.estado === "activo");
   const pendingDrivers = choferes.filter((driver) => driver.estado === "pendiente");
+  const assignableDrivers = choferes.filter((driver) => driver.estado === "activo");
 
   return (
     <div className="space-y-8">
@@ -256,7 +258,7 @@ export default function LogisticAdminBoard({ userName, companyId, companyName, i
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {choferes.slice(0, 4).map((chofer) => (
+                      {assignableDrivers.slice(0, 4).map((chofer) => (
                         <button
                           key={`${order.idPedido}-${chofer.idChofer}`}
                           type="button"
@@ -418,7 +420,7 @@ export default function LogisticAdminBoard({ userName, companyId, companyName, i
                     <p className="text-sm text-slate-600">{vehiculo.tipo}</p>
                     <p className="text-xs text-slate-500">Capacidad: {vehiculo.capacidadBidones} bidones</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {choferes.map((chofer) => (
+                      {assignableDrivers.map((chofer) => (
                         <button
                           key={`${vehiculo.idVehiculo}-${chofer.idChofer}`}
                           type="button"
@@ -428,7 +430,7 @@ export default function LogisticAdminBoard({ userName, companyId, companyName, i
                           Asignar a {chofer.nombre}
                         </button>
                       ))}
-                      {choferes.map((chofer) => (
+                      {assignableDrivers.map((chofer) => (
                         <button
                           key={`clear-${vehiculo.idVehiculo}-${chofer.idChofer}`}
                           type="button"

@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { getOrdersForChofer } from "@/lib/logisticAdminStore";
 
 type ChoferPedido = {
   idPedido: number;
@@ -8,7 +7,7 @@ type ChoferPedido = {
   telefono: string;
   cantBidones: number;
   zona: string;
-  estado: "ready" | "en_camino" | "entregado" | "cancelado";
+  estado: "ready" | "asignado" | "en_camino" | "entregado" | "cancelado" | "revision";
 };
 
 type ChoferVehiculo = {
@@ -50,9 +49,12 @@ export type ChoferStatus = {
 };
 
 function mapStatusToChoferStatus(status: string): ChoferPedido["estado"] {
-  if (status === "assigned") return "ready";
+  if (status === "assigned" || status === "asignado") return "asignado";
   if (status === "cancelled") return "cancelado";
+  if (status === "cancelado") return "cancelado";
   if (status === "delivered") return "entregado";
+  if (status === "entregado") return "entregado";
+  if (status === "revision") return "revision";
   return "ready";
 }
 
@@ -93,7 +95,7 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
 
   const displayName = clerkUserId ? await getClerkDisplayName(clerkUserId) : "Chofer nuevo";
   const choferId = dbChofer?.idChofer ?? 0;
-  const assignedOrders = getOrdersForChofer(choferId);
+  const assignedOrders: any[] = await prisma.pedido.findMany({ where: { idChoferAsignado: choferId } });
 
   const pedidos = assignedOrders.map((pedido) => ({
     idPedido: pedido.idPedido,
@@ -102,7 +104,7 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
     telefono: pedido.telefono ?? "",
     cantBidones: pedido.cantBidones,
     zona: pedido.zona,
-    estado: mapStatusToChoferStatus(pedido.status),
+    estado: mapStatusToChoferStatus(pedido.estado),
   }));
 
   const totalBidones = pedidos.reduce((sum, pedido) => sum + pedido.cantBidones, 0);

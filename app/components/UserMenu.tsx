@@ -13,6 +13,7 @@ function resolveRoleLabel(roles: string[]) {
 export default function UserMenu() {
   const { isSignedIn, isLoaded, user } = useUser();
   const [resolvedRole, setResolvedRole] = useState<string>("Sin rol");
+  const [displayName, setDisplayName] = useState<string>("Usuario");
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user?.id) return;
@@ -26,7 +27,20 @@ export default function UserMenu() {
         const data = (await response.json()) as { role?: string[] };
         const roles = Array.isArray(data.role) ? data.role : [];
         setResolvedRole(resolveRoleLabel(roles));
+
+        const choferResponse = await fetch("/api/chofer/status", { cache: "no-store" });
+        if (choferResponse.ok) {
+          const choferData = (await choferResponse.json()) as { chofer?: { nombre?: string | null } };
+          const choferName = choferData.chofer?.nombre?.trim();
+          if (choferName) {
+            setDisplayName(choferName);
+            return;
+          }
+        }
+
+        setDisplayName(user?.fullName?.trim() || `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Usuario");
       } catch {
+        setDisplayName(user?.fullName?.trim() || `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Usuario");
         setResolvedRole("Sin rol");
       }
     }
@@ -39,7 +53,7 @@ export default function UserMenu() {
       <UserButton appearance={{ elements: { avatarBox: "w-12 h-12 rounded-full" } }} />
       <div className="select-none">
         <p className="font-semibold text-gray-900">
-          {`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Usuario"}
+          {displayName}
         </p>
         <p className="text-sm text-gray-500">{resolvedRole}</p>
       </div>

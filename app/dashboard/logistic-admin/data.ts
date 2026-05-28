@@ -1,10 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import {
-  syncAutomaticZoneAssignments,
-  type LogisticOrder,
-} from "@/lib/logisticAdminStore";
+import { getOrders, type LogisticOrder } from "@/lib/logisticAdminStore";
 
 type VendorHint = {
   id: number;
@@ -17,6 +14,10 @@ type VehiculoRecord = {
   tipo: string;
   capacidadBidones: number;
   idVendedor: number;
+  estado: string;
+  motivoPausa: string | null;
+  assignedToChoferId?: number | null;
+  assignedToChoferName?: string | null;
 };
 
 type ChoferRecord = {
@@ -73,6 +74,20 @@ type UserRoleRecord = {
   nombreEmpresa: string | null;
 };
 
+type PedidoDbRecord = {
+  idPedido: number;
+  estado: string;
+  direccion: string;
+  cliente: string;
+  telefono: string | null;
+  cantBidones: number;
+  zona: string;
+  idChoferAsignado: number | null;
+  assignedAt: Date | null;
+  updatedAt: Date | null;
+  choferAsignado?: { nombre: string | null } | null;
+};
+
 export type LogisticAdminViewData = {
   userName: string;
   companyId: number | null;
@@ -126,6 +141,59 @@ function normalizeRoles(rawRole: unknown): string[] {
   return [];
 }
 
+function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
+  const status =
+    pedido.estado === "assigned" || pedido.estado === "asignado"
+      ? "asignado"
+      : pedido.estado === "cancelled" || pedido.estado === "cancelado"
+      ? "cancelado"
+      : pedido.estado === "delivered" || pedido.estado === "entregado"
+      ? "entregado"
+      : pedido.estado === "en_camino"
+      ? "en_camino"
+      : pedido.estado === "revision"
+      ? "revision"
+      : "ready";
+
+  return {
+    idPedido: pedido.idPedido,
+    estado: status,
+    direccion: pedido.direccion,
+    cliente: pedido.cliente,
+    telefono: pedido.telefono ?? undefined,
+    cantBidones: pedido.cantBidones,
+    zona: pedido.zona,
+    assignedToChoferId: pedido.idChoferAsignado,
+    assignedToChoferName: pedido.choferAsignado?.nombre ?? null,
+    status,
+    updatedAt: (pedido.updatedAt ?? pedido.assignedAt ?? new Date()).toISOString(),
+  };
+}
+
+async function seedPedidosFromStoreIfEmpty() {
+  const count = await prisma.pedido.count();
+  if (count > 0) return;
+
+  const storeOrders = getOrders();
+  if (storeOrders.length === 0) return;
+
+  await prisma.pedido.createMany({
+    data: storeOrders.map((order) => ({
+      idPedido: order.idPedido,
+      estado: order.status,
+      direccion: order.direccion,
+      cliente: order.cliente,
+      telefono: order.telefono ?? null,
+      cantBidones: order.cantBidones,
+      zona: order.zona,
+      idChoferAsignado: order.assignedToChoferId,
+      assignedAt: order.assignedToChoferId ? new Date(order.updatedAt) : null,
+      updatedAt: new Date(order.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
+}
+
 async function safeCurrentUser() {
   try {
     return await currentUser();
@@ -137,6 +205,18 @@ async function safeCurrentUser() {
 
 function normalizeZonaName(value: string) {
   return value.trim().toLowerCase();
+}
+
+function normalizeOrderStatus(value: string) {
+  if (value === "ready" || value === "asignado" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision") {
+    return value;
+  }
+
+  if (value === "assigned") return "asignado";
+  if (value === "cancelled") return "cancelado";
+  if (value === "delivered") return "entregado";
+
+  return "ready";
 }
 
 function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoRecord[]) {
@@ -169,9 +249,11 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
     current.pedidosTotales += 1;
     current.bidonesTotales += order.cantBidones;
 
-    if (order.status === "assigned") current.pedidosAsignados += 1;
-    if (order.status === "ready") current.pedidosReady += 1;
-    if (order.status === "cancelled") current.pedidosCancelados += 1;
+    const normalizedStatus = normalizeOrderStatus(order.status);
+
+    if (normalizedStatus === "asignado") current.pedidosAsignados += 1;
+    if (normalizedStatus === "ready") current.pedidosReady += 1;
+    if (normalizedStatus === "cancelado") current.pedidosCancelados += 1;
 
     ordersByZone.set(key, current);
   }
@@ -325,14 +407,40 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
             prisma.vehiculo.findMany({
               where: { idVendedor: idVendedorToQuery },
               orderBy: { idVehiculo: "asc" },
-            }),
+                  }),
           [],
           "vehiculo.findMany"
         ),
       ])
     : [[], []];
 
-  const orders = syncAutomaticZoneAssignments(choferes as ChoferRecord[]);
+        const assignedByVehicle = new Map<number, { idChofer: number; nombre: string }>();
+        for (const chofer of choferes as ChoferRecord[]) {
+          if (chofer.idVehiculo !== null) {
+            assignedByVehicle.set(chofer.idVehiculo, { idChofer: chofer.idChofer, nombre: chofer.nombre });
+          }
+        }
+
+        const vehiculosWithAssignment = (vehiculos as VehiculoRecord[]).map((vehiculo) => {
+          const assigned = assignedByVehicle.get(vehiculo.idVehiculo);
+          return {
+            ...vehiculo,
+            assignedToChoferId: assigned?.idChofer ?? null,
+            assignedToChoferName: assigned?.nombre ?? null,
+          };
+        });
+
+  await safePrismaQuery(() => seedPedidosFromStoreIfEmpty(), undefined, "pedido.seedFromStoreIfEmpty");
+
+  const orders = await safePrismaQuery(
+    () =>
+      prisma.pedido.findMany({
+        include: { choferAsignado: true },
+        orderBy: { idPedido: "asc" },
+      }).then((pedidos: PedidoDbRecord[]) => pedidos.map(mapDbPedidoToLogisticOrder)),
+    getOrders(),
+    "pedido.findMany"
+  );
   const zonasResumen = buildZonasResumen(orders, zonasCatalogo);
 
   return {
@@ -346,7 +454,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
         ? { id: inferredVendorId, nombre: inferredVendorName ?? undefined }
         : undefined,
     choferes,
-    vehiculos,
+    vehiculos: vehiculosWithAssignment,
     orders,
     zonas: zonasResumen.zonas,
     zonasFueraCatalogo: zonasResumen.zonasFueraCatalogo,

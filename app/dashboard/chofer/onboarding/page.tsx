@@ -80,11 +80,11 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
+    const fullName = user?.fullName?.trim() ?? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
     if (fullName) {
       setFormData((current) => (current.nombre ? current : { ...current, nombre: fullName }));
     }
-  }, [isLoaded, user?.firstName, user?.lastName]);
+  }, [isLoaded, user?.fullName, user?.firstName, user?.lastName]);
 
   useEffect(() => {
     let cancelled = false;

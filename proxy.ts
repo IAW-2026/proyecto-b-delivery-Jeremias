@@ -39,21 +39,38 @@ function getEffectiveRoles(rawRoles: string[]): string[] {
 async function resolveRoles(userId: string) {
   try {
     const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
-    if (!secretKey) return [] as string[];
 
-    const response = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
+    // Read DB roles (if any)
+    const dbRecord = await prisma.userRole
+      .findUnique({ where: { clerkUserId: userId }, select: { role: true } })
+      .catch(() => null);
 
-    if (!response.ok) return [] as string[];
+    const dbRoles = normalizeRoles(dbRecord?.role);
 
-    const user = await response.json();
-    const metadata = user.public_metadata ?? user.publicMetadata ?? {};
-    return getEffectiveRoles(normalizeRoles(metadata.role));
+    // Read Clerk roles if we can; fall back to DB-only when Clerk is unavailable
+    let clerkRoles: string[] = [];
+    if (secretKey) {
+      try {
+        const response = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        });
+
+        if (response.ok) {
+          const user = await response.json();
+          const metadata = user.public_metadata ?? user.publicMetadata ?? {};
+          clerkRoles = normalizeRoles(metadata.role);
+        }
+      } catch {
+        clerkRoles = [];
+      }
+    }
+
+    const combined = [...dbRoles, ...clerkRoles];
+    return getEffectiveRoles(normalizeRoles(combined));
   } catch {
     return [] as string[];
   }
@@ -96,12 +113,11 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     if (!isDelivery) return NextResponse.redirect(new URL("/dashboard", request.url));
 
     // If the user is a delivery role, ensure they either have a Chofer record
-    // or allow only the onboarding flow until they create/request association.
+    // Block access to chofer subroutes until a Chofer record exists in our DB.
+    // Even if there is a pending request, keep the user within onboarding.
     const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
-    const pendingRequest = await prisma.choferRequest.findFirst({ where: { clerkUserId: userId, status: "pending" } }).catch(() => null);
 
-    if (!dbChofer && !pendingRequest) {
-      // Allow the onboarding page, but block other chofer subroutes until association.
+    if (!dbChofer) {
       if (!pathname.startsWith("/dashboard/chofer/onboarding")) {
         return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
       }

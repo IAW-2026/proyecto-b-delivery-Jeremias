@@ -12,6 +12,8 @@ model Vehiculo {
   tipo             String
   capacidadBidones Int      @map("capacidad_bidones")
   idVendedor       Int      @map("id_vendedor")
+  estado           String   @default("activo")
+  motivoPausa      String?  @map("motivo_pausa")
   choferes         Chofer[]
 
   @@map("vehiculo")
@@ -34,6 +36,7 @@ model Chofer {
   vehiculo    Vehiculo? @relation(fields: [idVehiculo], references: [idVehiculo])
   zona        zona?     @relation(fields: [idZona], references: [idZona])
   ruta        ruta[]
+  pedidosAsignados Pedido[] @relation("ChoferPedidos")
 
   @@map("chofer")
 }
@@ -75,13 +78,18 @@ model AdminDelivery {
 
 model Pedido {
   idPedido    Int           @id @default(autoincrement())
-  estado      String        @default("pendiente")
+  estado      String        @default("ready")
+  idChoferAsignado Int?     @map("id_chofer_asignado")
+  assignedAt  DateTime?     @map("assigned_at")
+  updatedAt   DateTime?     @map("updated_at")
   direccion   String
   cliente     String
   telefono    String?
   cantBidones Int
   zona        String
   ruta_pedido ruta_pedido[]
+
+  choferAsignado Chofer? @relation("ChoferPedidos", fields: [idChoferAsignado], references: [idChofer])
 
   @@map("pedido")
 }

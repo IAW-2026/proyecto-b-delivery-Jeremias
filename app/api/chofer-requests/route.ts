@@ -2,6 +2,48 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
+const CLERK_API_BASE = "https://api.clerk.com";
+
+async function maybeSyncClerkName(userId: string, nombre: string) {
+  const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
+  if (!secretKey) return;
+
+  try {
+    const userResponse = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!userResponse.ok) return;
+
+    const user = await userResponse.json();
+    const currentName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || user.username || "";
+    if (currentName) return;
+
+    const patchResponse = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        first_name: nombre,
+        last_name: "",
+      }),
+    });
+
+    if (!patchResponse.ok) {
+      const text = await patchResponse.text();
+      console.debug("Clerk name patch returned:", patchResponse.status, text);
+    }
+  } catch (error) {
+    console.debug("Failed to sync Clerk name:", error);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { userId } = getAuth(request);
@@ -40,6 +82,8 @@ export async function POST(request: NextRequest) {
     if (!nombre || !telefono || !Number.isInteger(idVendedor) || idVendedor <= 0) {
       return NextResponse.json({ error: "Missing request data" }, { status: 400 });
     }
+
+    await maybeSyncClerkName(userId, nombre);
 
     const existingRequest = await prisma.choferRequest.findUnique({
       where: { clerkUserId: userId },
