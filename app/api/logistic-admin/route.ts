@@ -195,6 +195,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (body.action === "update_zone") {
+      if (typeof body.idZona !== "number") {
+        return NextResponse.json({ error: "Missing zone id" }, { status: 400 });
+      }
+
+      const nombre = String(body.nombre ?? "").trim();
+      if (!nombre) {
+        return NextResponse.json({ error: "Missing zone name" }, { status: 400 });
+      }
+
+      try {
+        const zona = await prisma.zona.update({
+          where: { idZona: body.idZona },
+          data: { nombre },
+        });
+
+        return NextResponse.json({ ok: true, zona });
+      } catch {
+        return NextResponse.json({ error: "La zona ya existe" }, { status: 409 });
+      }
+    }
+
     if (body.action === "delete_zone") {
       if (typeof body.idZona !== "number") {
         return NextResponse.json({ error: "Missing zone id" }, { status: 400 });
@@ -438,7 +460,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Primero asigná un chofer al pedido" }, { status: 409 });
       }
 
-      const requiresAssignedChofer = body.status === "en_camino" || body.status === "entregado" || body.status === "cancelado";
+      const requiresAssignedChofer = body.status === "en_camino" || body.status === "entregado";
       if (requiresAssignedChofer && !pedidoDb.idChoferAsignado) {
         return NextResponse.json({ error: "No podés mover este pedido a ese estado sin asignarle un chofer primero" }, { status: 409 });
       }
@@ -538,7 +560,15 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "No se puede eliminar un chofer que tiene pedidos asignados activos" }, { status: 409 });
         }
 
-        await prisma.chofer.delete({ where: { idChofer: body.idChofer } });
+        await prisma.$transaction(async (transaction: Prisma.TransactionClient) => {
+          await transaction.chofer.delete({ where: { idChofer: body.idChofer } });
+
+          // Reset onboarding flow: allow this user to request a company again.
+          await transaction.choferRequest.deleteMany({
+            where: { clerkUserId: existing.clerkUserId },
+          });
+        });
+
         return NextResponse.json({ ok: true }, { status: 200 });
       } catch (e) {
         console.error("delete_chofer error", e);

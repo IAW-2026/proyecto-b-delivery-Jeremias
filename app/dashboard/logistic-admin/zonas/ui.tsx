@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
 
 type Zona = {
   idZona: number;
@@ -52,7 +53,9 @@ function statCardClass(kind: "blue" | "emerald" | "amber" | "slate") {
 export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [editForm, setEditForm] = useState<FormState>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingZonaId, setEditingZonaId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const summary = useMemo(() => {
@@ -104,6 +107,40 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
     }
   }
 
+  function startEdit(zona: Zona) {
+    setEditingZonaId(zona.idZona);
+    setEditForm({ nombre: zona.zona });
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingZonaId(null);
+    setEditForm(emptyForm);
+    setError(null);
+  }
+
+  async function handleUpdateZone(idZona: number) {
+    setError(null);
+
+    const nombre = editForm.nombre.trim();
+    if (!nombre) {
+      setError("Escribí el nombre del barrio.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await runAction({ action: "update_zone", idZona, nombre });
+
+      cancelEdit();
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function handleDelete(zona: Zona) {
     if (zona.rutasAsignadas > 0) {
       setError("No se puede eliminar una zona con rutas asociadas. Primero reasigná o limpiá esas rutas.");
@@ -126,37 +163,37 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <header>
-        <p className="text-sm uppercase tracking-[0.2em] text-sky-400">Logistic admin</p>
-        <h1 className="mt-2 text-3xl font-semibold" style={{ color: "#00AEEF" }}>
+    <div className={adminPageShell}>
+      <header className={adminHeaderClass}>
+        <p className="text-sm uppercase tracking-[0.2em] text-sky-400">Panel logístico</p>
+        <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
           Zonas
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="text-sm text-slate-600">
           Alta, edición y eliminación de barrios de Bahía Blanca para ordenar cobertura y asignaciones.
         </p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-4">
-        <div className={`rounded-xl border p-4 ${statCardClass("blue")}`}>
+        <div className={`${adminStatCardClass} ${statCardClass("blue")}`}>
           <p className="text-sm opacity-80">Barrios registrados</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{zonas.length}</p>
         </div>
-        <div className={`rounded-xl border p-4 ${statCardClass("emerald")}`}>
+        <div className={`${adminStatCardClass} ${statCardClass("emerald")}`}>
           <p className="text-sm opacity-80">Con pedidos</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.zonasConPedidos}</p>
         </div>
-        <div className={`rounded-xl border p-4 ${statCardClass("amber")}`}>
+        <div className={`${adminStatCardClass} ${statCardClass("amber")}`}>
           <p className="text-sm opacity-80">Sin pedidos</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.zonasSinPedidos}</p>
         </div>
-        <div className={`rounded-xl border p-4 ${statCardClass("slate")}`}>
+        <div className={`${adminStatCardClass} ${statCardClass("slate")}`}>
           <p className="text-sm opacity-80">Pedidos totales</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalPedidos}</p>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+      <section className={`${adminCardClass} bg-slate-50 p-5`}>
         <h2 className="text-lg font-semibold text-slate-900">Agregar barrio</h2>
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 md:flex-row md:items-center">
@@ -171,7 +208,7 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
             <button
               type="submit"
               disabled={isSaving}
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60"
+              className={adminButtonClass("edit")}
             >
               Agregar
             </button>
@@ -186,54 +223,91 @@ export default function ZonasManager({ zonas, zonasFueraCatalogo }: Props) {
           Todavía no hay barrios cargados.
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {zonas.map((zona) => (
-            <article key={zona.idZona} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">{zona.zona}</h2>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">ID {zona.idZona}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(zona)}
-                    disabled={isSaving || zona.rutasAsignadas > 0}
-                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
-                    title={zona.rutasAsignadas > 0 ? "No se puede borrar porque tiene rutas asociadas" : "Eliminar zona"}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-slate-500">Pedidos totales</p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">{zona.pedidosTotales}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-slate-500">Bidones</p>
-                  <p className="mt-1 text-xl font-semibold text-blue-600">{zona.bidonesTotales}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-slate-500">Asignados</p>
-                  <p className="mt-1 text-xl font-semibold text-emerald-600">{zona.pedidosAsignados}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-slate-500">Rutas</p>
-                  <p className="mt-1 text-xl font-semibold text-amber-600">{zona.rutasAsignadas}</p>
-                </div>
-              </div>
-
-              {zona.pedidosReady > 0 ? (
-                <p className="mt-3 text-xs text-slate-500">Pendientes en esta zona: {zona.pedidosReady}</p>
-              ) : null}
-              {zona.pedidosCancelados > 0 ? (
-                <p className="text-xs text-slate-500">Cancelados en esta zona: {zona.pedidosCancelados}</p>
-              ) : null}
-            </article>
-          ))}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full table-fixed">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="w-[200px] px-4 py-3">Barrio</th>
+                <th className="w-[120px] px-4 py-3">Pedidos</th>
+                <th className="w-[150px] px-4 py-3">Bidones solicitados</th>
+                <th className="w-[150px] px-4 py-3">Choferes asignados</th>
+                <th className="w-[240px] px-4 py-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {zonas.map((zona) => (
+                <Fragment key={zona.idZona}>
+                  <tr className="border-t border-slate-100 text-sm text-slate-700 align-top">
+                    <td className="px-4 py-4">
+                      {editingZonaId === zona.idZona ? (
+                        <input
+                          value={editForm.nombre}
+                          onChange={(event) => setEditForm({ nombre: event.target.value })}
+                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                          disabled={isSaving}
+                        />
+                      ) : (
+                        <div>
+                          <p className="font-medium text-slate-900">{zona.zona}</p>
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">ID {zona.idZona}</p>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="font-medium text-slate-900">{zona.pedidosTotales}</p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="font-medium text-slate-900">{zona.bidonesTotales}</p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="font-medium text-slate-900">{zona.pedidosAsignados}</p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
+                        {editingZonaId === zona.idZona ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleUpdateZone(zona.idZona)}
+                              disabled={isSaving}
+                              className={adminButtonClass("save", "sm")}
+                            >
+                              {isSaving ? "Guardando..." : "Guardar"}
+                            </button>
+                            <button type="button" onClick={cancelEdit} disabled={isSaving} className={adminButtonClass("cancel", "sm")}>
+                              Cancelar
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => startEdit(zona)} disabled={isSaving} className={adminButtonClass("edit", "sm")}>
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(zona)}
+                              disabled={isSaving || zona.rutasAsignadas > 0}
+                              className={adminButtonClass("danger", "sm")}
+                              title={zona.rutasAsignadas > 0 ? "No se puede borrar porque tiene rutas asociadas" : "Eliminar zona"}
+                            >
+                              Eliminar
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {editingZonaId === zona.idZona ? (
+                    <tr className="border-t border-slate-100 bg-slate-50/60">
+                      <td colSpan={5} className="px-4 py-4">
+                        <p className="text-xs text-slate-500">Renombrá el barrio y guardá los cambios desde la misma fila.</p>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

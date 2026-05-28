@@ -41,7 +41,7 @@ export default function LogisticAdminLayout({
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <aside className="w-64 bg-white shadow-lg">
+      <aside className="w-[280px] shrink-0 bg-white shadow-lg">
         <div className="p-6 border-b border-gray-200">
           <UserMenu />
         </div>

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
+import { adminButtonClass } from "../styles";
 
 type Chofer = {
   idChofer: number;
@@ -22,7 +23,7 @@ const statusOptions: Array<{ value: OrderStatus; label: string }> = [
   { value: "en_camino", label: "En camino" },
   { value: "entregado", label: "Entregado" },
   { value: "cancelado", label: "Cancelado" },
-  { value: "revision", label: "Revision" },
+  { value: "revision", label: "Revisión" },
 ];
 
 function statusBadgeClass(status: OrderStatus) {
@@ -39,12 +40,12 @@ function formatStatus(status: OrderStatus) {
   if (status === "asignado") return "Asignado";
   if (status === "en_camino") return "En camino";
   if (status === "cancelado") return "Cancelado";
-  if (status === "revision") return "Revision";
+  if (status === "revision") return "Revisión";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function statusNeedsChofer(status: OrderStatus) {
-  return status === "en_camino" || status === "entregado" || status === "cancelado";
+  return status === "en_camino" || status === "entregado";
 }
 
 export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
@@ -193,7 +194,7 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
         <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">En camino</p><p className="mt-1 text-2xl font-semibold text-amber-600">{totals.en_camino}</p></div>
         <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Entregados</p><p className="mt-1 text-2xl font-semibold text-emerald-600">{totals.entregado}</p></div>
         <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Cancelados</p><p className="mt-1 text-2xl font-semibold text-red-600">{totals.cancelado}</p></div>
-        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Revision</p><p className="mt-1 text-2xl font-semibold text-violet-600">{totals.revision}</p></div>
+        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Revisión</p><p className="mt-1 text-2xl font-semibold text-violet-600">{totals.revision}</p></div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -240,30 +241,30 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
           {statusFilter === "todos" ? "No hay pedidos cargados en este momento." : `No hay pedidos en estado ${formatStatus(statusFilter)}.`}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200">
-          <table className="w-full min-w-[1120px] table-fixed">
+        <div className="overflow-hidden rounded-2xl border border-slate-200">
+          <table className="w-full table-fixed">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="w-[90px] px-4 py-3">Pedido</th>
-                <th className="w-[240px] px-4 py-3">Cliente</th>
-                <th className="w-[130px] px-4 py-3">Zona</th>
-                <th className="w-[100px] px-4 py-3">Bidones</th>
-                <th className="w-[220px] px-4 py-3">Chofer</th>
-                <th className="w-[160px] px-4 py-3">Estado</th>
-                <th className="w-[250px] px-4 py-3 text-center"></th>
+                <th className="w-[80px] px-3 py-3">Pedido</th>
+                <th className="w-[220px] px-3 py-3">Cliente</th>
+                <th className="w-[120px] px-3 py-3">Zona</th>
+                <th className="w-[90px] px-3 py-3">Bidones</th>
+                <th className="w-[180px] px-3 py-3">Chofer</th>
+                <th className="w-[140px] px-3 py-3">Estado</th>
+                <th className="w-[200px] px-3 py-3 text-center"></th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.map((order) => (
                 <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
-                  <td className="w-[90px] px-4 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
-                  <td className="w-[240px] px-4 py-3">
-                    <p className="whitespace-nowrap font-medium text-slate-900">{order.cliente}</p>
+                  <td className="w-[80px] px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
+                  <td className="w-[220px] px-3 py-3">
+                    <p className="truncate font-medium text-slate-900">{order.cliente}</p>
                     <p className="text-xs text-slate-500">{order.direccion}</p>
                   </td>
-                  <td className="w-[130px] px-4 py-3 whitespace-nowrap">{order.zona}</td>
-                  <td className="w-[100px] px-4 py-3 whitespace-nowrap">{order.cantBidones}</td>
-                  <td className="w-[220px] px-4 py-3 align-middle">
+                  <td className="w-[120px] px-3 py-3 truncate">{order.zona}</td>
+                  <td className="w-[90px] px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
+                  <td className="w-[180px] px-3 py-3 align-middle">
                     {editingOrderId === order.idPedido ? (
                       <select
                         value={choferSelection[order.idPedido] ?? ""}
@@ -284,10 +285,10 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
                         ))}
                       </select>
                     ) : (
-                      <p className="font-medium text-slate-900">{order.assignedToChoferName ?? "Sin asignar"}</p>
+                      <p className="truncate font-medium text-slate-900">{order.assignedToChoferName ?? "Sin asignar"}</p>
                     )}
                   </td>
-                  <td className="w-[160px] px-4 py-3 align-middle">
+                  <td className="w-[140px] px-3 py-3 align-middle">
                     {editingOrderId === order.idPedido ? (
                       <select
                         value={selectedStatuses[order.idPedido] ?? order.status}
@@ -310,14 +311,14 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
                       <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(order.status)}`}>{formatStatus(order.status)}</span>
                     )}
                   </td>
-                  <td className="w-[250px] px-4 py-3 align-middle">
+                  <td className="w-[200px] px-3 py-3 align-middle">
                     {editingOrderId === order.idPedido ? (
                       <div className="flex flex-nowrap gap-2 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => saveEdit(order)}
                           disabled={busyId === order.idPedido}
-                          className="min-w-[104px] rounded-xl border border-sky-200 bg-sky-50/50 px-2.5 py-2 text-xs font-semibold text-sky-600 hover:bg-sky-50 disabled:opacity-60"
+                          className={adminButtonClass("save", "sm")}
                         >
                           {busyId === order.idPedido ? "Guardando..." : "Guardar"}
                         </button>
@@ -325,7 +326,7 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
                           type="button"
                           onClick={() => cancelEdit(order)}
                           disabled={busyId === order.idPedido}
-                          className="min-w-[88px] rounded-xl border border-slate-300 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100/80 disabled:opacity-60"
+                          className={adminButtonClass("cancel", "sm")}
                         >
                           Cancelar
                         </button>
@@ -336,7 +337,7 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
                           type="button"
                           onClick={() => startEdit(order)}
                           disabled={busyId === order.idPedido}
-                          className="min-w-[80px] rounded-xl border border-blue-200 bg-blue-50/40 px-2.5 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50/80 disabled:opacity-60"
+                          className={adminButtonClass("edit", "sm")}
                         >
                           Editar
                         </button>
@@ -344,7 +345,7 @@ export default function LogisticAdminPedidosUi({ orders, choferes }: Props) {
                           type="button"
                           onClick={() => handleDelete(order)}
                           disabled={busyId === order.idPedido}
-                          className="min-w-[88px] rounded-xl border border-red-200 bg-red-50/40 px-2.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50/80 disabled:opacity-60"
+                          className={adminButtonClass("danger", "sm")}
                         >
                           Eliminar
                         </button>

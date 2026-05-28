@@ -246,13 +246,16 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
         bidonesTotales: 0,
       };
 
-    current.pedidosTotales += 1;
-    current.bidonesTotales += order.cantBidones;
-
     const normalizedStatus = normalizeOrderStatus(order.status);
+    const isFinalized = normalizedStatus === "cancelado" || normalizedStatus === "entregado";
 
-    if (normalizedStatus === "asignado") current.pedidosAsignados += 1;
-    if (normalizedStatus === "ready") current.pedidosReady += 1;
+    if (!isFinalized) {
+      current.pedidosTotales += 1;
+      current.bidonesTotales += order.cantBidones;
+    }
+
+    if (!isFinalized && normalizedStatus === "asignado") current.pedidosAsignados += 1;
+    if (!isFinalized && normalizedStatus === "ready") current.pedidosReady += 1;
     if (normalizedStatus === "cancelado") current.pedidosCancelados += 1;
 
     ordersByZone.set(key, current);

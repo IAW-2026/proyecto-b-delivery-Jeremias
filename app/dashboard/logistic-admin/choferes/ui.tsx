@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
 
 type Zona = {
   idZona: number;
@@ -38,6 +39,15 @@ type Props = {
   vehiculos: Vehiculo[];
 };
 
+type ChoferRequest = {
+  id: number;
+  nombre: string;
+  telefono: string;
+  vendorName: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+};
+
 function estadoClass(estado: string) {
   if (estado === "activo") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
   if (estado === "rechazado" || estado === "inactivo") return "bg-amber-50 text-amber-700 border border-amber-200";
@@ -48,6 +58,9 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<number | null>(null);
   const [editingChoferId, setEditingChoferId] = useState<number | null>(null);
+  const [requests, setRequests] = useState<ChoferRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [requestActionId, setRequestActionId] = useState<number | null>(null);
   const [selectedZones, setSelectedZones] = useState<Record<number, string>>(() => {
     const initial: Record<number, string> = {};
     for (const chofer of choferes) {
@@ -74,6 +87,32 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
   }, [choferes]);
 
   const activeCount = useMemo(() => choferes.filter((chofer) => chofer.estado === "activo").length, [choferes]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRequests() {
+      try {
+        const response = await fetch("/api/logistic-admin/chofer-requests", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as { requests?: ChoferRequest[] };
+        if (!cancelled) {
+          setRequests(payload.requests ?? []);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRequests(false);
+        }
+      }
+    }
+
+    void loadRequests();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function runAction(payload: Record<string, unknown>) {
     const response = await fetch("/api/logistic-admin", {
@@ -143,40 +182,117 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
     }
   }
 
+  async function handleReviewRequest(requestId: number, action: "approve" | "reject") {
+    setRequestActionId(requestId);
+    try {
+      const options: RequestInit = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      };
+
+      if (action === "reject") {
+        const reason = window.prompt("Motivo del rechazo (opcional)")?.trim() ?? "";
+        options.body = JSON.stringify({ reason });
+      }
+
+      const response = await fetch(`/api/logistic-admin/chofer-requests/${requestId}/${action}`, options);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? "No se pudo procesar la solicitud");
+      }
+
+      setRequests((current) => current.filter((request) => request.id !== requestId));
+      router.refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo procesar la solicitud");
+    } finally {
+      setRequestActionId(null);
+    }
+  }
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-6 text-slate-800">
-      {/* Header */}
-      <header className="border-b border-slate-100 pb-5">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-500">Logistic admin</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight" style={{ color: "#00AEEF" }}>
+    <div className={`mx-auto max-w-7xl p-4 text-slate-800 md:p-6 ${adminPageShell}`}>
+      <header className={adminHeaderClass}>
+        <p className="text-sm uppercase tracking-[0.2em] text-sky-400">Panel logístico</p>
+        <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
           Choferes
         </h1>
-        <p className="mt-2 text-sm text-slate-500 max-w-2xl">
+        <p className="max-w-2xl text-sm text-slate-600">
           Estado del equipo de choferes, disponibilidad, vehículo asignado y barrio operativo.
         </p>
       </header>
 
-      {/* Seccion de Estadísticas */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 p-4 bg-white shadow-sm">
+        <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Total choferes</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{choferes.length}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 p-4 bg-white shadow-sm">
+        <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Activos</p>
           <p className="mt-1 text-2xl font-semibold text-emerald-600">{activeCount}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 p-4 bg-white shadow-sm">
+        <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Con zona</p>
           <p className="mt-1 text-2xl font-semibold text-blue-600">
             {choferes.filter((chofer) => chofer.idZona !== null).length}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-200 p-4 bg-white shadow-sm">
+        <div className={adminStatCardClass}>
           <p className="text-sm text-slate-500">Sin zona</p>
           <p className="mt-1 text-2xl font-semibold text-amber-600">
             {choferes.filter((chofer) => chofer.idZona === null).length}
           </p>
+        </div>
+      </section>
+
+      <section className={`${adminCardClass} bg-slate-50 p-5`}>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Solicitudes de chofer</h2>
+            <p className="text-sm text-slate-500">Se gestionan acá porque el alta y la asignación del equipo viven en esta pantalla.</p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {loadingRequests ? (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+              Cargando solicitudes...
+            </p>
+          ) : requests.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+              No hay solicitudes pendientes.
+            </p>
+          ) : (
+            requests.map((request) => (
+              <article key={request.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-semibold text-slate-900">{request.nombre}</h3>
+                    <p className="text-sm text-slate-600">{request.telefono}</p>
+                    <p className="mt-1 text-xs text-slate-500">Empresa: {request.vendorName}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleReviewRequest(request.id, "approve")}
+                      disabled={requestActionId === request.id}
+                      className={adminButtonClass("success", "sm")}
+                    >
+                      Aprobar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleReviewRequest(request.id, "reject")}
+                      disabled={requestActionId === request.id}
+                      className={adminButtonClass("danger", "sm")}
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))
+          )}
         </div>
       </section>
 
@@ -187,145 +303,129 @@ export default function ChoferesManager({ choferes, zonas, vehiculos }: Props) {
           No hay choferes asociados a la empresa.
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {choferes.map((chofer) => (
-            <article key={chofer.idChofer} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">{chofer.nombre}</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Telefono: {chofer.telefono ?? "Sin teléfono"}</p>
-                </div>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
-                  {chofer.estado}
-                </span>
-              </div>
-
-              {/* Contenedor Zona */}
-              <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50/50 p-3.5">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Zona actual</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-800">
-                      {chofer.zona?.nombre ?? <span className="text-slate-400 font-normal italic">Sin zona</span>}
-                    </p>
-                  </div>
-
-                  {editingChoferId === chofer.idChofer ? (
-                    <select
-                      value={selectedZones[chofer.idChofer] ?? ""}
-                      onChange={(event) => setSelectedZones((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
-                      className="w-full sm:w-48 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
-                      disabled={savingId === chofer.idChofer}
-                    >
-                      <option value="">Sin zona</option>
-                      {zonas.map((zona) => (
-                        <option key={zona.idZona} value={zona.idZona}>
-                          {zona.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Contenedor Vehículo */}
-              <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3.5">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vehículo actual</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-800">
-                      {chofer.vehiculo?.patente ? `${chofer.vehiculo.patente} (${chofer.vehiculo.tipo})` : <span className="text-slate-400 font-normal italic">Sin asignar</span>}
-                    </p>
-                  </div>
-
-                  {editingChoferId === chofer.idChofer ? (
-                    <select
-                      value={selectedVehiculos[chofer.idChofer] ?? ""}
-                      onChange={(event) => setSelectedVehiculos((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
-                      className="w-full sm:w-48 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
-                      disabled={savingId === chofer.idChofer}
-                    >
-                      <option value="">Sin asignar</option>
-                      {vehiculos
-                        .filter((vehiculo) => vehiculo.estado !== "pausado" && (vehiculo.idVehiculo === chofer.idVehiculo || !occupiedVehicleIds.has(vehiculo.idVehiculo)))
-                        .map((vehiculo) => (
-                          <option key={vehiculo.idVehiculo} value={vehiculo.idVehiculo}>
-                            {vehiculo.patente} · {vehiculo.tipo}
-                            {vehiculo.idVehiculo === chofer.idVehiculo ? " (actual)" : ""}
-                          </option>
-                        ))}
-                    </select>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* NUEVO PIE DE TARJETA: Todos los botones agrupados en una sola línea fluida */}
-              <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-start gap-2">
-                {editingChoferId === chofer.idChofer ? (
-                  <>
-                    {/* Guardar */}
-                    <button
-                      type="button"
-                      onClick={() => handleSaveZone(chofer.idChofer)}
-                      disabled={savingId === chofer.idChofer}
-                      className="rounded-xl border border-sky-200 bg-sky-50/50 px-4 py-1.5 text-sm font-medium text-sky-600 transition-colors hover:bg-sky-50 disabled:opacity-50"
-                    >
-                      {savingId === chofer.idChofer ? "Guardando..." : "Guardar"}
-                    </button>
-
-                    {/* Cancelar */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingChoferId(null);
-                        setSelectedZones((current) => ({ ...current, [chofer.idChofer]: chofer.idZona ? String(chofer.idZona) : "" }));
-                        setSelectedVehiculos((current) => ({ ...current, [chofer.idChofer]: chofer.idVehiculo ? String(chofer.idVehiculo) : "" }));
-                        setError(null);
-                      }}
-                      className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100/80"
-                    >
-                      Cancelar
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {/* Editar */}
-                    <button
-                      type="button"
-                      onClick={() => setEditingChoferId(chofer.idChofer)}
-                      className="rounded-xl border border-blue-200 bg-blue-50/40 px-4 py-1.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50/80"
-                    >
-                      Editar
-                    </button>
-
-                    {/* Inactivar / Activar (Dinámico Amarillo/Verde) */}
-                    <button
-                      type="button"
-                      onClick={() => handleSetEstado(chofer.idChofer, chofer.estado === "activo" ? "inactivo" : "activo")}
-                      disabled={savingId === chofer.idChofer}
-                      className={`rounded-xl px-4 py-1.5 text-sm font-medium border transition-colors disabled:opacity-50 ${
-                        chofer.estado === "activo"
-                          ? "border-amber-200 bg-amber-50/40 text-amber-600 hover:bg-amber-50/80"
-                          : "border-emerald-200 bg-emerald-50/40 text-emerald-600 hover:bg-emerald-50/80"
-                      }`}
-                    >
-                      {savingId === chofer.idChofer ? "..." : chofer.estado === "activo" ? "Inactivar" : "Activar"}
-                    </button>
-
-                    {/* Eliminar */}
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(chofer.idChofer)}
-                      disabled={savingId === chofer.idChofer}
-                      className="rounded-xl border border-red-200 bg-red-50/40 px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50/80 disabled:opacity-50"
-                    >
-                      Eliminar
-                    </button>
-                  </>
-                )}
-              </div>
-            </article>
-          ))}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full table-fixed">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="w-[190px] px-3 py-3">Chofer</th>
+                <th className="w-[120px] px-3 py-3">Estado</th>
+                <th className="w-[150px] px-3 py-3">Zona</th>
+                <th className="w-[190px] px-3 py-3">Vehículo</th>
+                <th className="w-[230px] px-3 py-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {choferes.map((chofer) => (
+                <Fragment key={chofer.idChofer}>
+                  <tr key={chofer.idChofer} className="border-t border-slate-100 text-sm text-slate-700 align-top">
+                    <td className="px-3 py-4">
+                      <p className="truncate font-medium text-slate-900">{chofer.nombre}</p>
+                      <p className="text-xs text-slate-500">Tel: {chofer.telefono ?? "Sin teléfono"}</p>
+                    </td>
+                    <td className="px-3 py-4">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
+                        {chofer.estado}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4">
+                      {editingChoferId === chofer.idChofer ? (
+                        <select
+                          value={selectedZones[chofer.idChofer] ?? ""}
+                          onChange={(event) => setSelectedZones((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
+                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                          disabled={savingId === chofer.idChofer}
+                        >
+                          <option value="">Sin zona</option>
+                          {zonas.map((zona) => (
+                            <option key={zona.idZona} value={zona.idZona}>
+                              {zona.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="truncate font-medium text-slate-900">
+                          {chofer.zona?.nombre ?? <span className="font-normal italic text-slate-400">Sin zona</span>}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-3 py-4">
+                      {editingChoferId === chofer.idChofer ? (
+                        <select
+                          value={selectedVehiculos[chofer.idChofer] ?? ""}
+                          onChange={(event) => setSelectedVehiculos((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
+                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                          disabled={savingId === chofer.idChofer}
+                        >
+                          <option value="">Sin asignar</option>
+                          {vehiculos
+                            .filter((vehiculo) => vehiculo.estado !== "pausado" && (vehiculo.idVehiculo === chofer.idVehiculo || !occupiedVehicleIds.has(vehiculo.idVehiculo)))
+                            .map((vehiculo) => (
+                              <option key={vehiculo.idVehiculo} value={vehiculo.idVehiculo}>
+                                {vehiculo.patente} · {vehiculo.tipo}
+                                {vehiculo.idVehiculo === chofer.idVehiculo ? " (actual)" : ""}
+                              </option>
+                            ))}
+                        </select>
+                      ) : (
+                        <p className="truncate font-medium text-slate-900">
+                          {chofer.vehiculo?.patente ? `${chofer.vehiculo.patente} (${chofer.vehiculo.tipo})` : <span className="font-normal italic text-slate-400">Sin asignar</span>}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-3 py-4">
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {editingChoferId === chofer.idChofer ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveZone(chofer.idChofer)}
+                              disabled={savingId === chofer.idChofer}
+                              className={adminButtonClass("save", "sm")}
+                            >
+                              {savingId === chofer.idChofer ? "Guardando..." : "Guardar"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingChoferId(null);
+                                setSelectedZones((current) => ({ ...current, [chofer.idChofer]: chofer.idZona ? String(chofer.idZona) : "" }));
+                                setSelectedVehiculos((current) => ({ ...current, [chofer.idChofer]: chofer.idVehiculo ? String(chofer.idVehiculo) : "" }));
+                                setError(null);
+                              }}
+                              className={adminButtonClass("cancel", "sm")}
+                            >
+                              Cancelar
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => setEditingChoferId(chofer.idChofer)} className={adminButtonClass("edit", "sm")}>
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetEstado(chofer.idChofer, chofer.estado === "activo" ? "inactivo" : "activo")}
+                              disabled={savingId === chofer.idChofer}
+                              className={`rounded-xl border px-4 py-2 text-xs font-medium transition-colors disabled:opacity-60 ${
+                                chofer.estado === "activo"
+                                  ? "border-amber-200 bg-amber-50/60 text-amber-700 hover:bg-amber-50"
+                                  : "border-emerald-200 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-50"
+                              }`}
+                            >
+                              {savingId === chofer.idChofer ? "..." : chofer.estado === "activo" ? "Desactivar" : "Activar"}
+                            </button>
+                            <button type="button" onClick={() => handleDelete(chofer.idChofer)} disabled={savingId === chofer.idChofer} className={adminButtonClass("danger", "sm")}>
+                              Eliminar
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

@@ -14,6 +14,8 @@ export default async function LogisticAdminPage() {
       choferes={data.choferes}
       vehiculos={data.vehiculos}
       orders={data.orders}
+      zonas={data.zonas}
+      zonasFueraCatalogo={data.zonasFueraCatalogo}
     />
   );
 }

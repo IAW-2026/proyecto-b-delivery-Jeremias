@@ -98,11 +98,8 @@ export const proxy = clerkMiddleware(async (auth, request) => {
 
   if (pathname === "/dashboard") {
     if (isDelivery) {
-      // Check whether the delivery user already has a Chofer record or a pending request.
       const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
-
-      if (dbChofer) return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
-      // If there's a pending request, or no chofer yet, send to onboarding (selection or waiting view)
+      if (dbChofer?.estado === "activo") return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
       return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
     }
     if (isAdmin) return NextResponse.redirect(new URL("/dashboard/logistic-admin", request.url));
@@ -112,15 +109,18 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   if (pathname.startsWith("/dashboard/chofer")) {
     if (!isDelivery) return NextResponse.redirect(new URL("/dashboard", request.url));
 
-    // If the user is a delivery role, ensure they either have a Chofer record
-    // Block access to chofer subroutes until a Chofer record exists in our DB.
-    // Even if there is a pending request, keep the user within onboarding.
     const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
+    const choferRequest = await prisma.choferRequest.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
+    const hasActiveChofer = dbChofer?.estado === "activo";
 
-    if (!dbChofer) {
+    if (!hasActiveChofer) {
       if (!pathname.startsWith("/dashboard/chofer/onboarding")) {
         return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
       }
+    }
+
+    if (choferRequest?.status === "pending" && !pathname.startsWith("/dashboard/chofer/onboarding")) {
+      return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
     }
   }
 

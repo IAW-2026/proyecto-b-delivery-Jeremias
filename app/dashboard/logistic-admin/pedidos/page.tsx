@@ -8,7 +8,7 @@ export default async function LogisticAdminPedidosPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm uppercase tracking-[0.2em] text-sky-400">Logistic admin</p>
+        <p className="text-sm uppercase tracking-[0.2em] text-sky-400">Panel logístico</p>
         <h1 className="mt-2 text-3xl font-semibold" style={{ color: "#00AEEF" }}>
           Pedidos
         </h1>
