@@ -74,6 +74,10 @@ type UserRoleRecord = {
   nombreEmpresa: string | null;
 };
 
+type AdminDeliveryRecord = {
+  nombre: string;
+};
+
 type PedidoDbRecord = {
   idPedido: number;
   estado: string;
@@ -335,6 +339,11 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   );
 
   const user = await safeCurrentUser();
+  const adminProfile = await safePrismaQuery<AdminDeliveryRecord | null>(
+    () => prisma.adminDelivery.findUnique({ where: { clerkUserId: userId }, select: { nombre: true } }),
+    null,
+    "adminDelivery.findUnique"
+  );
   const clerkRoles = normalizeRoles(user?.publicMetadata.role);
   const dbRoles = normalizeRoles(userRole?.role);
   const canAccess =
@@ -342,7 +351,11 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     clerkRoles.includes("seller") ||
     dbRoles.includes("logistic_admin") ||
     dbRoles.includes("seller");
-  const userName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Usuario";
+  // Prefer local DB name (adminDelivery.nombre) when available; fall back to Clerk name
+  const localName = adminProfile?.nombre?.trim();
+  const userName = (localName && localName.length > 0
+    ? localName
+    : `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()) || "Usuario";
 
   if (!canAccess) {
     redirect("/dashboard");
@@ -393,29 +406,32 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     "zona.findMany"
   );
 
-  const [choferes, vehiculos] = idVendedorToQuery
-    ? await Promise.all([
-        safePrismaQuery(
-          () =>
-            prisma.chofer.findMany({
-              where: { idVendedor: idVendedorToQuery },
-              include: { vehiculo: true, zona: true },
-              orderBy: { idChofer: "asc" },
-            }),
-          [],
-          "chofer.findMany"
-        ),
-        safePrismaQuery(
-          () =>
-            prisma.vehiculo.findMany({
-              where: { idVendedor: idVendedorToQuery },
-              orderBy: { idVehiculo: "asc" },
-                  }),
-          [],
-          "vehiculo.findMany"
-        ),
-      ])
-    : [[], []];
+  let choferes: ChoferRecord[] = [];
+  let vehiculos: VehiculoRecord[] = [];
+
+  if (idVendedorToQuery) {
+    // Run sequentially to avoid opening many DB connections at once
+    choferes = await safePrismaQuery(
+      () =>
+        prisma.chofer.findMany({
+          where: { idVendedor: idVendedorToQuery },
+          include: { vehiculo: true, zona: true },
+          orderBy: { idChofer: "asc" },
+        }),
+      [],
+      "chofer.findMany"
+    );
+
+    vehiculos = await safePrismaQuery(
+      () =>
+        prisma.vehiculo.findMany({
+          where: { idVendedor: idVendedorToQuery },
+          orderBy: { idVehiculo: "asc" },
+        }),
+      [],
+      "vehiculo.findMany"
+    );
+  }
 
         const assignedByVehicle = new Map<number, { idChofer: number; nombre: string }>();
         for (const chofer of choferes as ChoferRecord[]) {

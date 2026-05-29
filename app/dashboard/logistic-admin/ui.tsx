@@ -115,16 +115,14 @@ export default function LogisticAdminBoard({
   const [requests, setRequests] = useState<ChoferRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const stats = useMemo(() => {
-    const readyOrders = orders.filter((order) => order.status === "ready");
-    const assignedOrders = orders.filter((order) => order.status === "asignado");
+    const readyOrders = orders.filter((order) => order.status === "ready" && order.assignedToChoferId === null);
     const activeDrivers = choferes.filter((driver) => driver.estado === "activo");
-    const pausedVehicles = vehiculos.filter((vehicle) => vehicle.estado === "pausado");
+    const functioningVehicles = vehiculos.filter((vehicle) => vehicle.estado !== "pausado");
 
     return {
-      assignedOrders,
-      readyOrders,
+      readyUnassignedOrders: readyOrders,
       activeDrivers,
-      pausedVehicles,
+      functioningVehicles,
       totalZones: zonas.length,
       zonesWithoutCatalog: zonasFueraCatalogo.length,
     };
@@ -221,22 +219,18 @@ export default function LogisticAdminBoard({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3">
         <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Pedidos listos</p>
-          <p className="mt-2 text-3xl font-semibold text-blue-600">{stats.readyOrders.length}</p>
-        </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Pedidos asignados</p>
-          <p className="mt-2 text-3xl font-semibold text-green-600">{stats.assignedOrders.length}</p>
+          <p className="text-sm text-slate-600">Pedidos sin chofer asignados</p>
+          <p className="mt-2 text-3xl font-semibold text-blue-600">{stats.readyUnassignedOrders.length}</p>
         </div>
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-600">Choferes activos</p>
           <p className="mt-2 text-3xl font-semibold text-purple-600">{stats.activeDrivers.length}</p>
         </div>
         <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Vehículos pausados</p>
-          <p className="mt-2 text-3xl font-semibold text-orange-600">{stats.pausedVehicles.length}</p>
+          <p className="text-sm text-slate-600">Vehículos funcionando</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-600">{stats.functioningVehicles.length}</p>
         </div>
       </section>
 
@@ -271,42 +265,6 @@ export default function LogisticAdminBoard({
         </div>
 
         <div className="space-y-6">
-          <section className={`${adminCardClass} p-6`}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Solicitudes de chofer</h2>
-                <p className="text-sm text-slate-500">Las últimas solicitudes pendientes para aprobar o rechazar.</p>
-              </div>
-              <Link href="/dashboard/logistic-admin/choferes" className="text-sm font-medium text-sky-600 hover:text-sky-700">
-                Gestionar en choferes
-              </Link>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {loadingRequests ? (
-                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                  Cargando solicitudes...
-                </p>
-              ) : requests.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                  No hay solicitudes pendientes.
-                </p>
-              ) : (
-                requests.slice(0, 3).map((request) => (
-                  <article key={request.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-slate-900">{request.nombre}</h3>
-                        <p className="text-sm text-slate-600">{request.telefono}</p>
-                        <p className="mt-1 text-xs text-slate-500">Empresa: {request.vendorName}</p>
-                      </div>
-                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">Pendiente</span>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
 
           <section className={`${adminCardClass} p-6`}>
             <div className="flex items-center justify-between gap-4">
@@ -373,6 +331,45 @@ export default function LogisticAdminBoard({
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${driverBadgeClass(chofer.estado)}`}>
                         {chofer.estado}
                       </span>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="space-y-6">
+          <section className={`${adminCardClass} p-6`}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">Solicitudes de chofer</h2>
+                <p className="text-sm text-slate-500">Un resumen breve de las últimas solicitudes; el detalle completo está en la sección de choferes.</p>
+              </div>
+              <Link href="/dashboard/logistic-admin/choferes" className="text-sm font-medium text-sky-600 hover:text-sky-700">
+                Gestionar en choferes
+              </Link>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {loadingRequests ? (
+                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                  Cargando solicitudes...
+                </p>
+              ) : requests.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                  No hay solicitudes pendientes.
+                </p>
+              ) : (
+                requests.slice(0, 3).map((request) => (
+                  <article key={request.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-slate-900">{request.nombre}</h3>
+                        <p className="text-sm text-slate-600">{request.telefono}</p>
+                        <p className="mt-1 text-xs text-slate-500">Empresa: {request.vendorName}</p>
+                      </div>
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">Pendiente</span>
                     </div>
                   </article>
                 ))

@@ -438,6 +438,7 @@ export default function VehiculosManager({ vehiculos }: Props) {
               ))}
             </tbody>
           </table>
+        
         </div>
       )}
     </div>
