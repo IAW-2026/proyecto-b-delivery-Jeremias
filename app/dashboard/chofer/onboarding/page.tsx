@@ -80,10 +80,34 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    const fullName = user?.fullName?.trim() ?? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
-    if (fullName) {
-      setFormData((current) => (current.nombre ? current : { ...current, nombre: fullName }));
+    let cancelled = false;
+
+    async function loadLocalProfile() {
+      try {
+        const resp = await fetch("/api/chofer/profile", { cache: "no-store" });
+        if (resp.ok) {
+          const payload = (await resp.json().catch(() => null)) as { chofer?: { nombre?: string | null } } | null;
+          const localName = payload?.chofer?.nombre?.trim();
+          if (!cancelled && localName) {
+            setFormData((current) => (current.nombre ? current : { ...current, nombre: localName }));
+            return;
+          }
+        }
+      } catch {
+        // ignore and fallback to clerk
+      }
+
+      const fullName = user?.fullName?.trim() ?? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
+      if (fullName && !cancelled) {
+        setFormData((current) => (current.nombre ? current : { ...current, nombre: fullName }));
+      }
     }
+
+    void loadLocalProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoaded, user?.fullName, user?.firstName, user?.lastName]);
 
   useEffect(() => {

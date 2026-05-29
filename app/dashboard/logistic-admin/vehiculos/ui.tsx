@@ -688,14 +688,14 @@ export default function VehiculosManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredVehiculos}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, statusFilter, page)}
+                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, statusFilter, page)}
+                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >

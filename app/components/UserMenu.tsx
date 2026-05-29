@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
@@ -10,10 +10,16 @@ function resolveRoleLabel(roles: string[]) {
   return roles[0] ?? "Sin rol";
 }
 
-export default function UserMenu() {
+export default function UserMenu({ initialDisplayName }: { initialDisplayName?: string }) {
   const { isSignedIn, isLoaded, user } = useUser();
   const [resolvedRole, setResolvedRole] = useState<string>("Sin rol");
-  const [displayName, setDisplayName] = useState<string>("Usuario");
+  const [displayName, setDisplayName] = useState<string>(initialDisplayName?.trim() || "Usuario");
+
+  useEffect(() => {
+    if (initialDisplayName?.trim()) {
+      setDisplayName(initialDisplayName.trim());
+    }
+  }, [initialDisplayName]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user?.id) return;
@@ -27,20 +33,7 @@ export default function UserMenu() {
         const data = (await response.json()) as { role?: string[] };
         const roles = Array.isArray(data.role) ? data.role : [];
         setResolvedRole(resolveRoleLabel(roles));
-
-        const choferResponse = await fetch("/api/chofer/status", { cache: "no-store" });
-        if (choferResponse.ok) {
-          const choferData = (await choferResponse.json()) as { chofer?: { nombre?: string | null } };
-          const choferName = choferData.chofer?.nombre?.trim();
-          if (choferName) {
-            setDisplayName(choferName);
-            return;
-          }
-        }
-
-        setDisplayName(user?.fullName?.trim() || `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Usuario");
       } catch {
-        setDisplayName(user?.fullName?.trim() || `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Usuario");
         setResolvedRole("Sin rol");
       }
     }
