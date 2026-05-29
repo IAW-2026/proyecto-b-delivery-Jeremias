@@ -10,7 +10,7 @@ export type PedidoEntrante = {
 
 import { getMockPedidos } from "@/lib/mocks/pedidos";
 
-export type OrderStatus = "ready" | "asignado" | "en_camino" | "entregado" | "cancelado" | "revision";
+export type OrderStatus = "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
 
 export type LogisticOrder = PedidoEntrante & {
   assignedToChoferId: number | null;
@@ -20,11 +20,12 @@ export type LogisticOrder = PedidoEntrante & {
 };
 
 function normalizeOrderStatus(value: string): OrderStatus {
-  if (value === "ready" || value === "asignado" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision") {
+  if (value === "ready" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision") {
     return value;
   }
 
-  if (value === "assigned") return "asignado";
+  if (value === "assigned") return "ready";
+  if (value === "asignado") return "ready";
   if (value === "cancelled") return "cancelado";
   if (value === "delivered") return "entregado";
 
@@ -117,7 +118,7 @@ function applyAutomaticZoneAssignments(choferes: ChoferWithZona[]) {
 
     order.assignedToChoferId = chofer.idChofer;
     order.assignedToChoferName = chofer.nombre;
-    order.status = "asignado";
+    order.status = "ready";
     order.updatedAt = nowIso();
   }
 
@@ -125,13 +126,7 @@ function applyAutomaticZoneAssignments(choferes: ChoferWithZona[]) {
 }
 
 export function getOrders() {
-  return store.orders.map((order) => {
-    const normalizedOrder = cloneOrder(order);
-    if (normalizedOrder.status === "ready" && normalizedOrder.assignedToChoferId !== null) {
-      normalizedOrder.status = "asignado";
-    }
-    return normalizedOrder;
-  });
+  return store.orders.map(cloneOrder);
 }
 
 export function getOrdersForChofer(choferId: number) {
@@ -187,10 +182,10 @@ export function assignOrder(
 
   store.orders[index] = {
     ...currentOrder,
-    estado: "asignado",
+    estado: "ready",
     assignedToChoferId: choferId,
     assignedToChoferName: choferName,
-    status: "asignado",
+    status: "ready",
     updatedAt: nowIso(),
   };
 
@@ -222,8 +217,6 @@ export function cancelOrder(idPedido: number) {
   store.orders[index] = {
     ...currentOrder,
     estado: "cancelado",
-    assignedToChoferId: null,
-    assignedToChoferName: null,
     status: "cancelado",
     updatedAt: nowIso(),
   };
@@ -236,14 +229,11 @@ export function setOrderStatus(idPedido: number, status: OrderStatus) {
   if (index < 0) return null;
 
   const currentOrder = store.orders[index];
-  const shouldClearAssignment = status === "ready" || status === "cancelado" || status === "revision";
   const normalizedStatus = normalizeOrderStatus(status);
 
   store.orders[index] = {
     ...currentOrder,
     estado: normalizedStatus,
-    assignedToChoferId: shouldClearAssignment ? null : currentOrder.assignedToChoferId,
-    assignedToChoferName: shouldClearAssignment ? null : currentOrder.assignedToChoferName,
     status: normalizedStatus,
     updatedAt: nowIso(),
   };

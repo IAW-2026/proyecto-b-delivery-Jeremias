@@ -5,8 +5,10 @@ import VehiculosManager from "./ui";
 const pageSize = 8;
 
 const statusOptions = ["activo", "pausado"] as const;
+const searchOptions = ["patente", "tipo"] as const;
 
 type VehiculoStatus = (typeof statusOptions)[number];
+type SearchBy = (typeof searchOptions)[number];
 
 function isVehiculoStatus(value: string | undefined): value is VehiculoStatus {
   return typeof value === "string" && statusOptions.includes(value as VehiculoStatus);
@@ -25,7 +27,16 @@ function parsePage(value: string | string[] | undefined) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function filterVehiculos(vehiculos: Awaited<ReturnType<typeof getLogisticAdminData>>["vehiculos"], searchQuery: string, statusFilter: "todos" | VehiculoStatus) {
+function isSearchBy(value: string | undefined): value is SearchBy {
+  return typeof value === "string" && searchOptions.includes(value as SearchBy);
+}
+
+function filterVehiculos(
+  vehiculos: Awaited<ReturnType<typeof getLogisticAdminData>>["vehiculos"],
+  searchQuery: string,
+  searchBy: SearchBy,
+  statusFilter: "todos" | VehiculoStatus
+) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
   return vehiculos.filter((vehiculo) => {
@@ -37,7 +48,7 @@ function filterVehiculos(vehiculos: Awaited<ReturnType<typeof getLogisticAdminDa
       return true;
     }
 
-    const haystack = normalizeSearchValue([vehiculo.patente, vehiculo.tipo].join(" "));
+    const haystack = normalizeSearchValue(searchBy === "tipo" ? vehiculo.tipo : vehiculo.patente);
 
     return haystack.includes(normalizedQuery);
   });
@@ -46,16 +57,18 @@ function filterVehiculos(vehiculos: Awaited<ReturnType<typeof getLogisticAdminDa
 export default async function LogisticAdminVehiculosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ query?: string | string[]; status?: string | string[]; page?: string | string[] }>;
+  searchParams: Promise<{ query?: string | string[]; searchBy?: string | string[]; status?: string | string[]; page?: string | string[] }>;
 }) {
   const data = await getLogisticAdminData();
   const query = await searchParams;
   const searchValue = Array.isArray(query.query) ? query.query[0] : query.query ?? "";
+  const searchByValue = Array.isArray(query.searchBy) ? query.searchBy[0] : query.searchBy;
   const statusValue = Array.isArray(query.status) ? query.status[0] : query.status;
+  const searchBy: SearchBy = isSearchBy(searchByValue) ? searchByValue : "patente";
   const statusFilter: "todos" | VehiculoStatus = statusValue === undefined || statusValue === "todos" ? "todos" : isVehiculoStatus(statusValue) ? statusValue : "todos";
   const requestedPage = parsePage(query.page);
 
-  const filteredVehiculos = filterVehiculos(data.vehiculos, searchValue, statusFilter);
+  const filteredVehiculos = filterVehiculos(data.vehiculos, searchValue, searchBy, statusFilter);
   const totalFilteredVehiculos = filteredVehiculos.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredVehiculos / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -69,6 +82,10 @@ export default async function LogisticAdminVehiculosPage({
 
     if (searchValue.trim()) {
       params.set("query", searchValue.trim());
+    }
+
+    if (searchBy !== "patente") {
+      params.set("searchBy", searchBy);
     }
 
     if (statusFilter !== "todos") {
@@ -90,6 +107,7 @@ export default async function LogisticAdminVehiculosPage({
       key={vehiculosKey}
       vehiculos={paginatedVehiculos}
       searchQuery={searchValue}
+      searchBy={searchBy}
       statusFilter={statusFilter}
       page={safePage}
       totalPages={totalPages}

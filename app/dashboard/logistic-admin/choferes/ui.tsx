@@ -39,6 +39,7 @@ type Props = {
   zonas: Zona[];
   vehiculos: Vehiculo[];
   searchQuery: string;
+  searchBy: "nombre" | "telefono";
   statusFilter: "todos" | ChoferStatus;
   page: number;
   totalPages: number;
@@ -56,6 +57,11 @@ const statusOptions: Array<{ value: Exclude<ChoferStatus, "todos">; label: strin
   { value: "inactivo", label: "Inactivos" },
   { value: "pendiente", label: "Pendientes" },
   { value: "rechazado", label: "Rechazados" },
+];
+
+const searchOptions: Array<{ value: "nombre" | "telefono"; label: string; placeholder: string }> = [
+  { value: "nombre", label: "Nombre", placeholder: "Buscar por nombre" },
+  { value: "telefono", label: "Teléfono", placeholder: "Buscar por teléfono" },
 ];
 
 const pageSize = 8;
@@ -84,14 +90,25 @@ function formatEstado(estado: string) {
   return estado.charAt(0).toUpperCase() + estado.slice(1);
 }
 
-function buildQueryHref(nextValues: { query?: string; status?: ChoferStatus; page?: number }, searchQuery: string, statusFilter: ChoferStatus, page: number) {
+function buildQueryHref(
+  nextValues: { query?: string; searchBy?: "nombre" | "telefono"; status?: ChoferStatus; page?: number },
+  searchQuery: string,
+  searchBy: "nombre" | "telefono",
+  statusFilter: ChoferStatus,
+  page: number
+) {
   const params = new URLSearchParams();
   const nextQuery = nextValues.query ?? searchQuery;
+  const nextSearchBy = nextValues.searchBy ?? searchBy;
   const nextStatus = nextValues.status ?? statusFilter;
   const nextPage = nextValues.page ?? page;
 
   if (nextQuery.trim()) {
     params.set("query", nextQuery.trim());
+  }
+
+  if (nextSearchBy !== "nombre") {
+    params.set("searchBy", nextSearchBy);
   }
 
   if (nextStatus !== "todos") {
@@ -111,6 +128,7 @@ export default function ChoferesManager({
   zonas,
   vehiculos,
   searchQuery,
+  searchBy,
   statusFilter,
   page,
   totalPages,
@@ -123,6 +141,7 @@ export default function ChoferesManager({
   const router = useRouter();
   const [savingId, setSavingId] = useState<number | null>(null);
   const [editingChoferId, setEditingChoferId] = useState<number | null>(null);
+  const [selectedSearchBy, setSelectedSearchBy] = useState(searchBy);
   const [requests, setRequests] = useState<ChoferRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
@@ -355,63 +374,103 @@ export default function ChoferesManager({
         </div>
       </section>
 
-      <section className={`${adminCardClass} bg-slate-50 p-5`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <section className={`${adminCardClass} bg-slate-50 p-5 shadow-sm`}>
+        <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-700">Buscar choferes</p>
-            <p className="text-xs text-slate-500">Buscá por nombre o teléfono.</p>
+            <p className="text-sm font-semibold text-slate-800">Buscar choferes</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Elegí el criterio de búsqueda, escribí el valor y después aplicá un filtro rápido si hace falta.</p>
           </div>
-          <form action="/dashboard/logistic-admin/choferes" method="get" className="w-full max-w-md">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Filtros rápidos</p>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.8fr)]">
+          <form
+            action="/dashboard/logistic-admin/choferes"
+            method="get"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              const queryValue = String(formData.get("query") ?? "");
+              router.push(buildQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+            }}
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
             <input type="hidden" name="page" value="1" />
+            <input type="hidden" name="searchBy" value={selectedSearchBy} />
             {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
             <label className="sr-only" htmlFor="choferes-search">
               Buscar choferes
             </label>
-            <div className="flex gap-2">
-              <input
-                id="choferes-search"
-                name="query"
-                defaultValue={searchQuery}
-                placeholder="Buscar por nombre o teléfono"
-                className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              />
-              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</p>
+                <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 sm:max-w-xs">
+                  {searchOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSelectedSearchBy(option.value)}
+                      aria-pressed={selectedSearchBy === option.value}
+                      className={`rounded-xl px-3 py-2 text-center text-sm font-medium transition-all ${
+                        selectedSearchBy === option.value
+                          ? "bg-white text-blue-700 shadow-sm ring-1 ring-blue-200"
+                          : "text-slate-600 hover:bg-white hover:text-slate-900"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                <input
+                  id="choferes-search"
+                  name="query"
+                  defaultValue={searchQuery}
+                  placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar choferes"}
+                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                />
+                <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+              </div>
+              {searchQuery ? (
+                <div>
+                  <Link
+                    href={buildQueryHref({ query: "", page: 1 }, searchQuery, selectedSearchBy, statusFilter, page)}
+                    className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    Limpiar búsqueda
+                  </Link>
+                </div>
+              ) : null}
             </div>
           </form>
-        </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href={buildQueryHref({ status: "todos", page: 1 }, searchQuery, statusFilter, page)}
-            className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
-              statusFilter === "todos"
-                ? "border-blue-600 bg-blue-600 text-white"
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            Todos
-          </Link>
-          {statusOptions.map((option) => (
-            <Link
-              key={option.value}
-              href={buildQueryHref({ status: option.value, page: 1 }, searchQuery, statusFilter, page)}
-              className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition-colors ${
-                statusFilter === option.value
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {option.label}
-            </Link>
-          ))}
-          {searchQuery ? (
-            <Link
-              href={buildQueryHref({ query: "", page: 1 }, searchQuery, statusFilter, page)}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-            >
-              Limpiar búsqueda
-            </Link>
-          ) : null}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <form action="/dashboard/logistic-admin/choferes" method="get" className="space-y-3">
+              <input type="hidden" name="query" value={searchQuery} />
+              <input type="hidden" name="searchBy" value={selectedSearchBy} />
+              <input type="hidden" name="page" value="1" />
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Filtrar por</span>
+                <select
+                  name="status"
+                  value={statusFilter}
+                  onChange={(event) => {
+                    router.push(buildQueryHref({ status: event.currentTarget.value as ChoferStatus, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+                  }}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                >
+                  <option value="todos">Todos los estados</option>
+                  {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-xs leading-5 text-slate-500">Este filtro te deja ir directo al estado del chofer sin perder la búsqueda escrita.</p>
+            </form>
+          </div>
         </div>
       </section>
 
@@ -559,14 +618,14 @@ export default function ChoferesManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredChoferes}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, statusFilter, page)}
+                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, searchBy, statusFilter, page)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, statusFilter, page)}
+                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, searchBy, statusFilter, page)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >

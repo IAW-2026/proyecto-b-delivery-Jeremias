@@ -44,6 +44,7 @@ type ZonaResumen = {
   pedidosCancelados: number;
   bidonesTotales: number;
   rutasAsignadas: number;
+  choferesAsignados: number;
 };
 
 type ZonaFueraCatalogo = {
@@ -53,6 +54,7 @@ type ZonaFueraCatalogo = {
   pedidosReady: number;
   pedidosCancelados: number;
   bidonesTotales: number;
+  choferesAsignados: number;
 };
 
 type ZonaCatalogoRecord = {
@@ -143,8 +145,8 @@ function normalizeRoles(rawRole: unknown): string[] {
 
 function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
   const status =
-    pedido.estado === "assigned" || pedido.estado === "asignado"
-      ? "asignado"
+    pedido.estado === "assigned" || pedido.estado === "asignado" || pedido.estado === "ready"
+      ? "ready"
       : pedido.estado === "cancelled" || pedido.estado === "cancelado"
       ? "cancelado"
       : pedido.estado === "delivered" || pedido.estado === "entregado"
@@ -208,18 +210,19 @@ function normalizeZonaName(value: string) {
 }
 
 function normalizeOrderStatus(value: string) {
-  if (value === "ready" || value === "asignado" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision") {
+  if (value === "ready" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision") {
     return value;
   }
 
-  if (value === "assigned") return "asignado";
+  if (value === "assigned") return "ready";
+  if (value === "asignado") return "ready";
   if (value === "cancelled") return "cancelado";
   if (value === "delivered") return "entregado";
 
   return "ready";
 }
 
-function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoRecord[]) {
+function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoRecord[], choferes: ChoferRecord[]) {
   const ordersByZone = new Map<
     string,
     {
@@ -231,6 +234,17 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
       bidonesTotales: number;
     }
   >();
+
+  const choferesByZone = new Map<string, number>();
+
+  for (const chofer of choferes) {
+    if (chofer.estado !== "activo" || chofer.idZona === null || !chofer.zona) {
+      continue;
+    }
+
+    const key = normalizeZonaName(chofer.zona.nombre);
+    choferesByZone.set(key, (choferesByZone.get(key) ?? 0) + 1);
+  }
 
   for (const order of orders) {
     const zoneName = order.zona?.trim() || "Sin zona";
@@ -244,6 +258,7 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
         pedidosReady: 0,
         pedidosCancelados: 0,
         bidonesTotales: 0,
+        choferesAsignados: 0,
       };
 
     const normalizedStatus = normalizeOrderStatus(order.status);
@@ -254,8 +269,8 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
       current.bidonesTotales += order.cantBidones;
     }
 
-    if (!isFinalized && normalizedStatus === "asignado") current.pedidosAsignados += 1;
-    if (!isFinalized && normalizedStatus === "ready") current.pedidosReady += 1;
+    if (!isFinalized && order.assignedToChoferId !== null) current.pedidosAsignados += 1;
+    if (!isFinalized && normalizedStatus === "ready" && order.assignedToChoferId === null) current.pedidosReady += 1;
     if (normalizedStatus === "cancelado") current.pedidosCancelados += 1;
 
     ordersByZone.set(key, current);
@@ -278,6 +293,7 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
       pedidosCancelados: stats?.pedidosCancelados ?? 0,
       bidonesTotales: stats?.bidonesTotales ?? 0,
       rutasAsignadas: zona._count.ruta,
+      choferesAsignados: choferesByZone.get(key) ?? 0,
     };
 
     return resumen;
@@ -291,6 +307,7 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
       pedidosReady: zona.pedidosReady,
       pedidosCancelados: zona.pedidosCancelados,
       bidonesTotales: zona.bidonesTotales,
+      choferesAsignados: choferesByZone.get(normalizeZonaName(zona.zona)) ?? 0,
     };
 
     return resumen;
@@ -444,7 +461,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     getOrders(),
     "pedido.findMany"
   );
-  const zonasResumen = buildZonasResumen(orders, zonasCatalogo);
+  const zonasResumen = buildZonasResumen(orders, zonasCatalogo, choferes as ChoferRecord[]);
 
   return {
     userName,

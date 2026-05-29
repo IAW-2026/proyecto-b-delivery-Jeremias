@@ -7,7 +7,7 @@ type ChoferPedido = {
   telefono: string;
   cantBidones: number;
   zona: string;
-  estado: "ready" | "asignado" | "en_camino" | "entregado" | "cancelado" | "revision";
+  estado: "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
 };
 
 type ChoferVehiculo = {
@@ -49,7 +49,7 @@ export type ChoferStatus = {
 };
 
 function mapStatusToChoferStatus(status: string): ChoferPedido["estado"] {
-  if (status === "assigned" || status === "asignado") return "asignado";
+  if (status === "assigned" || status === "asignado" || status === "ready") return "ready";
   if (status === "cancelled") return "cancelado";
   if (status === "cancelado") return "cancelado";
   if (status === "delivered") return "entregado";

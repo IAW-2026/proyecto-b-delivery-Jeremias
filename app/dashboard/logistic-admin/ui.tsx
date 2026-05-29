@@ -65,8 +65,6 @@ function orderBadgeClass(status: string) {
   switch (status) {
     case "ready":
       return "bg-blue-100 text-blue-700";
-    case "asignado":
-      return "bg-violet-100 text-violet-700";
     case "en_camino":
       return "bg-amber-100 text-amber-700";
     case "entregado":
@@ -91,7 +89,6 @@ function driverBadgeClass(status: string) {
 
 function formatStatus(status: OrderStatus) {
   if (status === "ready") return "Listo";
-  if (status === "asignado") return "Asignado";
   if (status === "en_camino") return "En camino";
   if (status === "entregado") return "Entregado";
   if (status === "cancelado") return "Cancelado";
@@ -116,7 +113,7 @@ export default function LogisticAdminBoard({
   const [loadingRequests, setLoadingRequests] = useState(true);
   const stats = useMemo(() => {
     const readyOrders = orders.filter((order) => order.status === "ready");
-    const assignedOrders = orders.filter((order) => order.status === "asignado");
+    const assignedOrders = orders.filter((order) => order.assignedToChoferId !== null);
     const activeDrivers = choferes.filter((driver) => driver.estado === "activo");
     const pausedVehicles = vehiculos.filter((vehicle) => vehicle.estado === "pausado");
 
@@ -125,13 +122,13 @@ export default function LogisticAdminBoard({
       readyOrders,
       activeDrivers,
       pausedVehicles,
-      totalZones: zonas.length,
-      zonesWithoutCatalog: zonasFueraCatalogo.length,
     };
-  }, [choferes, orders, vehiculos, zonas.length, zonasFueraCatalogo.length]);
+  }, [choferes, orders, vehiculos]);
+
+  const hasZonesOutsideCatalog = zonasFueraCatalogo.length > 0;
 
   const recentOrders = useMemo(
-    () => [...orders].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 5),
+    () => [...orders].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 4),
     [orders]
   );
 
@@ -247,11 +244,6 @@ export default function LogisticAdminBoard({
               <h2 className="text-xl font-semibold text-slate-900">Accesos rápidos</h2>
               <p className="text-sm text-slate-500">Entrá directo a las pantallas operativas.</p>
             </div>
-            {stats.zonesWithoutCatalog > 0 ? (
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-                {stats.zonesWithoutCatalog} zonas fuera de catálogo
-              </span>
-            ) : null}
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -261,13 +253,11 @@ export default function LogisticAdminBoard({
             <Link href="/dashboard/logistic-admin/choferes" className={adminButtonClass("edit")}>
               Ver choferes
             </Link>
-            <Link href="/dashboard/logistic-admin/zonas" className={adminButtonClass("edit")}>
-              Administrar zonas
-            </Link>
             <Link href="/dashboard/logistic-admin/vehiculos" className={adminButtonClass("edit")}>
               Revisar vehículos
             </Link>
           </div>
+
         </div>
 
         <div className="space-y-6">
@@ -275,7 +265,7 @@ export default function LogisticAdminBoard({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">Solicitudes de chofer</h2>
-                <p className="text-sm text-slate-500">Las últimas solicitudes pendientes para aprobar o rechazar.</p>
+                <p className="text-sm text-slate-500">Un resumen breve de las últimas solicitudes; el detalle completo está en la sección de choferes.</p>
               </div>
               <Link href="/dashboard/logistic-admin/choferes" className="text-sm font-medium text-sky-600 hover:text-sky-700">
                 Gestionar en choferes
@@ -312,7 +302,7 @@ export default function LogisticAdminBoard({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">Actividad reciente</h2>
-                <p className="text-sm text-slate-500">Últimos pedidos y choferes para orientar la operación.</p>
+                <p className="text-sm text-slate-500">Vista previa breve de la actividad; el detalle completo vive en cada página.</p>
               </div>
               <Link href="/dashboard/logistic-admin/pedidos" className="text-sm font-medium text-sky-600 hover:text-sky-700">
                 Ver todo
@@ -352,7 +342,7 @@ export default function LogisticAdminBoard({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">Estado del equipo</h2>
-                <p className="text-sm text-slate-500">Un vistazo rápido a choferes y su disponibilidad.</p>
+                <p className="text-sm text-slate-500">Resumen corto del equipo; el detalle completo está en la página de choferes.</p>
               </div>
             </div>
 
@@ -362,7 +352,7 @@ export default function LogisticAdminBoard({
                   No hay choferes cargados.
                 </p>
               ) : (
-                recentDrivers.map((chofer) => (
+                recentDrivers.slice(0, 3).map((chofer) => (
                   <article key={chofer.idChofer} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -383,8 +373,8 @@ export default function LogisticAdminBoard({
           <section className={`${adminCardClass} p-6`}>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Resumen de zonas</h2>
-                <p className="text-sm text-slate-500">Cobertura registrada y zonas que todavía no entraron al catálogo.</p>
+                <h2 className="text-xl font-semibold text-slate-900">Zonas sin registrar</h2>
+                <p className="text-sm text-slate-500">Pedidos detectados en zonas que todavía no entraron al catálogo.</p>
               </div>
               <Link href="/dashboard/logistic-admin/zonas" className="text-sm font-medium text-sky-600 hover:text-sky-700">
                 Abrir zonas
@@ -392,19 +382,18 @@ export default function LogisticAdminBoard({
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {zonas.slice(0, 4).map((zona) => (
-                <div key={zona.idZona} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="font-medium text-slate-900">{zona.zona}</p>
-                  <p className="mt-1 text-sm text-slate-600">Pedidos: {zona.pedidosTotales}</p>
-                  <p className="text-sm text-slate-600">Rutas: {zona.rutasAsignadas}</p>
-                </div>
-              ))}
-              {zonasFueraCatalogo.slice(0, 2).map((zona) => (
+              {zonasFueraCatalogo.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500 sm:col-span-2">
+                  No hay pedidos en zonas sin registrar.
+                </p>
+              ) : (
+                zonasFueraCatalogo.slice(0, 4).map((zona) => (
                 <div key={zona.zona} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <p className="font-medium text-amber-900">{zona.zona}</p>
                   <p className="mt-1 text-sm text-amber-800">Pedidos detectados: {zona.pedidosTotales}</p>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
         </div>

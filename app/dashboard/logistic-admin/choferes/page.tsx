@@ -5,8 +5,10 @@ import ChoferesManager from "./ui";
 const pageSize = 8;
 
 const statusOptions = ["activo", "inactivo", "pendiente", "rechazado"] as const;
+const searchOptions = ["nombre", "telefono"] as const;
 
 type ChoferStatus = (typeof statusOptions)[number];
+type SearchBy = (typeof searchOptions)[number];
 
 function isChoferStatus(value: string | undefined): value is ChoferStatus {
   return typeof value === "string" && statusOptions.includes(value as ChoferStatus);
@@ -25,7 +27,16 @@ function parsePage(value: string | string[] | undefined) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function filterChoferes(choferes: Awaited<ReturnType<typeof getLogisticAdminData>>["choferes"], searchQuery: string, statusFilter: "todos" | ChoferStatus) {
+function isSearchBy(value: string | undefined): value is SearchBy {
+  return typeof value === "string" && searchOptions.includes(value as SearchBy);
+}
+
+function filterChoferes(
+  choferes: Awaited<ReturnType<typeof getLogisticAdminData>>["choferes"],
+  searchQuery: string,
+  searchBy: SearchBy,
+  statusFilter: "todos" | ChoferStatus
+) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
   return choferes.filter((chofer) => {
@@ -37,7 +48,7 @@ function filterChoferes(choferes: Awaited<ReturnType<typeof getLogisticAdminData
       return true;
     }
 
-    const haystack = normalizeSearchValue([chofer.nombre, chofer.telefono ?? ""].join(" "));
+    const haystack = normalizeSearchValue(searchBy === "telefono" ? chofer.telefono ?? "" : chofer.nombre);
 
     return haystack.includes(normalizedQuery);
   });
@@ -46,16 +57,18 @@ function filterChoferes(choferes: Awaited<ReturnType<typeof getLogisticAdminData
 export default async function LogisticAdminChoferesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ query?: string | string[]; status?: string | string[]; page?: string | string[] }>;
+  searchParams: Promise<{ query?: string | string[]; searchBy?: string | string[]; status?: string | string[]; page?: string | string[] }>;
 }) {
   const data = await getLogisticAdminData();
   const query = await searchParams;
   const searchValue = Array.isArray(query.query) ? query.query[0] : query.query ?? "";
+  const searchByValue = Array.isArray(query.searchBy) ? query.searchBy[0] : query.searchBy;
   const statusValue = Array.isArray(query.status) ? query.status[0] : query.status;
+  const searchBy: SearchBy = isSearchBy(searchByValue) ? searchByValue : "nombre";
   const statusFilter: "todos" | ChoferStatus = statusValue === undefined || statusValue === "todos" ? "todos" : isChoferStatus(statusValue) ? statusValue : "todos";
   const requestedPage = parsePage(query.page);
 
-  const filteredChoferes = filterChoferes(data.choferes, searchValue, statusFilter);
+  const filteredChoferes = filterChoferes(data.choferes, searchValue, searchBy, statusFilter);
   const totalFilteredChoferes = filteredChoferes.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredChoferes / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -70,6 +83,10 @@ export default async function LogisticAdminChoferesPage({
 
     if (searchValue.trim()) {
       params.set("query", searchValue.trim());
+    }
+
+    if (searchBy !== "nombre") {
+      params.set("searchBy", searchBy);
     }
 
     if (statusFilter !== "todos") {
@@ -93,6 +110,7 @@ export default async function LogisticAdminChoferesPage({
       zonas={data.zonasCatalogo}
       vehiculos={data.vehiculos}
       searchQuery={searchValue}
+      searchBy={searchBy}
       statusFilter={statusFilter}
       page={safePage}
       totalPages={totalPages}

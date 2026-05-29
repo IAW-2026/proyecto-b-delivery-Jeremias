@@ -14,6 +14,7 @@ type Zona = {
   pedidosCancelados: number;
   bidonesTotales: number;
   rutasAsignadas: number;
+  choferesAsignados: number;
 };
 
 type ZonaFueraCatalogo = {
@@ -23,6 +24,7 @@ type ZonaFueraCatalogo = {
   pedidosReady: number;
   pedidosCancelados: number;
   bidonesTotales: number;
+  choferesAsignados: number;
 };
 
 type Props = {
@@ -248,39 +250,52 @@ export default function ZonasManager({
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       </section>
 
-      <section className={`${adminCardClass} bg-slate-50 p-5`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <section className={`${adminCardClass} bg-slate-50 p-5 shadow-sm`}>
+        <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-700">Buscar barrios</p>
-            <p className="text-xs text-slate-500">Buscá por nombre del barrio.</p>
+            <p className="text-sm font-semibold text-slate-800">Buscar barrios</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Usá un solo campo para encontrar barrios y seguir trabajando desde la misma tarjeta.</p>
           </div>
-          <form action="/dashboard/logistic-admin/zonas" method="get" className="w-full max-w-md">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Búsqueda rápida</p>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <form
+            action="/dashboard/logistic-admin/zonas"
+            method="get"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              const queryValue = String(formData.get("query") ?? "");
+              router.push(buildQueryHref({ query: queryValue, page: 1 }, searchQuery, page));
+            }}
+            className="space-y-3"
+          >
             <input type="hidden" name="page" value="1" />
             <label className="sr-only" htmlFor="zonas-search">
               Buscar barrios
             </label>
-            <div className="flex gap-2">
+            <div className="grid gap-2 md:grid-cols-[1fr_auto]">
               <input
                 id="zonas-search"
                 name="query"
                 defaultValue={searchQuery}
                 placeholder="Buscar por barrio"
-                className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               />
               <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
             </div>
+
+            {searchQuery ? (
+              <Link
+                href={buildQueryHref({ query: "", page: 1 }, searchQuery, page)}
+                className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                Limpiar búsqueda
+              </Link>
+            ) : null}
           </form>
         </div>
-        {searchQuery ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link
-              href={buildQueryHref({ query: "", page: 1 }, searchQuery, page)}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-            >
-              Limpiar búsqueda
-            </Link>
-          </div>
-        ) : null}
       </section>
 
       {zonas.length === 0 ? (
@@ -333,7 +348,7 @@ export default function ZonasManager({
                       <p className="font-medium text-slate-900">{zona.bidonesTotales}</p>
                     </td>
                     <td className="px-4 py-4">
-                      <p className="font-medium text-slate-900">{zona.pedidosAsignados}</p>
+                      <p className="font-medium text-slate-900">{zona.choferesAsignados}</p>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">

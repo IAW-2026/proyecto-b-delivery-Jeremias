@@ -11,7 +11,7 @@ type Pedido = {
   telefono: string;
   cantBidones: number;
   zona: string;
-  estado: "ready" | "asignado" | "en_camino" | "entregado" | "cancelado" | "revision";
+  estado: "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
 };
 
 type Props = {
@@ -19,18 +19,33 @@ type Props = {
   totalFiltered: number;
   totalBidones: number;
   searchQuery: string;
+  searchBy: "cliente" | "direccion" | "zona";
   statusFilter: "todos" | Pedido["estado"];
   page: number;
   totalPages: number;
 };
 
-function buildQueryHref(nextValues: { query?: string; status?: "todos" | Pedido["estado"]; page?: number }, currentQuery: string, currentStatus: Props["statusFilter"], currentPage: number) {
+const searchOptions: Array<{ value: "cliente" | "direccion" | "zona"; label: string; placeholder: string }> = [
+  { value: "cliente", label: "Cliente", placeholder: "Buscar por cliente" },
+  { value: "direccion", label: "Dirección", placeholder: "Buscar por dirección" },
+  { value: "zona", label: "Zona", placeholder: "Buscar por zona" },
+];
+
+function buildQueryHref(
+  nextValues: { query?: string; searchBy?: "cliente" | "direccion" | "zona"; status?: "todos" | Pedido["estado"]; page?: number },
+  currentQuery: string,
+  currentSearchBy: Props["searchBy"],
+  currentStatus: Props["statusFilter"],
+  currentPage: number
+) {
   const params = new URLSearchParams();
   const query = nextValues.query ?? currentQuery;
+  const searchBy = nextValues.searchBy ?? currentSearchBy;
   const status = nextValues.status ?? currentStatus;
   const page = nextValues.page ?? currentPage;
 
   if (query) params.set("query", query);
+  if (searchBy !== "cliente") params.set("searchBy", searchBy);
   if (status !== "todos") params.set("status", status);
   if (page > 1) params.set("page", String(page));
 
@@ -38,8 +53,9 @@ function buildQueryHref(nextValues: { query?: string; status?: "todos" | Pedido[
   return queryString ? `/dashboard/chofer/mis-pedidos?${queryString}` : "/dashboard/chofer/mis-pedidos";
 }
 
-export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, searchQuery, statusFilter, page, totalPages }: Props) {
+export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, searchQuery, searchBy, statusFilter, page, totalPages }: Props) {
   const router = useRouter();
+  const [selectedSearchBy, setSelectedSearchBy] = useState(searchBy);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
 
@@ -76,8 +92,16 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
         <p className="text-gray-600">Pedidos listos para entregar</p>
       </div>
 
-      <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-sm">
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Buscar pedidos</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Elegí el criterio de búsqueda, escribí el valor y después aplicá un filtro rápido si hace falta.</p>
+          </div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Filtros rápidos</p>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.85fr)]">
           <div className="rounded-2xl border border-white/70 bg-white px-5 py-4 shadow-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Pendientes</p>
             <p className="mt-1 text-3xl font-semibold text-blue-600">{totalFiltered}</p>
@@ -90,50 +114,101 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <form action="/dashboard/chofer/mis-pedidos" method="get" className="w-full">
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.85fr)]">
+          <form
+            action="/dashboard/chofer/mis-pedidos"
+            method="get"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              const queryValue = String(formData.get("query") ?? "");
+              router.push(buildQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+            }}
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
             <input type="hidden" name="page" value="1" />
+            <input type="hidden" name="searchBy" value={selectedSearchBy} />
             {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
             <label className="sr-only" htmlFor="mis-pedidos-search">
               Buscar pedidos
             </label>
-            <div className="flex gap-2">
-              <input
-                id="mis-pedidos-search"
-                name="query"
-                defaultValue={searchQuery}
-                placeholder="Buscar por cliente o dirección"
-                className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              />
-              <button type="submit" className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
-                Buscar
-              </button>
+
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</p>
+                <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
+                  {searchOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSelectedSearchBy(option.value)}
+                      aria-pressed={selectedSearchBy === option.value}
+                      className={`rounded-xl px-3 py-2 text-center text-sm font-medium transition-all ${
+                        selectedSearchBy === option.value
+                          ? "bg-white text-blue-700 shadow-sm ring-1 ring-blue-200"
+                          : "text-slate-600 hover:bg-white hover:text-slate-900"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                <input
+                  id="mis-pedidos-search"
+                  name="query"
+                  defaultValue={searchQuery}
+                  placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar pedidos"}
+                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                />
+                <button type="submit" className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+                  Buscar
+                </button>
+              </div>
             </div>
           </form>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <form action="/dashboard/chofer/mis-pedidos" method="get" className="space-y-3">
+              <input type="hidden" name="query" value={searchQuery} />
+              <input type="hidden" name="searchBy" value={selectedSearchBy} />
+              <input type="hidden" name="page" value="1" />
+              {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Filtrar por</span>
+                <select
+                  name="quickFilter"
+                  value={statusFilter}
+                  onChange={(event) => {
+                    const nextStatus = event.currentTarget.value as Props["statusFilter"];
+                    router.push(buildQueryHref({ status: nextStatus, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+                  }}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                >
+                  <option value="todos">Todos los filtros</option>
+                  <option value="ready">Listo</option>
+                  <option value="en_camino">En camino</option>
+                  <option value="entregado">Entregado</option>
+                  <option value="cancelado">Cancelado</option>
+                  <option value="revision">Revisión</option>
+                </select>
+              </label>
+              <p className="text-xs leading-5 text-slate-500">Incluye estados del pedido y accesos rápidos al estado actual de la entrega.</p>
+            </form>
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {([
-            ["todos", "Todos"],
-            ["ready", "Listo"],
-            ["asignado", "Asignados"],
-            ["en_camino", "En camino"],
-            ["entregado", "Entregados"],
-            ["revision", "Revisión"],
-            ["cancelado", "Cancelados"],
-          ] as const).map(([value, label]) => (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {searchQuery ? (
             <Link
-              key={value}
-              href={buildQueryHref({ status: value, page: 1 }, searchQuery, statusFilter, page)}
-              className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                statusFilter === value
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
+              href={buildQueryHref({ query: "", page: 1 }, searchQuery, selectedSearchBy, statusFilter, page)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
-              {label}
+              Limpiar búsqueda
             </Link>
-          ))}
+          ) : null}
         </div>
       </div>
 
@@ -176,8 +251,6 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                       className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${
                         pedido.estado === "ready"
                           ? "bg-blue-100 text-blue-800"
-                          : pedido.estado === "asignado"
-                          ? "bg-violet-100 text-violet-800"
                           : pedido.estado === "en_camino"
                           ? "bg-yellow-100 text-yellow-800"
                           : pedido.estado === "entregado"
@@ -189,8 +262,6 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                     >
                       {pedido.estado === "ready"
                         ? "Listo"
-                        : pedido.estado === "asignado"
-                        ? "Listo para salir"
                         : pedido.estado === "en_camino"
                         ? "En camino"
                         : pedido.estado === "revision"
@@ -209,16 +280,6 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                         className="rounded-lg bg-violet-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-violet-700 disabled:opacity-60"
                       >
                         🚚 En Camino
-                      </button>
-                    )}
-                    {pedido.estado === "asignado" && (
-                      <button
-                        type="button"
-                        onClick={() => handleCambiarEstado(pedido.idPedido, "en_camino")}
-                        disabled={pendingId === pedido.idPedido}
-                        className="rounded-lg bg-yellow-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-yellow-700 disabled:opacity-60"
-                      >
-                        🚚 Empezar
                       </button>
                     )}
                     {pedido.estado === "en_camino" && (
@@ -271,7 +332,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
         </p>
         <div className="flex gap-2">
           <Link
-            href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, statusFilter, page)}
+            href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
             aria-disabled={page <= 1}
             className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
               page <= 1 ? "pointer-events-none border-slate-200 bg-slate-100 text-slate-400" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
@@ -280,7 +341,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
             Anterior
           </Link>
           <Link
-            href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, statusFilter, page)}
+            href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
             aria-disabled={page >= totalPages}
             className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
               page >= totalPages ? "pointer-events-none border-slate-200 bg-slate-100 text-slate-400" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
