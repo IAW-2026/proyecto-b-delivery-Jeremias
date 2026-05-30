@@ -236,28 +236,6 @@ export default function LogisticAdminBoard({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.25fr_0.95fr]">
-        <div className={`${adminCardClass} p-6`}>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Accesos rápidos</h2>
-              <p className="text-sm text-slate-500">Entrá directo a las pantallas operativas.</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Link href="/dashboard/logistic-admin/pedidos" className={adminButtonClass("edit")}>
-              Gestionar pedidos
-            </Link>
-            <Link href="/dashboard/logistic-admin/choferes" className={adminButtonClass("edit")}>
-              Ver choferes
-            </Link>
-            <Link href="/dashboard/logistic-admin/vehiculos" className={adminButtonClass("edit")}>
-              Revisar vehículos
-            </Link>
-          </div>
-
-        </div>
-
         <div className="space-y-6">
 
           <section className={`${adminCardClass} p-6`}>
