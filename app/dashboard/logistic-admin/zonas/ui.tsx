@@ -87,10 +87,7 @@ export default function ZonasManager({
   totalPages,
   totalFilteredZonas,
   totalZonas,
-  zonasConPedidos,
-  zonasSinPedidos,
-  totalPedidos,
-  totalRutas,
+  zonasConPedidos
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -208,20 +205,8 @@ export default function ZonasManager({
           <p className="mt-1 text-2xl font-semibold text-slate-900">{totalZonas}</p>
         </div>
         <div className={`${adminStatCardClass} ${statCardClass("emerald")}`}>
-          <p className="text-sm opacity-80">Con pedidos</p>
+          <p className="text-sm opacity-80">Con pedidos actualmente</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{zonasConPedidos}</p>
-        </div>
-        <div className={`${adminStatCardClass} ${statCardClass("amber")}`}>
-          <p className="text-sm opacity-80">Sin pedidos</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{zonasSinPedidos}</p>
-        </div>
-        <div className={`${adminStatCardClass} ${statCardClass("slate")}`}>
-          <p className="text-sm opacity-80">Pedidos totales</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalPedidos}</p>
-        </div>
-        <div className={`${adminStatCardClass} ${statCardClass("blue")}`}>
-          <p className="text-sm opacity-80">Rutas totales</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalRutas}</p>
         </div>
       </section>
 

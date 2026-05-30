@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 type Pedido = {
   idPedido: number;
@@ -12,6 +12,7 @@ type Pedido = {
   cantBidones: number;
   zona: string;
   estado: "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
+  motivoRevision?: string | null;
 };
 
 type Props = {
@@ -58,8 +59,11 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
   const [selectedSearchBy, setSelectedSearchBy] = useState(searchBy);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
+  const [motivoPedidoId, setMotivoPedidoId] = useState<number | null>(null);
+  const [revisionPendingId, setRevisionPendingId] = useState<number | null>(null);
+  const [revisionReasons, setRevisionReasons] = useState<Record<number, string>>({});
 
-  async function handleCambiarEstado(idPedido: number, nuevoEstado: Pedido["estado"]) {
+  async function handleCambiarEstado(idPedido: number, nuevoEstado: Pedido["estado"], motivoRevision?: string) {
     setError(null);
     setPendingId(idPedido);
 
@@ -67,7 +71,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
       const response = await fetch("/api/chofer/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idPedido, estado: nuevoEstado }),
+        body: JSON.stringify({ idPedido, estado: nuevoEstado, motivoRevision }),
       });
 
       if (!response.ok) {
@@ -75,12 +79,47 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
         throw new Error(data?.error ?? "No se pudo actualizar el estado");
       }
 
+      setRevisionPendingId(null);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo actualizar el estado");
     } finally {
       setPendingId(null);
     }
+  }
+
+  function handleOpenRevision(pedido: Pedido) {
+    setError(null);
+    setRevisionPendingId(pedido.idPedido);
+    setRevisionReasons((current) => ({
+      ...current,
+      [pedido.idPedido]: pedido.motivoRevision ?? current[pedido.idPedido] ?? "",
+    }));
+  }
+
+  function handleCancelRevision(idPedido: number) {
+    setRevisionPendingId(null);
+    setRevisionReasons((current) => ({
+      ...current,
+      [idPedido]: "",
+    }));
+    setError(null);
+  }
+
+  function openMotivo(pedidoId: number) {
+    setMotivoPedidoId(pedidoId);
+  }
+
+  function closeMotivo() {
+    setMotivoPedidoId(null);
+  }
+
+  async function saveMotivoRevision() {
+    if (motivoPedidoId === null) return;
+
+    const motivo = revisionReasons[motivoPedidoId] ?? "";
+    await handleCambiarEstado(motivoPedidoId, "revision", motivo);
+    closeMotivo();
   }
 
   return (
@@ -216,25 +255,31 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
 
       {pedidos.length > 0 ? (
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead>
               <tr className="border-b-2 border-gray-200">
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">#</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Cliente</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Dirección</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Teléfono</th>
-                <th className="px-4 py-3 text-center font-semibold text-gray-700">Zona</th>
-                <th className="px-4 py-3 text-center font-semibold text-gray-700">Bidones</th>
-                <th className="px-4 py-3 text-center font-semibold text-gray-700">Estado</th>
-                <th className="px-4 py-3 text-center font-semibold text-gray-700">Acciones</th>
+                <th className="w-[56px] px-4 py-3 text-left font-semibold text-gray-700">#</th>
+                <th className="w-[180px] px-4 py-3 text-left font-semibold text-gray-700">Cliente</th>
+                <th className="w-[220px] px-4 py-3 text-left font-semibold text-gray-700">Dirección</th>
+                <th className="w-[130px] px-4 py-3 text-left font-semibold text-gray-700">Teléfono</th>
+                <th className="w-[100px] px-4 py-3 text-center font-semibold text-gray-700">Zona</th>
+                <th className="w-[100px] px-4 py-3 text-center font-semibold text-gray-700">Bidones</th>
+                <th className="w-[120px] px-4 py-3 text-center font-semibold text-gray-700">Estado</th>
+                <th className="w-[130px] px-4 py-3 text-center font-semibold text-gray-700">Motivo</th>
+                <th className="w-[240px] px-4 py-3 text-center font-semibold text-gray-700">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {pedidos.map((pedido, idx) => (
-                <tr key={pedido.idPedido} className="border-b border-gray-100 transition-colors hover:bg-gray-50">
+                <Fragment key={pedido.idPedido}>
+                  <tr className="border-b border-gray-100 transition-colors hover:bg-gray-50">
                   <td className="px-4 py-4 font-medium text-gray-900">{(page - 1) * 8 + idx + 1}</td>
-                  <td className="px-4 py-4 text-gray-900">{pedido.cliente}</td>
-                  <td className="px-4 py-4 text-sm text-gray-600">{pedido.direccion}</td>
+                  <td className="px-4 py-4 text-gray-900">
+                    <p className="truncate font-medium">{pedido.cliente}</p>
+                  </td>
+                  <td className="px-4 py-4 text-sm text-gray-600">
+                    <p className="line-clamp-2">{pedido.direccion}</p>
+                  </td>
                   <td className="px-4 py-4 text-gray-600">
                     <a href={`tel:${pedido.telefono}`} className="text-blue-600 hover:underline">
                       {pedido.telefono}
@@ -271,7 +316,20 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                         : pedido.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="px-4 py-4 text-center align-middle">
+                    {pedido.estado === "revision" && pedido.motivoRevision ? (
+                      <button
+                        type="button"
+                        onClick={() => openMotivo(pedido.idPedido)}
+                        className="text-sm font-medium text-blue-600 transition-colors hover:underline"
+                      >
+                        Ver motivo
+                      </button>
+                    ) : (
+                      <span className="text-sm text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-center align-middle">
                     {pedido.estado === "ready" && (
                       <button
                         type="button"
@@ -294,7 +352,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleCambiarEstado(pedido.idPedido, "revision")}
+                          onClick={() => handleOpenRevision(pedido)}
                           disabled={pendingId === pedido.idPedido}
                           className="rounded-lg bg-slate-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-60"
                         >
@@ -315,7 +373,52 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                     {pedido.estado === "entregado" && <span className="font-medium text-green-600">✓ Entregado</span>}
                     {pedido.estado === "cancelado" && <span className="font-medium text-red-600">Cancelado</span>}
                   </td>
-                </tr>
+                  </tr>
+                {revisionPendingId === pedido.idPedido ? (
+                  <tr className="border-b border-gray-100 bg-violet-50/40">
+                    <td colSpan={9} className="px-4 py-4">
+                      <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                        <label className="space-y-2">
+                                <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+                            Motivo de revisión
+                          </span>
+                          <textarea
+                            value={revisionReasons[pedido.idPedido] ?? ""}
+                            onChange={(event) =>
+                              setRevisionReasons((current) => ({
+                                ...current,
+                                [pedido.idPedido]: event.target.value,
+                              }))
+                            }
+                            rows={3}
+                            placeholder="Ejemplo: bidones dañados, faltante en la entrega, dirección incorrecta..."
+                            className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            disabled={pendingId === pedido.idPedido}
+                          />
+                        </label>
+                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleCambiarEstado(pedido.idPedido, "revision", revisionReasons[pedido.idPedido] ?? "")}
+                            disabled={pendingId === pedido.idPedido}
+                            className="rounded-lg bg-amber-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+                          >
+                            Guardar revisión
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCancelRevision(pedido.idPedido)}
+                            disabled={pendingId === pedido.idPedido}
+                            className="rounded-lg bg-slate-200 px-3 py-1 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-300 disabled:opacity-60"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -325,6 +428,75 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
           <p className="text-lg text-gray-600">Todavía no tenés pedidos para mostrar</p>
         </div>
       )}
+
+      {motivoPedidoId !== null ? (
+        (() => {
+          const pedido = pedidos.find((item) => item.idPedido === motivoPedidoId);
+          if (!pedido) return null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeMotivo}>
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`motivo-pedido-${pedido.idPedido}`}
+                className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 id={`motivo-pedido-${pedido.idPedido}`} className="text-xl font-semibold text-slate-900">
+                      Motivo de revisión
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Pedido #{pedido.idPedido} · {pedido.cliente}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+                  <label className="space-y-2">
+                    <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
+                      Motivo de revisión
+                    </span>
+                    <textarea
+                      value={revisionReasons[pedido.idPedido] ?? pedido.motivoRevision ?? ""}
+                      onChange={(event) =>
+                        setRevisionReasons((current) => ({
+                          ...current,
+                          [pedido.idPedido]: event.target.value,
+                        }))
+                      }
+                      rows={5}
+                      className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                      disabled={pendingId === pedido.idPedido}
+                    />
+                  </label>
+
+                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={saveMotivoRevision}
+                      disabled={pendingId === pedido.idPedido}
+                      className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-violet-700 disabled:opacity-60"
+                    >
+                      Guardar cambios
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeMotivo}
+                      disabled={pendingId === pedido.idPedido}
+                      className="rounded-lg bg-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-300 disabled:opacity-60"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()
+      ) : null}
 
       <div className="mt-6 flex items-center justify-between gap-4">
         <p className="text-sm text-gray-600">

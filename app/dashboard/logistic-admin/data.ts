@@ -91,6 +91,7 @@ type PedidoDbRecord = {
   idChoferAsignado: number | null;
   assignedAt: Date | null;
   updatedAt: Date | null;
+  motivoRevision: string | null;
   choferAsignado?: { nombre: string | null } | null;
 };
 
@@ -169,6 +170,7 @@ function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
     telefono: pedido.telefono ?? undefined,
     cantBidones: pedido.cantBidones,
     zona: pedido.zona,
+    motivoRevision: pedido.motivoRevision ?? null,
     assignedToChoferId: pedido.idChoferAsignado,
     assignedToChoferName: pedido.choferAsignado?.nombre ?? null,
     status,
@@ -192,6 +194,7 @@ async function seedPedidosFromStoreIfEmpty() {
       telefono: order.telefono ?? null,
       cantBidones: order.cantBidones,
       zona: order.zona,
+          motivoRevision: order.motivoRevision ?? null,
       idChoferAsignado: order.assignedToChoferId,
       assignedAt: order.assignedToChoferId ? new Date(order.updatedAt) : null,
       updatedAt: new Date(order.updatedAt),

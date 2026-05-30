@@ -83,6 +83,7 @@ model Pedido {
   idChoferAsignado Int?     @map("id_chofer_asignado")
   assignedAt  DateTime?     @map("assigned_at")
   updatedAt   DateTime?     @map("updated_at")
+  motivoRevision String?    @map("motivo_revision")
   direccion   String
   cliente     String
   telefono    String?

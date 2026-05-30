@@ -33,6 +33,7 @@ function mapPedidoToLogisticOrder(pedido: any) {
     telefono: pedido.telefono,
     cantBidones: pedido.cantBidones,
     zona: pedido.zona,
+    motivoRevision: pedido.motivoRevision ?? null,
     assignedToChoferId: pedido.idChoferAsignado ?? null,
     assignedToChoferName: pedido.choferAsignado?.nombre ?? null,
     status: normalizedStatus,
@@ -171,6 +172,7 @@ export async function POST(request: NextRequest) {
       estado?: string;
       motivoPausa?: string | null;
       status?: string;
+      motivoRevision?: string | null;
     };
 
     if (!body.action) {
@@ -330,21 +332,18 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const result = await prisma.pedido.updateMany({
+        const updated = await prisma.pedido.update({
           where: { idPedido: body.idPedido },
           data: {
-            idChoferAsignado: chofer.idChofer,
             estado: "asignado",
             assignedAt: new Date(),
             updatedAt: new Date(),
+            choferAsignado: {
+              connect: { idChofer: chofer.idChofer },
+            },
           },
+          include: { choferAsignado: true },
         });
-
-        if (result.count === 0) {
-          return NextResponse.json({ error: "Order not found" }, { status: 404 });
-        }
-
-        const updated = await prisma.pedido.findUnique({ where: { idPedido: body.idPedido }, include: { choferAsignado: true } });
         return NextResponse.json({ ok: true, order: mapPedidoToLogisticOrder(updated) }, { status: 200 });
       } catch (e) {
         console.error("assign_order error", e);
@@ -362,16 +361,18 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const result = await prisma.pedido.updateMany({
+        const updated = await prisma.pedido.update({
           where: { idPedido: body.idPedido },
-          data: { idChoferAsignado: null, estado: "ready", assignedAt: null, updatedAt: new Date() },
+          data: {
+            estado: "ready",
+            assignedAt: null,
+            updatedAt: new Date(),
+            choferAsignado: {
+              disconnect: true,
+            },
+          },
+          include: { choferAsignado: true },
         });
-
-        if (result.count === 0) {
-          return NextResponse.json({ error: "Order not found" }, { status: 404 });
-        }
-
-        const updated = await prisma.pedido.findUnique({ where: { idPedido: body.idPedido }, include: { choferAsignado: true } });
         return NextResponse.json({ ok: true, order: mapPedidoToLogisticOrder(updated) }, { status: 200 });
       } catch (e) {
         console.error("unassign_order error", e);
@@ -420,16 +421,18 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const result = await prisma.pedido.updateMany({
+        const updated = await prisma.pedido.update({
           where: { idPedido: body.idPedido },
-          data: { estado: "cancelado", idChoferAsignado: null, assignedAt: null, updatedAt: new Date() },
+          data: {
+            estado: "cancelado",
+            assignedAt: null,
+            updatedAt: new Date(),
+            choferAsignado: {
+              disconnect: true,
+            },
+          },
+          include: { choferAsignado: true },
         });
-
-        if (result.count === 0) {
-          return NextResponse.json({ error: "Order not found" }, { status: 404 });
-        }
-
-        const updated = await prisma.pedido.findUnique({ where: { idPedido: body.idPedido }, include: { choferAsignado: true } });
         return NextResponse.json({ ok: true, order: mapPedidoToLogisticOrder(updated) }, { status: 200 });
       } catch (e) {
         console.error("cancel_order error", e);
@@ -465,24 +468,26 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "No podés mover este pedido a ese estado sin asignarle un chofer primero" }, { status: 409 });
       }
 
-      const shouldClearAssignment = body.status === "ready" || body.status === "cancelado" || body.status === "revision";
+      const shouldClearAssignment = body.status === "cancelado";
 
       try {
-        const result = await prisma.pedido.updateMany({
+        const updated = await prisma.pedido.update({
           where: { idPedido: body.idPedido },
           data: {
             estado: body.status,
-            idChoferAsignado: shouldClearAssignment ? null : pedidoDb.idChoferAsignado,
-            assignedAt: shouldClearAssignment ? null : pedidoDb.assignedAt,
+            motivoRevision: body.status === "revision" ? pedidoDb.motivoRevision ?? null : null,
             updatedAt: new Date(),
+            ...(shouldClearAssignment
+              ? {
+                  assignedAt: null,
+                  choferAsignado: {
+                    disconnect: true,
+                  },
+                }
+              : {}),
           },
+          include: { choferAsignado: true },
         });
-
-        if (result.count === 0) {
-          return NextResponse.json({ error: "Order not found" }, { status: 404 });
-        }
-
-        const updated = await prisma.pedido.findUnique({ where: { idPedido: body.idPedido }, include: { choferAsignado: true } });
         return NextResponse.json({ ok: true, order: mapPedidoToLogisticOrder(updated) }, { status: 200 });
       } catch (e) {
         console.error("update_order_status error", e);

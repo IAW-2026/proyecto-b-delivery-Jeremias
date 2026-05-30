@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Chofer not found" }, { status: 404 });
     }
 
-    const body = (await request.json()) as { idPedido?: number; estado?: string };
+    const body = (await request.json()) as { idPedido?: number; estado?: string; motivoRevision?: string | null };
     if (typeof body.idPedido !== "number" || typeof body.estado !== "string") {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
@@ -46,15 +46,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Pedido not assigned to this chofer" }, { status: 409 });
       }
 
-      const shouldClearAssignment = ["ready", "cancelado", "revision"].includes(body.estado);
+      const motivoRevision = typeof body.motivoRevision === "string" ? body.motivoRevision.trim() : "";
+      if (body.estado === "revision" && !motivoRevision) {
+        return NextResponse.json({ error: "Debés indicar un motivo para pasar el pedido a revisión" }, { status: 400 });
+      }
 
       try {
         const updated = await prisma.pedido.update({
           where: { idPedido: body.idPedido },
           data: {
             estado: body.estado,
-            idChoferAsignado: shouldClearAssignment ? null : pedidoDb.idChoferAsignado,
-            assignedAt: shouldClearAssignment ? null : pedidoDb.assignedAt,
+            motivoRevision: body.estado === "revision" ? motivoRevision : null,
             updatedAt: new Date(),
           },
           include: { choferAsignado: true },

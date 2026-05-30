@@ -8,6 +8,7 @@ type ChoferPedido = {
   cantBidones: number;
   zona: string;
   estado: "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
+  motivoRevision?: string | null;
 };
 
 type ChoferVehiculo = {
@@ -50,6 +51,7 @@ export type ChoferStatus = {
 
 function mapStatusToChoferStatus(status: string): ChoferPedido["estado"] {
   if (status === "assigned" || status === "asignado" || status === "ready") return "ready";
+  if (status === "en_camino") return "en_camino";
   if (status === "cancelled") return "cancelado";
   if (status === "cancelado") return "cancelado";
   if (status === "delivered") return "entregado";
@@ -105,6 +107,7 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
     cantBidones: pedido.cantBidones,
     zona: pedido.zona,
     estado: mapStatusToChoferStatus(pedido.estado),
+    motivoRevision: pedido.motivoRevision ?? null,
   }));
 
   const totalBidones = pedidos.reduce((sum, pedido) => sum + pedido.cantBidones, 0);

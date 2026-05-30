@@ -85,6 +85,7 @@ export default function LogisticAdminPedidosUi({
   const router = useRouter();
   const [busyId, setBusyId] = useState<number | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
+  const [motivoOrderId, setMotivoOrderId] = useState<number | null>(null);
   const [selectedSearchBy, setSelectedSearchBy] = useState(searchBy);
   const [choferSelection, setChoferSelection] = useState<Record<number, string>>(() => {
     const initial: Record<number, string> = {};
@@ -124,7 +125,7 @@ export default function LogisticAdminPedidosUi({
       { ready: 0, en_camino: 0, entregado: 0, cancelado: 0, revision: 0 } as Record<OrderStatus, number>
     );
   }, [orders]);
-  const assignedOrdersCount = orders.filter((order) => order.assignedToChoferId !== null).length;
+  const readyUnassignedCount = orders.filter((order) => order.status === "ready" && order.assignedToChoferId === null).length;
 
   const pageStart = orders.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredOrders, page * pageSize);
@@ -215,6 +216,14 @@ export default function LogisticAdminPedidosUi({
     setError(null);
   }
 
+  function openMotivo(orderId: number) {
+    setMotivoOrderId(orderId);
+  }
+
+  function closeMotivo() {
+    setMotivoOrderId(null);
+  }
+
   async function saveEdit(order: LogisticOrder) {
     setBusyId(order.idPedido);
     setError(null);
@@ -286,13 +295,10 @@ export default function LogisticAdminPedidosUi({
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-6">
-        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Listo</p><p className="mt-1 text-2xl font-semibold text-blue-600">{totals.ready}</p></div>
-        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Asignados</p><p className="mt-1 text-2xl font-semibold text-violet-600">{assignedOrdersCount}</p></div>
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Pedidos Listos (Sin asignar)</p><p className="mt-1 text-2xl font-semibold text-blue-600">{readyUnassignedCount}</p></div>
         <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">En camino</p><p className="mt-1 text-2xl font-semibold text-amber-600">{totals.en_camino}</p></div>
-        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Entregados</p><p className="mt-1 text-2xl font-semibold text-emerald-600">{totals.entregado}</p></div>
-        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Cancelados</p><p className="mt-1 text-2xl font-semibold text-red-600">{totals.cancelado}</p></div>
-        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">Revisión</p><p className="mt-1 text-2xl font-semibold text-violet-600">{totals.revision}</p></div>
+        <div className="rounded-xl border border-slate-200 p-4"><p className="text-sm text-slate-500">En revisión</p><p className="mt-1 text-2xl font-semibold text-violet-600">{totals.revision}</p></div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
@@ -438,6 +444,7 @@ export default function LogisticAdminPedidosUi({
                 <th className="w-[90px] px-3 py-3">Bidones</th>
                 <th className="w-[180px] px-3 py-3">Chofer</th>
                 <th className="w-[140px] px-3 py-3">Estado</th>
+                <th className="w-[220px] px-3 py-3">Motivo</th>
                 <th className="w-[200px] px-3 py-3 text-center"></th>
               </tr>
             </thead>
@@ -512,6 +519,19 @@ export default function LogisticAdminPedidosUi({
                         <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(order.status)}`}>{formatStatus(order.status)}</span>
                       )}
                     </td>
+                    <td className="w-[220px] px-3 py-3 align-middle">
+                      {order.status === "revision" && order.motivoRevision ? (
+                        <button
+                          type="button"
+                          onClick={() => openMotivo(order.idPedido)}
+                          className="text-sm font-medium text-blue-600 transition-colors hover:underline"
+                        >
+                          Ver motivo
+                        </button>
+                      ) : (
+                        <span className="text-sm text-slate-400">—</span>
+                      )}
+                    </td>
                     <td className="w-[200px] px-3 py-3 align-middle">
                       {editingOrderId === order.idPedido ? (
                         <div className="flex flex-nowrap gap-2 whitespace-nowrap">
@@ -579,6 +599,43 @@ export default function LogisticAdminPedidosUi({
           </div>
         </div>
       )}
+
+      {motivoOrderId !== null ? (
+        (() => {
+          const order = orders.find((item) => item.idPedido === motivoOrderId);
+          if (!order) return null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeMotivo}>
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`motivo-revision-${order.idPedido}`}
+                className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 id={`motivo-revision-${order.idPedido}`} className="text-xl font-semibold text-slate-900">
+                      Motivo de revisión
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Pedido #{order.idPedido} · {order.cliente}
+                    </p>
+                  </div>
+                  <button type="button" onClick={closeMotivo} className={adminButtonClass("cancel", "sm")}>
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+                  <p className="whitespace-pre-wrap leading-6">{order.motivoRevision ?? "Sin motivo registrado."}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })()
+      ) : null}
     </div>
   );
 }

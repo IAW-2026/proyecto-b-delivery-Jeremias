@@ -312,12 +312,6 @@ export default function VehiculosManager({
           <p className="text-sm text-slate-500">Vehículos totales</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{totalVehiculos}</p>
         </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-500">Estado</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-600">
-            {pausadosCount}
-          </p>
-        </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">

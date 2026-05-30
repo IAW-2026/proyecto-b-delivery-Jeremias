@@ -6,6 +6,7 @@ export type PedidoEntrante = {
   telefono?: string;
   cantBidones: number;
   zona: string;
+  motivoRevision?: string | null;
 };
 
 import { getMockPedidos } from "@/lib/mocks/pedidos";
@@ -59,6 +60,7 @@ function mapMockPedidoToLogisticOrder(pedido: ReturnType<typeof getMockPedidos>[
     telefono: pedido.telefono,
     cantBidones: pedido.cantBidones,
     zona: pedido.zona,
+    motivoRevision: null,
     assignedToChoferId: null,
     assignedToChoferName: null,
     status: normalizedStatus,
@@ -235,6 +237,7 @@ export function setOrderStatus(idPedido: number, status: OrderStatus) {
     ...currentOrder,
     estado: normalizedStatus,
     status: normalizedStatus,
+    motivoRevision: normalizedStatus === "revision" ? currentOrder.motivoRevision ?? null : null,
     updatedAt: nowIso(),
   };
 

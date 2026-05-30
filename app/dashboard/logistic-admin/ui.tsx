@@ -113,11 +113,15 @@ export default function LogisticAdminBoard({
   const [loadingRequests, setLoadingRequests] = useState(true);
   const stats = useMemo(() => {
     const readyOrders = orders.filter((order) => order.status === "ready" && order.assignedToChoferId === null);
+    const enCaminoOrders = orders.filter((order) => order.status === "en_camino");
+    const revisionOrders = orders.filter((order) => order.status === "revision");
     const activeDrivers = choferes.filter((driver) => driver.estado === "activo");
     const functioningVehicles = vehiculos.filter((vehicle) => vehicle.estado !== "pausado");
 
     return {
       readyUnassignedOrders: readyOrders,
+      enCaminoOrders,
+      revisionOrders,
       activeDrivers,
       functioningVehicles,
       totalZones: zonas.length,
@@ -218,16 +222,16 @@ export default function LogisticAdminBoard({
 
       <section className="grid gap-4 md:grid-cols-3">
         <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Pedidos sin chofer asignados</p>
+          <p className="text-sm text-slate-600">Listos para salir (sin asignar)</p>
           <p className="mt-2 text-3xl font-semibold text-blue-600">{stats.readyUnassignedOrders.length}</p>
         </div>
         <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Choferes activos</p>
-          <p className="mt-2 text-3xl font-semibold text-purple-600">{stats.activeDrivers.length}</p>
+          <p className="text-sm text-slate-600">En camino</p>
+          <p className="mt-2 text-3xl font-semibold text-amber-600">{stats.enCaminoOrders.length}</p>
         </div>
         <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Vehículos funcionando</p>
-          <p className="mt-2 text-3xl font-semibold text-emerald-600">{stats.functioningVehicles.length}</p>
+          <p className="text-sm text-slate-600">En revisión</p>
+          <p className="mt-2 text-3xl font-semibold text-purple-600">{stats.revisionOrders.length}</p>
         </div>
       </section>
 

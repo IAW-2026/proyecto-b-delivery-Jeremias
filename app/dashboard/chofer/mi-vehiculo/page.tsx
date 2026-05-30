@@ -140,32 +140,7 @@ export default function MiVehiculoPage() {
           </div>
         </div>
       </div>
-
-      {/* Estado del Vehículo */}
-      <div className="bg-green-50 rounded-lg p-6 border-l-4 border-green-500 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span>✓</span> Estado del Vehículo
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <p className="text-green-800 font-medium">{vehiculo ? "Disponible" : "Sin vehículo asignado"}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <p className="text-green-800 font-medium">Mantenimiento al día</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <p className="text-green-800 font-medium">Combustible: Completo</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <p className="text-green-800 font-medium">Seguros vigentes</p>
-          </div>
-        </div>
-      </div>
-
+      
       {/* Avisos de Carga */}
       {porcentajeUsado >= 90 ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -183,23 +158,6 @@ export default function MiVehiculoPage() {
           </p>
         </div>
       ) : null}
-
-      {/* Información de Mantenimiento */}
-      <div className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-500 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span>🔧</span> Información de Mantenimiento
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Último mantenimiento</p>
-            <p className="font-semibold">15 de Mayo, 2026</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Próximo mantenimiento</p>
-            <p className="font-semibold">01 de Junio, 2026</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
