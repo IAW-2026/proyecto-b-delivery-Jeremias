@@ -6,12 +6,7 @@ import UserMenu from "@/app/components/UserMenu";
 
 const navigationItems = [
   { href: "/dashboard/admin-delivery", label: "Inicio global", icon: "🧭" },
-  { href: "/dashboard/admin-delivery/usuarios", label: "Usuarios", icon: "🪪" },
-  { href: "/dashboard/logistic-admin/pedidos", label: "Pedidos", icon: "📦" },
-  { href: "/dashboard/logistic-admin/choferes", label: "Choferes", icon: "🧑‍✈️" },
-  { href: "/dashboard/logistic-admin/vehiculos", label: "Vehículos", icon: "🚛" },
-  { href: "/dashboard/logistic-admin/zonas", label: "Zonas", icon: "🗺️" },
-  { href: "/dashboard/logistic-admin/perfil", label: "Perfil", icon: "👤" },
+  { href: "/dashboard/admin-delivery/usuarios", label: "Usuarios", icon: "🪪" }
 ];
 
 export default function AdminDeliveryLayoutClient({

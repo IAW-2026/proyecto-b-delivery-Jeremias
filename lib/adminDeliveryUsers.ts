@@ -1,10 +1,20 @@
-import { clerkClient } from "@clerk/nextjs/server";
+import { clerkClient ,User} from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+
+export type AdminDeliveryUserRow = {
+  clerkUserId: string;
+  fullName: string;
+  email: string;
+  effectiveRole: string;
+  isGlobalAdmin: boolean;
+  localRole: string;
+  adminPhone: string | null;
+};
 
 const ADMIN_DELIVERY_ROLE = "admin_delivery";
 
 export async function getAdminDeliveryUsersData() {
-  let clerkUsers: any[] = [];
+  let clerkUsers: User[] = [];
   let clerkUnavailable = false;
 
   // 1. Intentamos traer los usuarios de Clerk
@@ -27,16 +37,16 @@ export async function getAdminDeliveryUsersData() {
   // 3. Mapeamos y cruzamos los datos
   const allMappedUsers: AdminDeliveryUserRow[] = clerkUsers.map((clerkUser) => {
     // Buscamos a este usuario en nuestras 3 tablas locales
-    const localRoleRecord = dbUserRoles.find((r) => r.clerkUserId === clerkUser.id);
-    const globalAdminRecord = dbAdminDeliveries.find((a) => a.clerkUserId === clerkUser.id);
-    const choferRecord = dbChoferes.find((c) => c.clerkUserId === clerkUser.id);
+    const localRoleRecord = dbUserRoles.find((r: { clerkUserId: string }) => r.clerkUserId === clerkUser.id);
+    const globalAdminRecord = dbAdminDeliveries.find((a: { clerkUserId: string }) => a.clerkUserId === clerkUser.id);
+    const choferRecord = dbChoferes.find((c: { clerkUserId: string }) => c.clerkUserId === clerkUser.id);
 
     const isGlobalAdmin = Boolean(globalAdminRecord);
     const localRole = localRoleRecord?.role || "Sin rol";
     const effectiveRole = isGlobalAdmin ? ADMIN_DELIVERY_ROLE : localRole;
 
     const primaryEmail = clerkUser.emailAddresses.find(
-      (email: any) => email.id === clerkUser.primaryEmailAddressId
+      (email: { id: string; emailAddress: string }) => email.id === clerkUser.primaryEmailAddressId
     )?.emailAddress || "Sin correo";
 
     // --- LÓGICA INTELIGENTE DE NOMBRES ---
