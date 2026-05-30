@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 const CLERK_API_BASE = "https://api.clerk.com";
 const DEFAULT_ROLE = "delivery";
-const MANAGED_ROLES = ["delivery", "logistic_admin"] as const;
+const ADMIN_DELIVERY_ROLE = "admin_delivery";
+const MANAGED_ROLES = ["delivery", "logistic_admin", ADMIN_DELIVERY_ROLE] as const;
 const SELLER_ROLE = "seller";
 const LOGISTIC_ADMIN_ROLE = "logistic_admin";
 
@@ -25,6 +26,10 @@ function getEffectiveRoles(rawRoles: string[]): string[] {
   const hasSeller = roles.includes(SELLER_ROLE);
   const hasManagedRole = MANAGED_ROLES.some((managedRole) => roles.includes(managedRole));
 
+  if (roles.includes(ADMIN_DELIVERY_ROLE)) {
+    return roles;
+  }
+
   if (hasSeller) {
     return [...new Set([...roles.filter((role) => role !== DEFAULT_ROLE), LOGISTIC_ADMIN_ROLE])];
   }
@@ -43,6 +48,9 @@ async function resolveRoles(userId: string) {
     // Read DB roles (if any)
     const dbRecord = await prisma.userRole
       .findUnique({ where: { clerkUserId: userId }, select: { role: true } })
+      .catch(() => null);
+    const adminDelivery = await prisma.adminDelivery
+      .findUnique({ where: { clerkUserId: userId }, select: { clerkUserId: true } })
       .catch(() => null);
 
     const dbRoles = normalizeRoles(dbRecord?.role);
@@ -69,7 +77,7 @@ async function resolveRoles(userId: string) {
       }
     }
 
-    const combined = [...dbRoles, ...clerkRoles];
+    const combined = [...(adminDelivery ? [ADMIN_DELIVERY_ROLE] : []), ...dbRoles, ...clerkRoles];
     return getEffectiveRoles(normalizeRoles(combined));
   } catch {
     return [] as string[];
@@ -93,10 +101,14 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   const roles = await resolveRoles(userId);
   const isDelivery = roles.includes("delivery");
   const isLogisticAdmin = roles.includes("logistic_admin");
+  const isAdminDelivery = roles.includes("admin_delivery");
   const isSeller = roles.includes("seller");
   const isAdmin = isLogisticAdmin || isSeller;
 
   if (pathname === "/dashboard") {
+    if (isAdminDelivery) {
+      return NextResponse.redirect(new URL("/dashboard/admin-delivery", request.url));
+    }
     if (isDelivery) {
       const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
       if (dbChofer?.estado === "activo") return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
@@ -124,7 +136,15 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     }
   }
 
+  if (pathname.startsWith("/dashboard/logistic-admin") && isAdminDelivery) {
+    return NextResponse.redirect(new URL("/dashboard/admin-delivery", request.url));
+  }
+
   if (pathname.startsWith("/dashboard/logistic-admin") && !isAdmin) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (pathname.startsWith("/dashboard/admin-delivery") && !isAdminDelivery) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

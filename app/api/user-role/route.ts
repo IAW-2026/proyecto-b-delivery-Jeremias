@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 const CLERK_API_BASE = "https://api.clerk.com";
 const DEFAULT_ROLE = "delivery";
-const MANAGED_ROLES = ["delivery", "logistic_admin"] as const;
+const ADMIN_DELIVERY_ROLE = "admin_delivery";
+const MANAGED_ROLES = ["delivery", "logistic_admin", ADMIN_DELIVERY_ROLE] as const;
 const SELLER_ROLE = "seller";
 const LOGISTIC_ADMIN_ROLE = "logistic_admin";
 
@@ -24,6 +25,10 @@ function getEffectiveRoles(rawRoles: string[]): string[] {
   const roles = [...new Set(rawRoles)];
   const hasSeller = roles.includes(SELLER_ROLE);
   const hasManagedRole = MANAGED_ROLES.some((managedRole) => roles.includes(managedRole));
+
+  if (roles.includes(ADMIN_DELIVERY_ROLE)) {
+    return roles;
+  }
 
   if (hasSeller) {
     return [...new Set([...roles.filter((role) => role !== DEFAULT_ROLE), LOGISTIC_ADMIN_ROLE])];
@@ -65,6 +70,11 @@ export async function GET(request: NextRequest) {
     const metadata = user.public_metadata ?? user.publicMetadata ?? {};
     const role = normalizeRoles(metadata.role);
     const updatedRole = getEffectiveRoles(role);
+    const adminDelivery = await prisma.adminDelivery.findUnique({
+      where: { clerkUserId: userId },
+      select: { clerkUserId: true },
+    });
+    const displayedRole = adminDelivery ? [ADMIN_DELIVERY_ROLE, ...updatedRole] : updatedRole;
 
     try {
       const roleRow = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
@@ -95,11 +105,11 @@ export async function GET(request: NextRequest) {
 
       if (!patchRes.ok) {
         const text = await patchRes.text();
-        console.error("Error assigning default role:", patchRes.status, text);
+        console.error("Error normalizing user role:", patchRes.status, text);
       }
     }
 
-    return NextResponse.json({ role: updatedRole }, { status: 200 });
+    return NextResponse.json({ role: displayedRole }, { status: 200 });
   } catch (error) {
     console.error("Error fetching user role:", error);
     return NextResponse.json({ role: [], error: "Error fetching role" }, { status: 500 });
@@ -115,6 +125,10 @@ export async function POST(request: NextRequest) {
     const idVendedor = Number(body.idVendedor ?? body.id_vendedor ?? 0);
     const role = typeof body.role === "string" ? body.role : LOGISTIC_ADMIN_ROLE;
 
+    if (role === ADMIN_DELIVERY_ROLE) {
+      return NextResponse.json({ error: "admin_delivery cannot be assigned from the app" }, { status: 400 });
+    }
+
     if (!idVendedor) return NextResponse.json({ error: "Missing idVendedor" }, { status: 400 });
 
     await prisma.userRole.upsert({
@@ -122,28 +136,6 @@ export async function POST(request: NextRequest) {
       update: { idVendedor, role },
       create: { clerkUserId: userId, idVendedor, role },
     });
-
-    // Also update Clerk public metadata so Clerk-based reads see the role
-    try {
-      const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
-      if (secretKey) {
-        const clerkRes = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ public_metadata: { role: [role] } }),
-        });
-
-        if (!clerkRes.ok) {
-          const txt = await clerkRes.text();
-          console.debug("Clerk patch returned: ", clerkRes.status, txt);
-        }
-      }
-    } catch (err) {
-      console.debug("Failed to patch Clerk metadata:", err);
-    }
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {

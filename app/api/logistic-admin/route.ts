@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -77,9 +78,18 @@ function normalizeRoles(rawRole: unknown): string[] {
   return [];
 }
 
+const ADMIN_DELIVERY_ROLE = "admin_delivery";
+
 async function getCompanyContext(request: NextRequest) {
   const { userId } = getAuth(request);
   if (!userId) return null;
+
+  const clerkUser = await currentUser().catch(() => null);
+  const clerkRoles = normalizeRoles(clerkUser?.publicMetadata?.role);
+  const adminDelivery = await prisma.adminDelivery.findUnique({
+    where: { clerkUserId: userId },
+    select: { clerkUserId: true },
+  });
 
   const userRole = await prisma.userRole.findUnique({
     where: { clerkUserId: userId },
@@ -87,11 +97,16 @@ async function getCompanyContext(request: NextRequest) {
   });
 
   const dbRoles = normalizeRoles(userRole?.role);
-  const canAccess = dbRoles.includes("logistic_admin") || dbRoles.includes("seller");
+  const canAccess =
+    clerkRoles.includes(ADMIN_DELIVERY_ROLE) ||
+    dbRoles.includes(ADMIN_DELIVERY_ROLE) ||
+    dbRoles.includes("logistic_admin") ||
+    dbRoles.includes("seller") ||
+    Boolean(adminDelivery);
 
   if (!canAccess) return null;
 
-  const roles = [...new Set(dbRoles)];
+  const roles = [...new Set([...dbRoles, ...(adminDelivery ? [ADMIN_DELIVERY_ROLE] : [])])];
 
   if (!userRole) return { userId, roles, idVendedor: null };
 

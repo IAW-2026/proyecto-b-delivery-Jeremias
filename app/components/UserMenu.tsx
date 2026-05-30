@@ -4,6 +4,7 @@ import { UserButton, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 
 function resolveRoleLabel(roles: string[]) {
+  if (roles.includes("admin_delivery")) return "Admin delivery";
   if (roles.includes("logistic_admin")) return "Logistic admin";
   if (roles.includes("delivery")) return "Delivery";
   if (roles.includes("seller")) return "Seller";

@@ -25,6 +25,7 @@ export default async function DashboardPage() {
     console.error("Error fetching user role (fallback):", error);
   }
 
+  if (userRole?.role?.includes("admin_delivery")) redirect("/dashboard/admin-delivery");
   if (userRole?.role?.includes("logistic_admin")) redirect("/dashboard/logistic-admin");
   if (userRole?.role?.includes("delivery")) redirect("/dashboard/chofer");
 

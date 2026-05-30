@@ -80,6 +80,8 @@ type AdminDeliveryRecord = {
   nombre: string;
 };
 
+const ADMIN_DELIVERY_ROLE = "admin_delivery";
+
 type PedidoDbRecord = {
   idPedido: number;
   estado: string;
@@ -367,10 +369,13 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   const clerkRoles = normalizeRoles(user?.publicMetadata.role);
   const dbRoles = normalizeRoles(userRole?.role);
   const canAccess =
+    clerkRoles.includes(ADMIN_DELIVERY_ROLE) ||
+    dbRoles.includes(ADMIN_DELIVERY_ROLE) ||
     clerkRoles.includes("logistic_admin") ||
     clerkRoles.includes("seller") ||
     dbRoles.includes("logistic_admin") ||
-    dbRoles.includes("seller");
+    dbRoles.includes("seller") ||
+    Boolean(adminProfile);
   // Prefer local DB name (adminDelivery.nombre) when available; fall back to Clerk name
   const localName = adminProfile?.nombre?.trim();
   const userName = (localName && localName.length > 0
@@ -384,7 +389,10 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   let inferredVendorId: number | null = null;
   let inferredVendorName: string | null = null;
 
-  if (!userRole && userId) {
+  const isGlobalAdmin =
+    clerkRoles.includes(ADMIN_DELIVERY_ROLE) || dbRoles.includes(ADMIN_DELIVERY_ROLE) || Boolean(adminProfile);
+
+  if (!userRole && userId && !isGlobalAdmin) {
     try {
       const base = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
       const resp = await fetch(`${base}/api/vendors?userId=${userId}`, { cache: "no-store" });
@@ -400,7 +408,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     }
   }
 
-  if (inferredVendorId && userId) {
+  if (inferredVendorId && userId && !isGlobalAdmin) {
     try {
         await prisma.userRole.create({
         data: {
@@ -414,7 +422,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     }
   }
 
-  const idVendedorToQuery = userRole?.idVendedor ?? inferredVendorId;
+  const idVendedorToQuery = isGlobalAdmin ? null : userRole?.idVendedor ?? inferredVendorId;
 
   const zonasCatalogo = await safePrismaQuery<ZonaCatalogoRecord[]>(
     () =>
@@ -429,7 +437,26 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   let choferes: ChoferRecord[] = [];
   let vehiculos: VehiculoRecord[] = [];
 
-  if (idVendedorToQuery) {
+  if (isGlobalAdmin) {
+    choferes = await safePrismaQuery(
+      () =>
+        prisma.chofer.findMany({
+          include: { vehiculo: true, zona: true },
+          orderBy: { idChofer: "asc" },
+        }),
+      [],
+      "chofer.findMany(global)"
+    );
+
+    vehiculos = await safePrismaQuery(
+      () =>
+        prisma.vehiculo.findMany({
+          orderBy: { idVehiculo: "asc" },
+        }),
+      [],
+      "vehiculo.findMany(global)"
+    );
+  } else if (idVendedorToQuery) {
     // Run sequentially to avoid opening many DB connections at once
     choferes = await safePrismaQuery(
       () =>
