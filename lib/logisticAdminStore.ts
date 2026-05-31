@@ -9,7 +9,7 @@ export type PedidoEntrante = {
   motivoRevision?: string | null;
 };
 
-import { getMockPedidos } from "@/lib/mocks/pedidos";
+import { getMockPedidos } from "@/lib/mocks/ARCHIVED/pedidos";
 
 export type OrderStatus = "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
 

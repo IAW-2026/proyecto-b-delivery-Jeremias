@@ -1,4 +1,4 @@
-import { getMockPedidos } from "@/lib/mocks/pedidos";
+import { getMockPedidos } from "./pedidos";
 
 export type Pedido = {
   idPedido: number;

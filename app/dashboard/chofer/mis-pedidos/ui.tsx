@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
+import { buildQueryHref, type PedidoStatus, type SearchBy } from "./utils";
 
 type Pedido = {
   idPedido: number;
@@ -11,7 +12,7 @@ type Pedido = {
   telefono: string;
   cantBidones: number;
   zona: string;
-  estado: "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
+  estado: PedidoStatus;
   motivoRevision?: string | null;
 };
 
@@ -20,39 +21,17 @@ type Props = {
   totalFiltered: number;
   totalBidones: number;
   searchQuery: string;
-  searchBy: "cliente" | "direccion" | "zona";
+  searchBy: SearchBy;
   statusFilter: "todos" | Pedido["estado"];
   page: number;
   totalPages: number;
 };
 
-const searchOptions: Array<{ value: "cliente" | "direccion" | "zona"; label: string; placeholder: string }> = [
+const searchOptionLabels: Array<{ value: SearchBy; label: string; placeholder: string }> = [
   { value: "cliente", label: "Cliente", placeholder: "Buscar por cliente" },
   { value: "direccion", label: "Dirección", placeholder: "Buscar por dirección" },
   { value: "zona", label: "Zona", placeholder: "Buscar por zona" },
 ];
-
-function buildQueryHref(
-  nextValues: { query?: string; searchBy?: "cliente" | "direccion" | "zona"; status?: "todos" | Pedido["estado"]; page?: number },
-  currentQuery: string,
-  currentSearchBy: Props["searchBy"],
-  currentStatus: Props["statusFilter"],
-  currentPage: number
-) {
-  const params = new URLSearchParams();
-  const query = nextValues.query ?? currentQuery;
-  const searchBy = nextValues.searchBy ?? currentSearchBy;
-  const status = nextValues.status ?? currentStatus;
-  const page = nextValues.page ?? currentPage;
-
-  if (query) params.set("query", query);
-  if (searchBy !== "cliente") params.set("searchBy", searchBy);
-  if (status !== "todos") params.set("status", status);
-  if (page > 1) params.set("page", String(page));
-
-  const queryString = params.toString();
-  return queryString ? `/dashboard/chofer/mis-pedidos?${queryString}` : "/dashboard/chofer/mis-pedidos";
-}
 
 export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, searchQuery, searchBy, statusFilter, page, totalPages }: Props) {
   const router = useRouter();
@@ -176,7 +155,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
               <div className="space-y-2">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</p>
                 <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
-                  {searchOptions.map((option) => (
+                  {searchOptionLabels.map((option) => (
                     <button
                       key={option.value}
                       type="button"
@@ -199,7 +178,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                   id="mis-pedidos-search"
                   name="query"
                   defaultValue={searchQuery}
-                  placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar pedidos"}
+                  placeholder={searchOptionLabels.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar pedidos"}
                   className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 />
                 <button type="submit" className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">

@@ -3,7 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getMockVendors, type Vendor as MockVendor } from "@/lib/mocks/vendors";
+import { getMockVendors, type Vendor as MockVendor } from "@/lib/mocks/ARCHIVED/vendors";
 
 type State = "selection" | "waiting";
 

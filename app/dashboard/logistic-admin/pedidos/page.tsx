@@ -1,137 +1,33 @@
 import { redirect } from "next/navigation";
 import { getLogisticAdminData } from "../data";
 import LogisticAdminPedidosUi from "./ui";
-import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
-
-const pageSize = 8;
-
-const statusOptions: OrderStatus[] = ["ready", "en_camino", "entregado", "cancelado", "revision"];
-const searchOptions = ["cliente", "calle", "chofer", "zona"] as const;
-
-type SearchBy = (typeof searchOptions)[number];
-
-function isOrderStatus(value: string | undefined): value is OrderStatus {
-  return typeof value === "string" && statusOptions.includes(value as OrderStatus);
-}
-
-function isSearchBy(value: string | undefined): value is SearchBy {
-  return typeof value === "string" && searchOptions.includes(value as SearchBy);
-}
-
-function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function parsePage(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(rawValue ?? "1", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
-
-function filterOrders(
-  orders: LogisticOrder[],
-  searchQuery: string,
-  searchBy: SearchBy,
-  statusFilter: "todos" | OrderStatus,
-  assignmentFilter: "todos" | "sin_asignar"
-) {
-  const normalizedQuery = normalizeSearchValue(searchQuery.trim());
-
-  return orders.filter((order) => {
-    if (statusFilter !== "todos" && order.status !== statusFilter) {
-      return false;
-    }
-
-    if (assignmentFilter === "sin_asignar" && order.assignedToChoferId !== null) {
-      return false;
-    }
-
-    if (normalizedQuery) {
-      const haystackByField = {
-        cliente: order.cliente,
-        calle: order.direccion,
-        chofer: order.assignedToChoferName ?? "",
-        zona: order.zona,
-      } as const;
-
-      const haystack = normalizeSearchValue(haystackByField[searchBy]);
-      if (!haystack.includes(normalizedQuery)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}
+import { parsePedidosFilters, filterOrders, pageSize, type SearchParamsInput } from "./utils";
 
 export default async function LogisticAdminPedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ query?: string | string[]; searchBy?: string | string[]; quickFilter?: string | string[]; chofer?: string | string[]; assign?: string | string[]; status?: string | string[]; page?: string | string[] }>;
+  searchParams: Promise<SearchParamsInput>;
 }) {
   const data = await getLogisticAdminData();
   const query = await searchParams;
   const ordersKey = data.orders.map((order) => `${order.idPedido}:${order.status}:${order.assignedToChoferId ?? "none"}`).join("|");
-  const searchValueFromQuery = Array.isArray(query.query) ? query.query[0] : query.query ?? "";
-  const legacyChoferValue = Array.isArray(query.chofer) ? query.chofer[0] : query.chofer ?? "";
-  const searchByValue = Array.isArray(query.searchBy) ? query.searchBy[0] : query.searchBy;
-  const quickFilterValue = Array.isArray(query.quickFilter) ? query.quickFilter[0] : query.quickFilter;
-  const assignValue = Array.isArray(query.assign) ? query.assign[0] : query.assign;
-  const statusValue = Array.isArray(query.status) ? query.status[0] : query.status;
-  const searchBy: SearchBy = isSearchBy(searchByValue)
-    ? searchByValue
-    : legacyChoferValue
-      ? "chofer"
-      : "cliente";
-  const searchValue = searchValueFromQuery || (legacyChoferValue && searchBy === "chofer" ? legacyChoferValue : "");
-  const statusFilter: "todos" | OrderStatus =
-    quickFilterValue === "sin_asignar"
-      ? "todos"
-      : quickFilterValue !== undefined && isOrderStatus(quickFilterValue)
-        ? quickFilterValue
-        : statusValue === undefined || statusValue === "todos"
-          ? "todos"
-          : isOrderStatus(statusValue)
-            ? statusValue
-            : "todos";
-  const assignmentFilter: "todos" | "sin_asignar" =
-    quickFilterValue === "sin_asignar" || assignValue === "sin_asignar" ? "sin_asignar" : "todos";
-  const requestedPage = parsePage(query.page);
+  const { searchQuery, searchBy, statusFilter, assignmentFilter, requestedPage } = parsePedidosFilters(query);
 
-  const filteredOrders = filterOrders(data.orders, searchValue, searchBy, statusFilter, assignmentFilter);
+  const filteredOrders = filterOrders(data.orders, searchQuery, searchBy, statusFilter, assignmentFilter);
   const totalFilteredOrders = filteredOrders.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredOrders / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
   const paginatedOrders = filteredOrders.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   if (requestedPage !== safePage) {
-    const params = new URLSearchParams();
+    const nextQuery = new URLSearchParams();
+    if (searchQuery.trim()) nextQuery.set("query", searchQuery.trim());
+    if (searchBy !== "cliente") nextQuery.set("searchBy", searchBy);
+    if (assignmentFilter !== "todos") nextQuery.set("assign", assignmentFilter);
+    if (statusFilter !== "todos") nextQuery.set("status", statusFilter);
+    if (safePage > 1) nextQuery.set("page", String(safePage));
 
-    if (searchValue.trim()) {
-      params.set("query", searchValue.trim());
-    }
-
-    if (searchBy !== "cliente") {
-      params.set("searchBy", searchBy);
-    }
-
-    if (assignmentFilter !== "todos") {
-      params.set("assign", assignmentFilter);
-    }
-
-    if (statusFilter !== "todos") {
-      params.set("status", statusFilter);
-    }
-
-    if (safePage > 1) {
-      params.set("page", String(safePage));
-    }
-
-    const nextUrl = params.toString() ? `/dashboard/logistic-admin/pedidos?${params.toString()}` : "/dashboard/logistic-admin/pedidos";
-    redirect(nextUrl);
+    redirect(nextQuery.toString() ? `/dashboard/logistic-admin/pedidos?${nextQuery.toString()}` : "/dashboard/logistic-admin/pedidos");
   }
 
   return (
@@ -150,7 +46,7 @@ export default async function LogisticAdminPedidosPage({
         key={ordersKey}
         orders={paginatedOrders}
         choferes={data.choferes}
-        searchQuery={searchValue}
+        searchQuery={searchQuery}
         searchBy={searchBy}
         assignmentFilter={assignmentFilter}
         statusFilter={statusFilter}

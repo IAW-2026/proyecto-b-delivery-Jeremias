@@ -1,4 +1,4 @@
-import { getMockVendors, Vendor as MockVendor } from "@/lib/mocks/vendors";
+import { getMockVendors, Vendor as MockVendor } from "@/lib/mocks/ARCHIVED/vendors";
 
 export type Vendor = MockVendor & { id_usuario?: number; id_vendedor?: number };
 
