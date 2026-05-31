@@ -1,113 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-
-const CLERK_API_BASE = "https://api.clerk.com";
-const DEFAULT_ROLE = "delivery";
-const ADMIN_DELIVERY_ROLE = "admin_delivery";
-const MANAGED_ROLES = ["delivery", "logistic_admin", ADMIN_DELIVERY_ROLE] as const;
-const SELLER_ROLE = "seller";
-const LOGISTIC_ADMIN_ROLE = "logistic_admin";
-
-function normalizeRoles(rawRole: unknown): string[] {
-  if (Array.isArray(rawRole)) {
-    return [...new Set(rawRole.filter((value): value is string => typeof value === "string"))];
-  }
-
-  if (typeof rawRole === "string") {
-    return [rawRole];
-  }
-
-  return [];
-}
-
-function getEffectiveRoles(rawRoles: string[]): string[] {
-  const roles = [...new Set(rawRoles)];
-  const hasSeller = roles.includes(SELLER_ROLE);
-  const hasManagedRole = MANAGED_ROLES.some((managedRole) => roles.includes(managedRole));
-
-  if (roles.includes(ADMIN_DELIVERY_ROLE)) {
-    return roles;
-  }
-
-  if (hasSeller) {
-    return [...new Set([...roles.filter((role) => role !== DEFAULT_ROLE), LOGISTIC_ADMIN_ROLE])];
-  }
-
-  if (!hasManagedRole) {
-    return [...roles, DEFAULT_ROLE];
-  }
-
-  return roles;
-}
+import {
+  ADMIN_DELIVERY_ROLE,
+  LOGISTIC_ADMIN_ROLE,
+  resolveRolesFromClaims,
+  syncClerkRoleMetadata,
+  revokeAllClerkSessions,
+} from "@/lib/roles";
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    const { userId, sessionClaims } = getAuth(request);
     if (!userId) {
       return NextResponse.json({ role: [] }, { status: 401 });
     }
 
-    // Obtener usuario de Clerk como fuente de verdad para el rol.
-    const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
-    if (!secretKey) {
-      return NextResponse.json({ role: [] }, { status: 200 });
-    }
-
-    const res = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        Accept: "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      await res.text();
-      return NextResponse.json({ role: [] }, { status: 200 });
-    }
-
-    const user = await res.json();
-    const metadata = user.public_metadata ?? user.publicMetadata ?? {};
-    const role = normalizeRoles(metadata.role);
-    const updatedRole = getEffectiveRoles(role);
-    const adminDelivery = await prisma.adminDelivery.findUnique({
-      where: { clerkUserId: userId },
-      select: { clerkUserId: true },
-    });
-    const displayedRole = adminDelivery ? [ADMIN_DELIVERY_ROLE, ...updatedRole] : updatedRole;
-
-    try {
-      const roleRow = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
-      if (roleRow && roleRow.role !== updatedRole[0]) {
-        await prisma.userRole.update({
-          where: { clerkUserId: userId },
-          data: { role: updatedRole[0] },
-        });
-      }
-    } catch (err) {
-      console.debug("user-role DB sync failed:", err);
-    }
-
-    if (updatedRole.length !== role.length || updatedRole.some((value, index) => value !== role[index])) {
-      const patchRes = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          public_metadata: {
-            ...metadata,
-            role: updatedRole,
-          },
-        }),
-      });
-
-      if (!patchRes.ok) {
-        const text = await patchRes.text();
-        console.error("Error normalizing user role:", patchRes.status, text);
-      }
-    }
+    const displayedRole = resolveRolesFromClaims(sessionClaims);
 
     return NextResponse.json({ role: displayedRole }, { status: 200 });
   } catch (error) {
@@ -130,6 +39,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!idVendedor) return NextResponse.json({ error: "Missing idVendedor" }, { status: 400 });
+
+    const synced = await syncClerkRoleMetadata(userId, role);
+    console.debug("syncClerkRoleMetadata result", userId, role, synced);
+    const revoked = await revokeAllClerkSessions(userId).catch(() => false);
+    console.debug("revokeAllClerkSessions result", userId, revoked);
 
     await prisma.userRole.upsert({
       where: { clerkUserId: userId },

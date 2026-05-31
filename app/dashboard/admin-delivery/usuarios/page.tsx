@@ -12,7 +12,9 @@ export default async function AdminDeliveryUsersPage() {
     redirect("/signin");
   }
 
-  const data = await getAdminDeliveryUsersData();
+  const data = await getAdminDeliveryUsersData({ excludeClerkUserId: userId });  
+  const blockedUsers = data.users.filter((user) => user.isBlocked).length;
+  const editableUsers = data.users.filter((user) => !user.isBlocked).length;
 
   return (
     <div className="space-y-6">
@@ -22,8 +24,8 @@ export default async function AdminDeliveryUsersPage() {
           <div className="max-w-3xl">
             <h1 className="text-3xl font-semibold sm:text-4xl">Usuarios globales</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
-              Este tablero lee usuarios desde Clerk y administra solo el overlay local de <span className="font-medium text-white">admin_delivery</span>.
-              No escribe roles en Clerk; la base de usuarios queda centralizada en la tabla local.
+              Este tablero lee usuarios desde Clerk y administra el overlay local de <span className="font-medium text-white">admin_delivery</span>,
+              el bloqueo global y el rol local. No escribe roles en Clerk; la base de permisos queda centralizada en la tabla local.
             </p>
           </div>
 
@@ -31,6 +33,7 @@ export default async function AdminDeliveryUsersPage() {
             <p className="font-medium text-white">Estado</p>
             <p>{data.globalAdminCount} con acceso global</p>
             <p className="mt-1 text-xs uppercase tracking-[0.22em] text-sky-200">{data.totalUsers} usuarios cargados</p>
+            <p className="mt-1 text-xs text-slate-300">{blockedUsers} bloqueados · {editableUsers} editables</p>
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { getLogisticAdminData } from "../logistic-admin/data";
 import { adminButtonClass, adminCardClass, adminPageShell, adminStatCardClass } from "../logistic-admin/styles";
-import Link from "next/link";
+import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
 
 function formatOrderStatus(status: string) {
   if (status === "ready") return "Listo";
@@ -12,7 +13,7 @@ function formatOrderStatus(status: string) {
 }
 
 export default async function AdminDeliveryPage() {
-  const data = await getLogisticAdminData();
+  const [data, globalUsersData] = await Promise.all([getLogisticAdminData(), getAdminDeliveryUsersData()]);
   const activeDrivers = data.choferes.filter((driver) => driver.estado === "activo");
   const workingVehicles = data.vehiculos.filter((vehicle) => vehicle.estado !== "pausado");
   const readyOrders = data.orders.filter((order) => order.status === "ready" && order.assignedToChoferId === null);
@@ -47,6 +48,7 @@ export default async function AdminDeliveryPage() {
               <p className="font-medium text-white">Usuario</p>
               <p>{data.userName}</p>
               <p className="mt-2 text-xs uppercase tracking-[0.25em] text-sky-200">Acceso global activo</p>
+              <p className="mt-1 text-xs text-slate-300">{globalUsersData.globalAdminCount} usuarios con acceso global</p>
             </div>
           </div>
         </div>
@@ -61,7 +63,7 @@ export default async function AdminDeliveryPage() {
         </div>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-600">Pedidos listos sin asignar</p>
           <p className="mt-2 text-3xl font-semibold text-sky-600">{readyOrders.length}</p>
@@ -78,10 +80,41 @@ export default async function AdminDeliveryPage() {
           <p className="text-sm text-slate-600">Zonas con catálogo</p>
           <p className="mt-2 text-3xl font-semibold text-purple-600">{data.zonas.length}</p>
         </div>
+        <div className={adminStatCardClass}>
+          <p className="text-sm text-slate-600">Usuarios con acceso global</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900">{globalUsersData.globalAdminCount}</p>
+        </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
+          <section className={`${adminCardClass} p-6`}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">Alcance total</h2>
+                <p className="text-sm text-slate-500">
+                  Este panel gobierna toda la operación: lectura operativa completa y control de accesos globales.
+                </p>
+              </div>
+              <div className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
+                Modo superusuario
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Cobertura operativa</p>
+                <p className="mt-1 text-base font-semibold text-slate-900">Pedidos, choferes, vehículos y zonas</p>
+                <p className="mt-2 text-sm text-slate-600">Todo lo que ve `logistic_admin`, más la capa global de usuarios y permisos.</p>
+              </article>
+              <article className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                <p className="text-sm uppercase tracking-[0.18em] text-sky-500">Control global</p>
+                <p className="mt-1 text-base font-semibold text-slate-900">{globalUsersData.users.length} usuarios operativos visibles</p>
+                <p className="mt-2 text-sm text-slate-600">La tabla global excluye tu propio usuario para evitar auto-revocación.</p>
+              </article>
+            </div>
+          </section>
+
           <section className={`${adminCardClass} p-6`}>
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -138,7 +171,7 @@ export default async function AdminDeliveryPage() {
                 <h2 className="text-xl font-semibold text-slate-900">Actividad reciente global</h2>
                 <p className="text-sm text-slate-500">Lectura compacta de los últimos movimientos de toda la operación.</p>
               </div>
-              <Link href="/dashboard/logistic-admin/pedidos" className="text-sm font-medium text-sky-600 hover:text-sky-700">
+              <Link href="/dashboard/admin-delivery/pedidos" className="text-sm font-medium text-sky-600 hover:text-sky-700">
                 Abrir pedidos
               </Link>
             </div>
@@ -184,17 +217,20 @@ export default async function AdminDeliveryPage() {
               <Link href="/dashboard/admin-delivery/usuarios" className={adminButtonClass("save")}>
                 Usuarios globales
               </Link>
-              <Link href="/dashboard/logistic-admin/pedidos" className={adminButtonClass("save")}>
+              <Link href="/dashboard/admin-delivery/pedidos" className={adminButtonClass("save")}>
                 Pedidos globales
               </Link>
-              <Link href="/dashboard/logistic-admin/choferes" className={adminButtonClass("edit")}>
+              <Link href="/dashboard/admin-delivery/choferes" className={adminButtonClass("edit")}>
                 Choferes
               </Link>
-              <Link href="/dashboard/logistic-admin/vehiculos" className={adminButtonClass("warning")}>
+              <Link href="/dashboard/admin-delivery/vehiculos" className={adminButtonClass("warning")}>
                 Vehículos
               </Link>
-              <Link href="/dashboard/logistic-admin/zonas" className={adminButtonClass("success")}>
+              <Link href="/dashboard/admin-delivery/zonas" className={adminButtonClass("success")}>
                 Zonas
+              </Link>
+              <Link href="/dashboard/admin-delivery/perfil" className={adminButtonClass("save")}>
+                Perfil global
               </Link>
             </div>
           </section>
@@ -232,6 +268,7 @@ export default async function AdminDeliveryPage() {
               <li className="rounded-2xl bg-slate-50 p-3">Clerk solo se usa para lectura de usuario y rol.</li>
               <li className="rounded-2xl bg-slate-50 p-3">La normalización de delivery y logistic_admin sigue habilitada.</li>
               <li className="rounded-2xl bg-slate-50 p-3">admin_delivery domina sobre cualquier otro rol.</li>
+              <li className="rounded-2xl bg-slate-50 p-3">No se permite revocar tu propio acceso global desde esta pantalla.</li>
             </ul>
           </section>
         </aside>

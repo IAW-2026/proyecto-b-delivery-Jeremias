@@ -27,6 +27,7 @@ type Props = {
   totalVehiculos: number;
   activosCount: number;
   pausadosCount: number;
+  basePath?: string;
 };
 
 type FormState = {
@@ -56,6 +57,7 @@ const emptyForm: FormState = {
 };
 
 function buildQueryHref(
+  basePath: string,
   nextValues: { query?: string; searchBy?: "patente" | "tipo"; status?: VehiculoStatus; page?: number },
   searchQuery: string,
   searchBy: "patente" | "tipo",
@@ -85,7 +87,7 @@ function buildQueryHref(
   }
 
   const queryString = params.toString();
-  return queryString ? `/dashboard/logistic-admin/vehiculos?${queryString}` : "/dashboard/logistic-admin/vehiculos";
+  return queryString ? `${basePath}/vehiculos?${queryString}` : `${basePath}/vehiculos`;
 }
 
 export default function VehiculosManager({
@@ -99,6 +101,7 @@ export default function VehiculosManager({
   totalVehiculos,
   activosCount,
   pausadosCount,
+  basePath = "/dashboard/logistic-admin",
 }: Props) {
   const router = useRouter();
   const [addForm, setAddForm] = useState<FormState>(emptyForm);
@@ -336,13 +339,13 @@ export default function VehiculosManager({
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.8fr)]">
           <form
-            action="/dashboard/logistic-admin/vehiculos"
+            action={`${basePath}/vehiculos`}
             method="get"
             onSubmit={(event) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
               const queryValue = String(formData.get("query") ?? "");
-              router.push(buildQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+              router.push(buildQueryHref(basePath, { query: queryValue, searchBy: selectedSearchBy, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
             }}
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
@@ -388,7 +391,7 @@ export default function VehiculosManager({
 
               {searchQuery ? (
                 <Link
-                  href={buildQueryHref({ query: "", page: 1 }, searchQuery, selectedSearchBy, statusFilter, page)}
+                  href={buildQueryHref(basePath, { query: "", page: 1 }, searchQuery, selectedSearchBy, statusFilter, page)}
                   className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                 >
                   Limpiar búsqueda
@@ -398,7 +401,7 @@ export default function VehiculosManager({
           </form>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <form action="/dashboard/logistic-admin/vehiculos" method="get" className="space-y-3">
+            <form action={`${basePath}/vehiculos`} method="get" className="space-y-3">
               <input type="hidden" name="query" value={searchQuery} />
               <input type="hidden" name="searchBy" value={selectedSearchBy} />
               <input type="hidden" name="page" value="1" />
@@ -408,7 +411,7 @@ export default function VehiculosManager({
                   name="status"
                   value={statusFilter}
                   onChange={(event) => {
-                    router.push(buildQueryHref({ status: event.currentTarget.value as VehiculoStatus, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+                    router.push(buildQueryHref(basePath, { status: event.currentTarget.value as VehiculoStatus, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
                   }}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 >
@@ -682,14 +685,14 @@ export default function VehiculosManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredVehiculos}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
+                href={buildQueryHref(basePath, { page: Math.max(1, page - 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
+                href={buildQueryHref(basePath, { page: Math.min(totalPages, page + 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >

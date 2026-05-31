@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getOrders, type LogisticOrder } from "@/lib/logisticAdminStore";
+import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims, syncClerkRoleMetadata, revokeAllClerkSessions } from "@/lib/roles";
 
 type VendorHint = {
   id: number;
@@ -80,8 +81,6 @@ type AdminDeliveryRecord = {
   nombre: string;
 };
 
-const ADMIN_DELIVERY_ROLE = "admin_delivery";
-
 type PedidoDbRecord = {
   idPedido: number;
   estado: string;
@@ -136,18 +135,6 @@ function isPrismaTimeoutError(error: unknown) {
     normalizedName.includes("timeout") ||
     connectionFailureHints.some((hint) => normalizedMessage.includes(hint))
   );
-}
-
-function normalizeRoles(rawRole: unknown): string[] {
-  if (Array.isArray(rawRole)) {
-    return [...new Set(rawRole.filter((value): value is string => typeof value === "string"))];
-  }
-
-  if (typeof rawRole === "string") {
-    return [rawRole];
-  }
-
-  return [];
 }
 
 function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
@@ -366,16 +353,9 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     null,
     "adminDelivery.findUnique"
   );
-  const clerkRoles = normalizeRoles(user?.publicMetadata.role);
-  const dbRoles = normalizeRoles(userRole?.role);
-  const canAccess =
-    clerkRoles.includes(ADMIN_DELIVERY_ROLE) ||
-    dbRoles.includes(ADMIN_DELIVERY_ROLE) ||
-    clerkRoles.includes("logistic_admin") ||
-    clerkRoles.includes("seller") ||
-    dbRoles.includes("logistic_admin") ||
-    dbRoles.includes("seller") ||
-    Boolean(adminProfile);
+  const { sessionClaims } = await auth();
+  const roles = resolveRolesFromClaims(sessionClaims);
+  const canAccess = roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin") || roles.includes("seller");
   // Prefer local DB name (adminDelivery.nombre) when available; fall back to Clerk name
   const localName = adminProfile?.nombre?.trim();
   const userName = (localName && localName.length > 0
@@ -389,8 +369,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   let inferredVendorId: number | null = null;
   let inferredVendorName: string | null = null;
 
-  const isGlobalAdmin =
-    clerkRoles.includes(ADMIN_DELIVERY_ROLE) || dbRoles.includes(ADMIN_DELIVERY_ROLE) || Boolean(adminProfile);
+  const isGlobalAdmin = roles.includes(ADMIN_DELIVERY_ROLE);
 
   if (!userRole && userId && !isGlobalAdmin) {
     try {
@@ -410,7 +389,12 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
 
   if (inferredVendorId && userId && !isGlobalAdmin) {
     try {
-        await prisma.userRole.create({
+      const synced = await syncClerkRoleMetadata(userId, "logistic_admin");
+      console.debug("syncClerkRoleMetadata inferred result", userId, synced);
+      const revoked = await revokeAllClerkSessions(userId).catch(() => false);
+      console.debug("revokeAllClerkSessions inferred result", userId, revoked);
+
+      await prisma.userRole.create({
         data: {
           clerkUserId: userId,
           role: "logistic_admin",

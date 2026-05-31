@@ -24,6 +24,7 @@ type Props = {
   page: number;
   totalPages: number;
   totalFilteredOrders: number;
+  basePath?: string;
 };
 
 const searchOptions: Array<{ value: "cliente" | "calle" | "chofer" | "zona"; label: string; placeholder: string }> = [
@@ -81,6 +82,7 @@ export default function LogisticAdminPedidosUi({
   page,
   totalPages,
   totalFilteredOrders,
+  basePath = "/dashboard/logistic-admin",
 }: Props) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -145,7 +147,10 @@ export default function LogisticAdminPedidosUi({
         : null
     : null;
 
-  function buildQueryHref(nextValues: { query?: string; searchBy?: "cliente" | "calle" | "chofer" | "zona"; assign?: "todos" | "sin_asignar"; status?: "todos" | OrderStatus; page?: number }) {
+  function buildQueryHref(
+    basePath: string,
+    nextValues: { query?: string; searchBy?: "cliente" | "calle" | "chofer" | "zona"; assign?: "todos" | "sin_asignar"; status?: "todos" | OrderStatus; page?: number }
+  ) {
     const params = new URLSearchParams();
     const nextQuery = nextValues.query ?? searchQuery;
     const nextSearchBy = nextValues.searchBy ?? searchBy;
@@ -174,7 +179,7 @@ export default function LogisticAdminPedidosUi({
     }
 
     const queryString = params.toString();
-    return queryString ? `/dashboard/logistic-admin/pedidos?${queryString}` : "/dashboard/logistic-admin/pedidos";
+    return queryString ? `${basePath}/pedidos?${queryString}` : `${basePath}/pedidos`;
   }
 
   async function runAction(payload: Record<string, unknown>) {
@@ -312,13 +317,13 @@ export default function LogisticAdminPedidosUi({
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.85fr)]">
           <form
-            action="/dashboard/logistic-admin/pedidos"
+            action={`${basePath}/pedidos`}
             method="get"
             onSubmit={(event) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
               const queryValue = String(formData.get("query") ?? "");
-              router.push(buildQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }));
+              router.push(buildQueryHref(basePath, { query: queryValue, searchBy: selectedSearchBy, page: 1 }));
             }}
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
@@ -366,7 +371,7 @@ export default function LogisticAdminPedidosUi({
           </form>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <form action="/dashboard/logistic-admin/pedidos" method="get" className="space-y-3">
+            <form action={`${basePath}/pedidos`} method="get" className="space-y-3">
               <input type="hidden" name="query" value={searchQuery} />
               <input type="hidden" name="searchBy" value={selectedSearchBy} />
               <input type="hidden" name="page" value="1" />
@@ -378,11 +383,11 @@ export default function LogisticAdminPedidosUi({
                   onChange={(event) => {
                     const nextValue = event.currentTarget.value as "todos" | OrderStatus | "sin_asignar";
                     if (nextValue === "sin_asignar") {
-                      router.push(buildQueryHref({ assign: "sin_asignar", status: "todos", page: 1 }));
+                      router.push(buildQueryHref(basePath, { assign: "sin_asignar", status: "todos", page: 1 }));
                       return;
                     }
 
-                    router.push(buildQueryHref({ assign: "todos", status: nextValue as "todos" | OrderStatus, page: 1 }));
+                    router.push(buildQueryHref(basePath, { assign: "todos", status: nextValue as "todos" | OrderStatus, page: 1 }));
                   }}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 >
@@ -403,7 +408,7 @@ export default function LogisticAdminPedidosUi({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {searchQuery ? (
             <Link
-              href={buildQueryHref({ query: "", page: 1 })}
+              href={buildQueryHref(basePath, { query: "", page: 1 })}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               Limpiar búsqueda
@@ -582,14 +587,14 @@ export default function LogisticAdminPedidosUi({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredOrders}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildQueryHref({ page: Math.max(1, page - 1) })}
+                href={buildQueryHref(basePath, { page: Math.max(1, page - 1) })}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildQueryHref({ page: Math.min(totalPages, page + 1) })}
+                href={buildQueryHref(basePath, { page: Math.min(totalPages, page + 1) })}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >

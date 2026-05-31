@@ -1,33 +1,20 @@
-import { currentUser, getAuth } from "@clerk/nextjs/server";
+import { getAuth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
+import {
+  ADMIN_DELIVERY_ROLE,
+  ALLOWED_LOCAL_ROLES,
+  resolveRolesFromClaims,
+  syncClerkRoleMetadata,
+  revokeAllClerkSessions,
+} from "@/lib/roles";
 
-const ADMIN_DELIVERY_ROLE = "admin_delivery";
+async function hasAdminDeliveryAccess(request: NextRequest) {
+  const { sessionClaims } = getAuth(request);
+  const roles = resolveRolesFromClaims(sessionClaims);
 
-function normalizeRoles(rawRole: unknown): string[] {
-  if (Array.isArray(rawRole)) {
-    return [...new Set(rawRole.filter((value): value is string => typeof value === "string"))];
-  }
-
-  if (typeof rawRole === "string") {
-    return [rawRole];
-  }
-
-  return [];
-}
-
-async function hasAdminDeliveryAccess(userId: string) {
-  const [clerkUser, userRole, adminDelivery] = await Promise.all([
-    currentUser().catch(() => null),
-    prisma.userRole.findUnique({ where: { clerkUserId: userId }, select: { role: true } }),
-    prisma.adminDelivery.findUnique({ where: { clerkUserId: userId }, select: { clerkUserId: true } }),
-  ]);
-
-  const clerkRoles = normalizeRoles(clerkUser?.publicMetadata?.role);
-  const dbRoles = normalizeRoles(userRole?.role);
-
-  return clerkRoles.includes(ADMIN_DELIVERY_ROLE) || dbRoles.includes(ADMIN_DELIVERY_ROLE) || Boolean(adminDelivery);
+  return roles.includes(ADMIN_DELIVERY_ROLE);
 }
 
 export async function GET(request: NextRequest) {
@@ -38,11 +25,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!(await hasAdminDeliveryAccess(userId))) {
+    if (!(await hasAdminDeliveryAccess(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const data = await getAdminDeliveryUsersData();
+    const data = await getAdminDeliveryUsersData({ excludeClerkUserId: userId });
     return NextResponse.json({ ok: true, ...data }, { status: 200 });
   } catch (error) {
     console.error("admin-delivery users GET error:", error);
@@ -58,7 +45,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!(await hasAdminDeliveryAccess(userId))) {
+    if (!(await hasAdminDeliveryAccess(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -68,6 +55,9 @@ export async function PATCH(request: NextRequest) {
           action?: unknown;
           nombre?: unknown;
           telefono?: unknown;
+          role?: unknown;
+          idVendedor?: unknown;
+          blockedReason?: unknown;
         }
       | null;
 
@@ -103,8 +93,77 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "revoke_admin_delivery") {
+      if (targetUserId === userId) {
+        return NextResponse.json({ error: "Cannot revoke your own global access" }, { status: 400 });
+      }
+
       await prisma.adminDelivery.deleteMany({ where: { clerkUserId: targetUserId } });
       return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    if (action === "set_local_role") {
+      const role = typeof body.role === "string" ? body.role.trim() : "";
+      const existingRole = await prisma.userRole.findUnique({
+        where: { clerkUserId: targetUserId },
+        select: { idVendedor: true },
+      });
+      const idVendedorFromBody = Number(body.idVendedor ?? 0);
+      const idVendedor = existingRole?.idVendedor ?? (Number.isFinite(idVendedorFromBody) ? idVendedorFromBody : 0);
+
+      if (!ALLOWED_LOCAL_ROLES.includes(role as (typeof ALLOWED_LOCAL_ROLES)[number])) {
+        return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+      }
+
+      if (!idVendedor) {
+        return NextResponse.json({ error: "Missing idVendedor for new role assignment" }, { status: 400 });
+      }
+
+      const synced = await syncClerkRoleMetadata(targetUserId, role);
+      console.debug("syncClerkRoleMetadata result", targetUserId, role, synced);
+      const revoked = await revokeAllClerkSessions(targetUserId).catch(() => false);
+      console.debug("revokeAllClerkSessions result", targetUserId, revoked);
+
+      const userRole = await prisma.userRole.upsert({
+        where: { clerkUserId: targetUserId },
+        create: {
+          clerkUserId: targetUserId,
+          role,
+          idVendedor,
+        },
+        update: {
+          role,
+        },
+      });
+
+      return NextResponse.json({ ok: true, userRole }, { status: 200 });
+    }
+
+    if (action === "block_user" || action === "unblock_user") {
+      if (action === "block_user" && targetUserId === userId) {
+        return NextResponse.json({ error: "Cannot block your own account" }, { status: 400 });
+      }
+
+      const blockedReason = typeof body.blockedReason === "string" ? body.blockedReason.trim() : "";
+      const isBlocked = action === "block_user";
+
+      const accessControl = await prisma.userAccessControl.upsert({
+        where: { clerkUserId: targetUserId },
+        create: {
+          clerkUserId: targetUserId,
+          isBlocked,
+          blockedReason: isBlocked ? blockedReason || null : null,
+          blockedByClerkUserId: isBlocked ? userId : null,
+          blockedAt: isBlocked ? new Date() : null,
+        },
+        update: {
+          isBlocked,
+          blockedReason: isBlocked ? blockedReason || null : null,
+          blockedByClerkUserId: isBlocked ? userId : null,
+          blockedAt: isBlocked ? new Date() : null,
+        },
+      });
+
+      return NextResponse.json({ ok: true, accessControl }, { status: 200 });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

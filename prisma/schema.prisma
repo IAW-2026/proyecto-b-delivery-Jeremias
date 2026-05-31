@@ -77,6 +77,18 @@ model AdminDelivery {
   @@map("admin_delivery")
 }
 
+model UserAccessControl {
+  id                   Int       @id @default(autoincrement())
+  clerkUserId          String    @unique @map("clerk_user_id")
+  isBlocked            Boolean   @default(false) @map("is_blocked")
+  blockedReason        String?   @map("blocked_reason")
+  blockedByClerkUserId String?   @map("blocked_by_clerk_user_id")
+  blockedAt            DateTime? @map("blocked_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("user_access_control")
+}
+
 model Pedido {
   idPedido    Int           @id @default(autoincrement())
   estado      String        @default("ready")

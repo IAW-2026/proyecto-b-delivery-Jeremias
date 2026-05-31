@@ -39,6 +39,7 @@ type Props = {
   zonasSinPedidos: number;
   totalPedidos: number;
   totalRutas: number;
+  basePath?: string;
 };
 
 type FormState = {
@@ -62,7 +63,7 @@ function statCardClass(kind: "blue" | "emerald" | "amber" | "slate") {
   }
 }
 
-function buildQueryHref(nextValues: { query?: string; page?: number }, searchQuery: string, page: number) {
+function buildQueryHref(basePath: string, nextValues: { query?: string; page?: number }, searchQuery: string, page: number) {
   const params = new URLSearchParams();
   const nextQuery = nextValues.query ?? searchQuery;
   const nextPage = nextValues.page ?? page;
@@ -76,7 +77,7 @@ function buildQueryHref(nextValues: { query?: string; page?: number }, searchQue
   }
 
   const queryString = params.toString();
-  return queryString ? `/dashboard/logistic-admin/zonas?${queryString}` : "/dashboard/logistic-admin/zonas";
+  return queryString ? `${basePath}/zonas?${queryString}` : `${basePath}/zonas`;
 }
 
 export default function ZonasManager({
@@ -87,7 +88,8 @@ export default function ZonasManager({
   totalPages,
   totalFilteredZonas,
   totalZonas,
-  zonasConPedidos
+  zonasConPedidos,
+  basePath = "/dashboard/logistic-admin",
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -246,13 +248,13 @@ export default function ZonasManager({
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <form
-            action="/dashboard/logistic-admin/zonas"
+            action={`${basePath}/zonas`}
             method="get"
             onSubmit={(event) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
               const queryValue = String(formData.get("query") ?? "");
-              router.push(buildQueryHref({ query: queryValue, page: 1 }, searchQuery, page));
+              router.push(buildQueryHref(basePath, { query: queryValue, page: 1 }, searchQuery, page));
             }}
             className="space-y-3"
           >
@@ -273,7 +275,7 @@ export default function ZonasManager({
 
             {searchQuery ? (
               <Link
-                href={buildQueryHref({ query: "", page: 1 }, searchQuery, page)}
+                href={buildQueryHref(basePath, { query: "", page: 1 }, searchQuery, page)}
                 className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Limpiar búsqueda
@@ -385,14 +387,14 @@ export default function ZonasManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredZonas}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, page)}
+                href={buildQueryHref(basePath, { page: Math.max(1, page - 1) }, searchQuery, page)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, page)}
+                href={buildQueryHref(basePath, { page: Math.min(totalPages, page + 1) }, searchQuery, page)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >

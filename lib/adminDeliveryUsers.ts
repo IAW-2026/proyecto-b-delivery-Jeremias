@@ -1,5 +1,6 @@
-import { clerkClient ,User} from "@clerk/nextjs/server";
+import { clerkClient, User } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveRoles, normalizeRoles } from "@/lib/roles";
 
 export type AdminDeliveryUserRow = {
   clerkUserId: string;
@@ -7,13 +8,48 @@ export type AdminDeliveryUserRow = {
   email: string;
   effectiveRole: string;
   isGlobalAdmin: boolean;
+  isBlocked: boolean;
+  blockedReason: string | null;
+  blockedAt: string | null;
   localRole: string;
+  idVendedor: number | null;
+  nombreEmpresa: string | null;
   adminPhone: string | null;
 };
 
 const ADMIN_DELIVERY_ROLE = "admin_delivery";
 
-export async function getAdminDeliveryUsersData() {
+type GetAdminDeliveryUsersDataOptions = {
+  excludeClerkUserId?: string | null;
+};
+
+function buildDisplayName(params: {
+  clerkUser: User;
+  choferName?: string | null;
+  adminDeliveryName?: string | null;
+}) {
+  const { clerkUser, choferName, adminDeliveryName } = params;
+
+  const localName = choferName?.trim() || adminDeliveryName?.trim();
+  if (localName) {
+    return localName;
+  }
+
+  const nameFromClerk = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
+  if (nameFromClerk) {
+    return nameFromClerk;
+  }
+
+  const username = clerkUser.username?.trim();
+  if (username) {
+    return username;
+  }
+
+  return "Usuario";
+}
+
+export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDataOptions = {}) {
+  const { excludeClerkUserId = null } = options;
   let clerkUsers: User[] = [];
   let clerkUnavailable = false;
 
@@ -27,57 +63,72 @@ export async function getAdminDeliveryUsersData() {
     clerkUnavailable = true;
   }
 
-  // 2. Traemos la data local de Prisma (Añadimos Choferes para rescatar nombres)
+  // 2. Traemos la data local de Prisma
   const dbUserRoles = await prisma.userRole.findMany();
   const dbAdminDeliveries = await prisma.adminDelivery.findMany();
+  const dbAccessControls = await prisma.userAccessControl.findMany().catch(() => []);
   const dbChoferes = await prisma.chofer.findMany({
-    select: { clerkUserId: true, nombre: true } // Solo traemos lo que necesitamos para no saturar
+    select: { clerkUserId: true, nombre: true } 
   });
 
   // 3. Mapeamos y cruzamos los datos
-  const allMappedUsers: AdminDeliveryUserRow[] = clerkUsers.map((clerkUser) => {
-    // Buscamos a este usuario en nuestras 3 tablas locales
-    const localRoleRecord = dbUserRoles.find((r: { clerkUserId: string }) => r.clerkUserId === clerkUser.id);
-    const globalAdminRecord = dbAdminDeliveries.find((a: { clerkUserId: string }) => a.clerkUserId === clerkUser.id);
-    const choferRecord = dbChoferes.find((c: { clerkUserId: string }) => c.clerkUserId === clerkUser.id);
+  const allMappedUsers: AdminDeliveryUserRow[] = clerkUsers
+    .filter((clerkUser) => clerkUser.id !== excludeClerkUserId)
+    .map((clerkUser) => {
+      const localRoleRecord = dbUserRoles.find((r: { clerkUserId: string }) => r.clerkUserId === clerkUser.id);
+      const globalAdminRecord = dbAdminDeliveries.find((a: { clerkUserId: string }) => a.clerkUserId === clerkUser.id);
+      const accessControlRecord = dbAccessControls.find((access: { clerkUserId: string }) => access.clerkUserId === clerkUser.id);
+      const choferRecord = dbChoferes.find((c: { clerkUserId: string }) => c.clerkUserId === clerkUser.id);
 
-    const isGlobalAdmin = Boolean(globalAdminRecord);
-    const localRole = localRoleRecord?.role || "Sin rol";
-    const effectiveRole = isGlobalAdmin ? ADMIN_DELIVERY_ROLE : localRole;
+      const clerkRoles = getEffectiveRoles(
+        normalizeRoles((clerkUser as User & { publicMetadata?: { role?: unknown } }).publicMetadata?.role)
+      );
+      const clerkVisibleRole = clerkRoles[0] ?? null;
+      const isGlobalAdmin = Boolean(globalAdminRecord) || clerkRoles.includes(ADMIN_DELIVERY_ROLE);
+      const isBlocked = Boolean(accessControlRecord?.isBlocked);
+      const localRole = localRoleRecord?.role || "Sin rol";
+      const effectiveRole = isBlocked ? "blocked" : isGlobalAdmin ? ADMIN_DELIVERY_ROLE : clerkVisibleRole || localRole;
 
-    const primaryEmail = clerkUser.emailAddresses.find(
-      (email: { id: string; emailAddress: string }) => email.id === clerkUser.primaryEmailAddressId
-    )?.emailAddress || "Sin correo";
+      const primaryEmail = clerkUser.emailAddresses.find(
+        (email: { id: string; emailAddress: string }) => email.id === clerkUser.primaryEmailAddressId
+      )?.emailAddress || "Sin correo";
 
-    // --- LÓGICA INTELIGENTE DE NOMBRES ---
-    let fullName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
-    
-    // Si Clerk no nos dio un nombre, miramos en la Base de Datos
-    if (!fullName) {
-      if (choferRecord?.nombre && choferRecord.nombre !== "Chofer") {
-        fullName = choferRecord.nombre; // Lo rescatamos de la tabla Chofer
-      } else if (globalAdminRecord?.nombre) {
-        fullName = globalAdminRecord.nombre; // Lo rescatamos de la tabla AdminDelivery
-      } else {
-        fullName = clerkUser.id; // Último recurso: mostramos el ID para que la UI ponga "Usuario sin registrar"
-      }
-    }
+      const fullName = buildDisplayName({
+        clerkUser,
+        choferName: choferRecord?.nombre,
+        adminDeliveryName: globalAdminRecord?.nombre,
+      });
 
-    return {
-      clerkUserId: clerkUser.id,
-      fullName,
-      email: primaryEmail,
-      effectiveRole,
-      isGlobalAdmin,
-      localRole,
-      adminPhone: null,
-    };
-  });
+      return {
+        clerkUserId: clerkUser.id,
+        fullName,
+        email: primaryEmail,
+        effectiveRole,
+        isGlobalAdmin,
+        isBlocked,
+        blockedReason: accessControlRecord?.blockedReason ?? null,
+        blockedAt: accessControlRecord?.blockedAt ? accessControlRecord.blockedAt.toISOString() : null,
+        localRole,
+        idVendedor: localRoleRecord?.idVendedor ?? null,
+        nombreEmpresa: localRoleRecord?.nombreEmpresa ?? null,
+        adminPhone: null,
+      };
+    });
 
   // 4. FILTRO ESTRICTO: Solo delivery y/o logistic_admin que NO sean admin_delivery
   const users = allMappedUsers.filter((user) => {
-    const hasTargetRole = user.localRole === "logistic_admin" || user.localRole === "delivery";
-    const isNotAdmin = !user.isGlobalAdmin && user.localRole !== "admin_delivery";
+    // Verificamos si el rol objetivo está en la BD local o en Clerk
+    const hasTargetRole = 
+      user.localRole === "logistic_admin" || 
+      user.localRole === "delivery" ||
+      user.effectiveRole === "logistic_admin" || 
+      user.effectiveRole === "delivery";
+
+    // Nos aseguramos de que no tenga permisos de administrador por ningún lado
+    const isNotAdmin = 
+      !user.isGlobalAdmin && 
+      user.localRole !== "admin_delivery" && 
+      user.effectiveRole !== "admin_delivery";
     
     return hasTargetRole && isNotAdmin;
   });

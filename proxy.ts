@@ -1,104 +1,44 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isUserBlocked } from "@/lib/userAccess";
+import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 
-const CLERK_API_BASE = "https://api.clerk.com";
-const DEFAULT_ROLE = "delivery";
-const ADMIN_DELIVERY_ROLE = "admin_delivery";
-const MANAGED_ROLES = ["delivery", "logistic_admin", ADMIN_DELIVERY_ROLE] as const;
-const SELLER_ROLE = "seller";
-const LOGISTIC_ADMIN_ROLE = "logistic_admin";
-
-function normalizeRoles(rawRole: unknown): string[] {
-  if (Array.isArray(rawRole)) {
-    return [...new Set(rawRole.filter((value): value is string => typeof value === "string"))];
-  }
-
-  if (typeof rawRole === "string") {
-    return [rawRole];
-  }
-
-  return [];
-}
-
-function getEffectiveRoles(rawRoles: string[]): string[] {
-  const roles = [...new Set(rawRoles)];
-  const hasSeller = roles.includes(SELLER_ROLE);
-  const hasManagedRole = MANAGED_ROLES.some((managedRole) => roles.includes(managedRole));
-
-  if (roles.includes(ADMIN_DELIVERY_ROLE)) {
-    return roles;
-  }
-
-  if (hasSeller) {
-    return [...new Set([...roles.filter((role) => role !== DEFAULT_ROLE), LOGISTIC_ADMIN_ROLE])];
-  }
-
-  if (!hasManagedRole) {
-    return [...roles, DEFAULT_ROLE];
-  }
-
-  return roles;
-}
-
-async function resolveRoles(userId: string) {
-  try {
-    const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
-
-    // Read DB roles (if any)
-    const dbRecord = await prisma.userRole
-      .findUnique({ where: { clerkUserId: userId }, select: { role: true } })
-      .catch(() => null);
-    const adminDelivery = await prisma.adminDelivery
-      .findUnique({ where: { clerkUserId: userId }, select: { clerkUserId: true } })
-      .catch(() => null);
-
-    const dbRoles = normalizeRoles(dbRecord?.role);
-
-    // Read Clerk roles if we can; fall back to DB-only when Clerk is unavailable
-    let clerkRoles: string[] = [];
-    if (secretKey) {
-      try {
-        const response = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            Accept: "application/json",
-          },
-          cache: "no-store",
-        });
-
-        if (response.ok) {
-          const user = await response.json();
-          const metadata = user.public_metadata ?? user.publicMetadata ?? {};
-          clerkRoles = normalizeRoles(metadata.role);
-        }
-      } catch {
-        clerkRoles = [];
-      }
-    }
-
-    const combined = [...(adminDelivery ? [ADMIN_DELIVERY_ROLE] : []), ...dbRoles, ...clerkRoles];
-    return getEffectiveRoles(normalizeRoles(combined));
-  } catch {
-    return [] as string[];
-  }
+async function resolveRoles(sessionClaims: unknown) {
+  return resolveRolesFromClaims(sessionClaims);
 }
 
 export const proxy = clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
+  if (pathname === "/blocked") {
+    return NextResponse.next();
+  }
+
+  const { userId, sessionClaims } = await auth();
+
+  if (pathname.startsWith("/api/")) {
+    if (userId && (await isUserBlocked(userId))) {
+      return NextResponse.json({ error: "Blocked" }, { status: 403 });
+    }
+
+    return NextResponse.next();
+  }
+
   const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
 
   if (!isDashboard) {
     return NextResponse.next();
   }
 
-  const { userId } = await auth();
-
   if (!userId) {
     return NextResponse.redirect(new URL("/signin", request.url));
   }
 
-  const roles = await resolveRoles(userId);
+  if (await isUserBlocked(userId)) {
+    return NextResponse.redirect(new URL("/blocked", request.url));
+  }
+
+  const roles = await resolveRoles(sessionClaims);
   const isDelivery = roles.includes("delivery");
   const isLogisticAdmin = roles.includes("logistic_admin");
   const isAdminDelivery = roles.includes("admin_delivery");
