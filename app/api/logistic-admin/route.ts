@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import {
-  assignOrder,
-  cancelOrder,
-  getOrders,
-  setOrderStatus,
-  unassignOrder,
-} from "@/lib/logisticAdminStore";
+import { Prisma } from "@prisma/client";
+import { getOrders } from "@/lib/logisticAdminStore";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 
-function mapPedidoToLogisticOrder(pedido: any) {
+type PedidoConChofer = Prisma.PedidoGetPayload<{
+  include: { choferAsignado: true };
+}>;
+
+function mapPedidoToLogisticOrder(pedido: PedidoConChofer) {
   const status = (pedido.estado ?? "ready") as string;
   const normalizedStatus =
     status === "assigned" || status === "asignado"
@@ -507,7 +506,7 @@ export async function POST(request: NextRequest) {
       if (context.idVendedor === null) return NextResponse.json({ error: "Company context required" }, { status: 400 });
       if (typeof body.idChofer !== "number") return NextResponse.json({ error: "Missing driver id" }, { status: 400 });
 
-      const data: any = {};
+      const data: Prisma.ChoferUncheckedUpdateManyInput = {};
       if (typeof body.nombre === "string") data.nombre = String(body.nombre).trim();
       if (typeof body.telefono === "string") data.telefono = String(body.telefono).trim();
       if (body.idZona === null) data.idZona = null;
