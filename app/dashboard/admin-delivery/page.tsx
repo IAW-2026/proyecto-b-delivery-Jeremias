@@ -3,6 +3,8 @@ import { getLogisticAdminData } from "../logistic-admin/data";
 import { adminButtonClass, adminCardClass, adminPageShell, adminStatCardClass } from "../logistic-admin/styles";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
 
+export const dynamic = "force-dynamic";
+
 function formatOrderStatus(status: string) {
   if (status === "ready") return "Listo";
   if (status === "en_camino") return "En camino";

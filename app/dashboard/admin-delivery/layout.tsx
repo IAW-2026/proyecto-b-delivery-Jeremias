@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getLocalDisplayName } from "@/lib/localDisplayName";
 import AdminDeliveryLayoutClient from "./layout-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDeliveryLayout({
   children,
 }: {
