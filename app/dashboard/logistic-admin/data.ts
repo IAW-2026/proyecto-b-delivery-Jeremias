@@ -355,7 +355,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   );
   const { sessionClaims } = await auth();
   const roles = resolveRolesFromClaims(sessionClaims);
-  const canAccess = roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin") || roles.includes("seller");
+  const canAccess = roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin");
   // Prefer local DB name (adminDelivery.nombre) when available; fall back to Clerk name
   const localName = adminProfile?.nombre?.trim();
   const userName = (localName && localName.length > 0
@@ -383,7 +383,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
         }
       }
     } catch (err) {
-      console.error("Error resolving vendor from seller service:", err);
+      console.error("Error resolving vendor from external service:", err);
     }
   }
 

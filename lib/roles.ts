@@ -4,7 +4,7 @@ export const DEFAULT_ROLE = "delivery";
 export const ADMIN_DELIVERY_ROLE = "admin_delivery";
 export const LOGISTIC_ADMIN_ROLE = "logistic_admin";
 export const SELLER_ROLE = "seller";
-export const ALLOWED_LOCAL_ROLES = [DEFAULT_ROLE, LOGISTIC_ADMIN_ROLE, SELLER_ROLE] as const;
+export const ALLOWED_LOCAL_ROLES = [DEFAULT_ROLE, LOGISTIC_ADMIN_ROLE] as const;
 export const MANAGED_ROLES = [DEFAULT_ROLE, LOGISTIC_ADMIN_ROLE, ADMIN_DELIVERY_ROLE] as const;
 
 export function normalizeRoles(rawRole: unknown): string[] {
@@ -26,11 +26,11 @@ export function getEffectiveRoles(rawRoles: string[]): string[] {
   const hasAdminRole = roles.includes(LOGISTIC_ADMIN_ROLE) || hasSeller || roles.includes(ADMIN_DELIVERY_ROLE);
 
   if (roles.includes(ADMIN_DELIVERY_ROLE)) {
-    return [...new Set(roles.filter((role) => role !== DEFAULT_ROLE || !hasAdminRole))];
+    return [...new Set(roles.filter((role) => role !== DEFAULT_ROLE || !hasAdminRole).filter((role) => role !== SELLER_ROLE))];
   }
 
   if (hasSeller) {
-    return [...new Set([...roles.filter((role) => role !== DEFAULT_ROLE), LOGISTIC_ADMIN_ROLE])];
+    return [...new Set([...roles.filter((role) => role !== DEFAULT_ROLE && role !== SELLER_ROLE), LOGISTIC_ADMIN_ROLE])];
   }
 
   if (roles.includes(LOGISTIC_ADMIN_ROLE) && roles.includes(DEFAULT_ROLE)) {
@@ -41,7 +41,7 @@ export function getEffectiveRoles(rawRoles: string[]): string[] {
     return [...roles, DEFAULT_ROLE];
   }
 
-  return roles;
+  return roles.filter((role) => role !== SELLER_ROLE);
 }
 
 export function resolveRolesFromSources({

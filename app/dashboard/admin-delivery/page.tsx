@@ -31,28 +31,6 @@ export default async function AdminDeliveryPage() {
 
   return (
     <div className={`mx-auto max-w-7xl ${adminPageShell}`}>
-      <section className={`${adminCardClass} overflow-hidden border-slate-200 bg-slate-950 p-0 text-white shadow-lg`}>
-        <div className="relative overflow-hidden px-6 py-7 sm:px-8">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.22),_transparent_40%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.18),_transparent_35%)]" />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="text-xs uppercase tracking-[0.38em] text-sky-300">Admin delivery</p>
-              <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Centro de mando global</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-                Vista global para supervisar pedidos, choferes, vehículos y zonas de toda la plataforma sin depender de un vendedor.
-                Esta pantalla ya usa la misma base operativa, pero con foco superior y alcance total.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-slate-200 backdrop-blur">
-              <p className="font-medium text-white">Usuario</p>
-              <p>{data.userName}</p>
-              <p className="mt-2 text-xs uppercase tracking-[0.25em] text-sky-200">Acceso global activo</p>
-              <p className="mt-1 text-xs text-slate-300">{globalUsersData.globalAdminCount} usuarios con acceso global</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {data.databaseUnavailable ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">

@@ -75,8 +75,7 @@ async function getCompanyContext(request: NextRequest) {
   });
   const roles = resolveRolesFromClaims(sessionClaims);
 
-  const canAccess =
-    roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin") || roles.includes("seller");
+  const canAccess = roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin");
 
   if (!canAccess) return null;
 

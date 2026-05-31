@@ -1,37 +1,96 @@
 "use client";
 
-import {useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { adminButtonClass, adminCardClass, adminStatCardClass } from "../../logistic-admin/styles";
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
 
+const searchOptions = [
+  { value: "nombre", label: "Nombre", placeholder: "Buscar por nombre" },
+  { value: "email", label: "Correo", placeholder: "Buscar por correo" },
+  { value: "clerkUserId", label: "ID de Clerk", placeholder: "Buscar por ID de Clerk" },
+] as const;
 
+type UserSearchBy = (typeof searchOptions)[number]["value"];
+type UserFilter = "all" | "active" | "blocked" | "delivery" | "logistic_admin";
+
+function isSearchBy(value: string | null): value is UserSearchBy {
+  return typeof value === "string" && searchOptions.some((option) => option.value === value);
+}
+
+function isUserFilter(value: string | null): value is UserFilter {
+  return value === "all" || value === "active" || value === "blocked" || value === "delivery" || value === "logistic_admin";
+}
+
+function normalizeSearchValue(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function buildQueryHref(pathname: string, values: { query: string; searchBy: UserSearchBy; filter: UserFilter }) {
+  const params = new URLSearchParams();
+  const trimmedQuery = values.query.trim();
+
+  if (trimmedQuery) {
+    params.set("query", trimmedQuery);
+  }
+
+  if (values.searchBy !== "nombre") {
+    params.set("searchBy", values.searchBy);
+  }
+
+  if (values.filter !== "all") {
+    params.set("filter", values.filter);
+  }
+
+  const serialized = params.toString();
+  return serialized ? `${pathname}?${serialized}` : pathname;
+}
 
 function roleLabel(role: string) {
   if (role === "blocked") return "Bloqueado";
   if (role === "admin_delivery") return "Admin delivery";
   if (role === "logistic_admin") return "Logistic admin";
-  if (role === "seller") return "Seller";
   if (role === "delivery") return "Delivery";
   return role;
 }
 
-const editableRoles = ["delivery", "logistic_admin", "seller"] as const;
+const editableRoles = ["delivery", "logistic_admin"] as const;
+
+function normalizeStoredRole(role: string) {
+  return role === "seller" ? "logistic_admin" : role;
+}
+
+function getDisplayRole(user: AdminDeliveryUserRow) {
+  if (user.localRole && user.localRole !== "Sin rol") {
+    return normalizeStoredRole(user.localRole);
+  }
+
+  return normalizeStoredRole(user.effectiveRole);
+}
 
 export default function AdminDeliveryUsersClient({ users }: { users: AdminDeliveryUserRow[] }) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const appliedQuery = searchParams.get("query") ?? "";
+  const appliedSearchBy: UserSearchBy = isSearchBy(searchParams.get("searchBy")) ? (searchParams.get("searchBy") as UserSearchBy) : "nombre";
+  const appliedFilter: UserFilter = isUserFilter(searchParams.get("filter")) ? (searchParams.get("filter") as UserFilter) : "all";
+
+  const [queryInput, setQueryInput] = useState(appliedQuery);
+  const [selectedSearchBy, setSelectedSearchBy] = useState<UserSearchBy>(appliedSearchBy);
+  const [selectedFilter, setSelectedFilter] = useState<UserFilter>(appliedFilter);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-// REEMPLAZALO POR ESTO:
-  // Inicializamos los estados calculándolos directamente al arrancar, sin usar useEffect
+
   const [roleDrafts, setRoleDrafts] = useState<Record<string, string>>(() => {
     const initialDrafts: Record<string, string> = {};
     for (const user of users) {
-      initialDrafts[user.clerkUserId] = editableRoles.includes(user.localRole as (typeof editableRoles)[number])
-        ? user.localRole
-        : "delivery";
+      const normalizedRole = normalizeStoredRole(user.localRole);
+      initialDrafts[user.clerkUserId] = editableRoles.includes(normalizedRole as (typeof editableRoles)[number]) ? normalizedRole : "delivery";
     }
     return initialDrafts;
   });
@@ -45,27 +104,31 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
   });
 
   const filteredUsers = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchValue(appliedQuery.trim());
 
     return users.filter((user) => {
+      const searchCandidate =
+        appliedSearchBy === "email"
+          ? user.email
+          : appliedSearchBy === "clerkUserId"
+            ? user.clerkUserId
+            : user.fullName;
       const matchesQuery =
         normalizedQuery.length === 0 ||
-        user.fullName.toLowerCase().includes(normalizedQuery) ||
-        user.email.toLowerCase().includes(normalizedQuery) ||
-        user.clerkUserId.toLowerCase().includes(normalizedQuery);
+        normalizeSearchValue(searchCandidate).includes(normalizedQuery);
 
       const matchesFilter =
-        filter === "all" ||
-        (filter === "global" && user.isGlobalAdmin) ||
-        (filter === "local" && !user.isGlobalAdmin) ||
-        (filter === "blocked" && user.isBlocked) ||
-        (filter === "none" && user.effectiveRole === "delivery" && !user.isBlocked);
+        appliedFilter === "all" ||
+        (appliedFilter === "active" && !user.isBlocked) ||
+        (appliedFilter === "blocked" && user.isBlocked) ||
+        (appliedFilter === "delivery" && normalizeStoredRole(user.localRole) === "delivery") ||
+        (appliedFilter === "logistic_admin" && normalizeStoredRole(user.localRole) === "logistic_admin");
 
       return matchesQuery && matchesFilter;
     });
-  }, [filter, query, users]);
+  }, [appliedFilter, appliedQuery, appliedSearchBy, users]);
 
-  function updateUser(payload: Record<string, unknown>, successMessage: string) {
+  function updateUser(payload: Record<string, unknown>, successMessage: string, onSuccess?: () => void) {
     void (async () => {
       setPendingUserId(typeof payload.clerkUserId === "string" ? payload.clerkUserId : null);
       setMessage(null);
@@ -85,6 +148,7 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
         }
 
         setMessage(successMessage);
+        onSuccess?.();
         router.refresh();
       } catch {
         setMessage("No se pudo actualizar el usuario.");
@@ -94,19 +158,37 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
     })();
   }
 
-  function toggleGlobalAccess(user: AdminDeliveryUserRow) {
-    setPendingUserId(user.clerkUserId);
-    setMessage(null);
+  function runSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    router.push(buildQueryHref(pathname, { query: queryInput, searchBy: selectedSearchBy, filter: selectedFilter }));
+  }
 
-    updateUser(
-      {
-        clerkUserId: user.clerkUserId,
-        action: user.isGlobalAdmin ? "revoke_admin_delivery" : "promote_admin_delivery",
-        nombre: user.fullName,
-        telefono: user.adminPhone ?? null,
-      },
-      user.isGlobalAdmin ? "Acceso global revocado." : "Acceso global otorgado."
-    );
+  function clearSearch() {
+    setQueryInput("");
+    router.push(buildQueryHref(pathname, { query: "", searchBy: selectedSearchBy, filter: selectedFilter }));
+  }
+
+  function updateQuickFilter(nextFilter: UserFilter) {
+    setSelectedFilter(nextFilter);
+    router.push(buildQueryHref(pathname, { query: appliedQuery, searchBy: appliedSearchBy, filter: nextFilter }));
+  }
+
+  function startRoleEdit(user: AdminDeliveryUserRow) {
+    setEditingUserId(user.clerkUserId);
+    if (!roleDrafts[user.clerkUserId]) {
+      setRoleDrafts((current) => ({
+        ...current,
+        [user.clerkUserId]: editableRoles.includes(user.localRole as (typeof editableRoles)[number]) ? user.localRole : "delivery",
+      }));
+    }
+  }
+
+  function cancelRoleEdit(user: AdminDeliveryUserRow) {
+    setRoleDrafts((current) => ({
+      ...current,
+      [user.clerkUserId]: editableRoles.includes(user.localRole as (typeof editableRoles)[number]) ? user.localRole : "delivery",
+    }));
+    setEditingUserId((current) => (current === user.clerkUserId ? null : current));
   }
 
   function saveRole(user: AdminDeliveryUserRow) {
@@ -123,7 +205,8 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
         role: nextRole,
         idVendedor: user.idVendedor,
       },
-      `Rol local actualizado a ${roleLabel(nextRole)}.`
+      `Rol local actualizado a ${roleLabel(nextRole)}.`,
+      () => setEditingUserId(null)
     );
   }
 
@@ -154,31 +237,68 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
       </section>
 
       <section className={`${adminCardClass} p-5`}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Filtro de usuarios</h2>
-            <p className="text-sm text-slate-500">Buscá por nombre, correo o id de Clerk.</p>
-          </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <form onSubmit={runSearch} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="space-y-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</span>
+                <select
+                  value={selectedSearchBy}
+                  onChange={(event) => setSelectedSearchBy(event.currentTarget.value as UserSearchBy)}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                >
+                  {searchOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <input
-              className="min-w-[260px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              placeholder="Buscar usuario"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <select
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            >
-              <option value="all">Todos</option>
-              <option value="global">Con acceso global</option>
-              <option value="local">Solo rol base</option>
-              <option value="blocked">Bloqueados</option>
-              <option value="none">Sin rol explícito</option>
-            </select>
+              <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                <input
+                  key={`admin-users-search-${selectedSearchBy}`}
+                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                  placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar usuarios"}
+                  value={queryInput}
+                  onChange={(event) => setQueryInput(event.currentTarget.value)}
+                />
+                <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+              </div>
+            </div>
+          </form>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="space-y-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Filtrar por</span>
+                <select
+                  value={selectedFilter}
+                  onChange={(event) => updateQuickFilter(event.currentTarget.value as UserFilter)}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                >
+                  <option value="all">Todos</option>
+                  <option value="active">Activos</option>
+                  <option value="blocked">Bloqueados</option>
+                  <option value="delivery">Deliverys</option>
+                  <option value="logistic_admin">Logistic admins</option>
+                </select>
+              </label>
+              <p className="text-xs leading-5 text-slate-500">Separá rápido por activos, bloqueados, deliverys o logistic admins.</p>
+            </div>
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {appliedQuery ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Limpiar búsqueda
+            </button>
+          ) : null}
         </div>
 
         {message ? <p className="mt-4 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-800">{message}</p> : null}
@@ -190,22 +310,22 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
             <thead className="bg-slate-50 text-slate-500">
               <tr>
                 <th className="px-5 py-4 font-medium">Usuario</th>
-                <th className="px-5 py-4 font-medium">Rol visible</th>
-                <th className="px-5 py-4 font-medium">Estado local</th>
-                <th className="px-5 py-4 font-medium">Rol editable</th>
+                <th className="px-5 py-4 font-medium">Rol</th>
+                <th className="px-5 py-4 font-medium">Estado</th>
                 <th className="px-5 py-4 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-slate-500" colSpan={5}>
+                  <td className="px-5 py-10 text-center text-slate-500" colSpan={4}>
                     No encontramos usuarios con ese filtro.
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => {
                   const isBusy = pendingUserId === user.clerkUserId;
+                  const isEditingRole = editingUserId === user.clerkUserId;
                   const isNameAnId = user.fullName.toLowerCase().startsWith("user_");
                   const displayName = isNameAnId || !user.fullName.trim() ? (
                     <span className="font-normal italic text-slate-400">Usuario sin registrar</span>
@@ -222,13 +342,32 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
                           <p className="text-xs text-slate-500">
                             {user.email && !user.email.toLowerCase().includes("sin correo") ? user.email : <span className="text-slate-400 italic">Sin correo</span>}
                           </p>
-                          {/* SE ELIMINÓ LA LÍNEA QUE MOSTRABA EL ID (user.clerkUserId) */}
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white">
-                          {roleLabel(user.effectiveRole)}
-                        </span>
+                        {isEditingRole ? (
+                          <select
+                            value={normalizeStoredRole(roleDrafts[user.clerkUserId] ?? "delivery")}
+                            onChange={(event) =>
+                              setRoleDrafts((current) => ({
+                                ...current,
+                                [user.clerkUserId]: normalizeStoredRole(event.target.value),
+                              }))
+                            }
+                            disabled={isBusy}
+                            className="w-full min-w-[180px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none disabled:opacity-60"
+                          >
+                            {editableRoles.map((role) => (
+                              <option key={role} value={role}>
+                                {roleLabel(role)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                            {roleLabel(getDisplayRole(user))}
+                          </span>
+                        )}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col gap-2">
@@ -236,68 +375,57 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
                             className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium ${
                               user.isBlocked
                                 ? "bg-red-100 text-red-800"
-                                : user.isGlobalAdmin
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-slate-100 text-slate-600"
+                                : "bg-emerald-100 text-emerald-800"
                             }`}
                           >
-                            {user.isBlocked ? "Bloqueado" : user.isGlobalAdmin ? "Acceso global" : "Sin acceso global"}
+                            {user.isBlocked ? "Bloqueado" : "Activo"}
                           </span>
-                          <span className="text-xs text-slate-500">Rol base: {roleLabel(user.localRole)}</span>
                           {user.isBlocked && user.blockedReason ? (
                             <span className="text-xs text-red-600">Motivo: {user.blockedReason}</span>
                           ) : null}
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <select
-                          value={roleDrafts[user.clerkUserId] ?? "delivery"}
-                          onChange={(event) =>
-                            setRoleDrafts((current) => ({
-                              ...current,
-                              [user.clerkUserId]: event.target.value,
-                            }))
-                          }
-                          disabled={isBusy}
-                          className="min-w-[180px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none disabled:opacity-60"
-                        >
-                          {editableRoles.map((role) => (
-                            <option key={role} value={role}>
-                              {roleLabel(role)}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => saveRole(user)}
-                          disabled={isBusy || user.idVendedor === null}
-                          className={`${adminButtonClass("edit")} mt-2 min-w-[180px] justify-center disabled:cursor-not-allowed disabled:opacity-60`}
-                        >
-                          {isBusy ? "Actualizando..." : "Guardar rol"}
-                        </button>
-                      </td>
-                      <td className="px-5 py-4">
                         <div className="flex flex-col gap-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleBlock(user)}
-                            disabled={isBusy}
-                            className={`${adminButtonClass(user.isBlocked ? "success" : "danger")} min-w-[180px] justify-center disabled:cursor-not-allowed disabled:opacity-60`}
-                          >
-                            {isBusy ? "Actualizando..." : user.isBlocked ? "Desbloquear" : "Bloquear"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleGlobalAccess(user)}
-                            disabled={isBusy}
-                            className={`${adminButtonClass(user.isGlobalAdmin ? "warning" : "save")} min-w-[180px] justify-center disabled:cursor-not-allowed disabled:opacity-60`}
-                          >
-                            {isBusy
-                              ? "Actualizando..."
-                              : user.isGlobalAdmin
-                                ? "Quitar acceso global"
-                                : "Otorgar acceso global"}
-                          </button>
+                          {isEditingRole ? (
+                            <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => saveRole(user)}
+                                disabled={isBusy || user.idVendedor === null}
+                                className={adminButtonClass("save", "sm")}
+                              >
+                                {isBusy ? "Guardando..." : "Guardar"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => cancelRoleEdit(user)}
+                                disabled={isBusy}
+                                className={adminButtonClass("cancel", "sm")}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startRoleEdit(user)}
+                                disabled={isBusy || user.idVendedor === null}
+                                className={adminButtonClass("edit", "sm")}
+                              >
+                                Editar rol
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => toggleBlock(user)}
+                                disabled={isBusy}
+                                className={adminButtonClass(user.isBlocked ? "success" : "danger", "sm")}
+                              >
+                                {isBusy ? "Actualizando..." : user.isBlocked ? "Desbloquear" : "Bloquear"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

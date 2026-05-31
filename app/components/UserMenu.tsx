@@ -7,7 +7,6 @@ function resolveRoleLabel(roles: string[]) {
   if (roles.includes("admin_delivery")) return "Admin delivery";
   if (roles.includes("logistic_admin")) return "Logistic admin";
   if (roles.includes("delivery")) return "Delivery";
-  if (roles.includes("seller")) return "Seller";
   return roles[0] ?? "Sin rol";
 }
 
