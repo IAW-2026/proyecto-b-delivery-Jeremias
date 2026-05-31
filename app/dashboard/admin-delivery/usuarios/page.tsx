@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
-import AdminDeliveryUsersClient from "./client";
+import AdminDeliveryUsersUi from "./ui";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ export default async function AdminDeliveryUsersPage() {
         </div>
       ) : null}
 
-      <AdminDeliveryUsersClient users={data.users} />
+      <AdminDeliveryUsersUi users={data.users} />
     </div>
   );
 }

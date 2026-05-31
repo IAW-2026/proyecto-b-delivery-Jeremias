@@ -39,6 +39,7 @@ export default async function LogisticAdminChoferesPage({
       page={safePage}
       totalPages={totalPages}
       totalFilteredChoferes={totalFilteredChoferes}
+      totalChoferes={data.choferes.length}
       activeCount={activeCount}
       withZoneCount={withZoneCount}
       withoutZoneCount={withoutZoneCount}

@@ -41,6 +41,8 @@ export default function VehiculosManager({
     basePath,
   });
 
+  
+
   const {
     filterState,
     selectedSearchBy,
@@ -54,6 +56,7 @@ export default function VehiculosManager({
     pausingVehicleId,
     detailsVehicleId,
     pauseReasons,
+    setPauseReasons,
     error,
     pageStart,
     pageEnd,

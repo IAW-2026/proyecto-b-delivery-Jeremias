@@ -237,6 +237,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     pausingVehicleId,
     detailsVehicleId,
     pauseReasons,
+    setPauseReasons,
     error,
     pageStart,
     pageEnd,
