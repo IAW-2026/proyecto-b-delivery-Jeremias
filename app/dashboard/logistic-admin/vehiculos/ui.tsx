@@ -1,25 +1,15 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
-
-type Vehiculo = {
-  idVehiculo: number;
-  patente: string;
-  tipo: string;
-  capacidadBidones: number;
-  idVendedor: number;
-  estado?: string;
-  motivoPausa?: string | null;
-  assignedToChoferName?: string | null;
-};
+import { buildVehiculosQueryHref, searchOptions, statusOptions, type SearchBy, type Vehiculo, type VehiculoStatus } from "./utils";
+import { useVehiculosController } from "./useVehiculosController";
 
 type Props = {
   vehiculos: Vehiculo[];
   searchQuery: string;
-  searchBy: "patente" | "tipo";
+  searchBy: SearchBy;
   statusFilter: "todos" | VehiculoStatus;
   page: number;
   totalPages: number;
@@ -29,66 +19,6 @@ type Props = {
   pausadosCount: number;
   basePath?: string;
 };
-
-type FormState = {
-  patente: string;
-  tipo: string;
-  capacidadBidones: string;
-};
-
-type VehiculoStatus = "todos" | "activo" | "pausado";
-
-const statusOptions: Array<{ value: Exclude<VehiculoStatus, "todos">; label: string }> = [
-  { value: "activo", label: "Activos" },
-  { value: "pausado", label: "Pausados" },
-];
-
-const searchOptions: Array<{ value: "patente" | "tipo"; label: string; placeholder: string }> = [
-  { value: "patente", label: "Patente", placeholder: "Buscar por patente" },
-  { value: "tipo", label: "Tipo", placeholder: "Buscar por tipo" },
-];
-
-const pageSize = 8;
-
-const emptyForm: FormState = {
-  patente: "",
-  tipo: "",
-  capacidadBidones: "",
-};
-
-function buildQueryHref(
-  basePath: string,
-  nextValues: { query?: string; searchBy?: "patente" | "tipo"; status?: VehiculoStatus; page?: number },
-  searchQuery: string,
-  searchBy: "patente" | "tipo",
-  statusFilter: VehiculoStatus,
-  page: number
-) {
-  const params = new URLSearchParams();
-  const nextQuery = nextValues.query ?? searchQuery;
-  const nextSearchBy = nextValues.searchBy ?? searchBy;
-  const nextStatus = nextValues.status ?? statusFilter;
-  const nextPage = nextValues.page ?? page;
-
-  if (nextQuery.trim()) {
-    params.set("query", nextQuery.trim());
-  }
-
-  if (nextSearchBy !== "patente") {
-    params.set("searchBy", nextSearchBy);
-  }
-
-  if (nextStatus !== "todos") {
-    params.set("status", nextStatus);
-  }
-
-  if (nextPage > 1) {
-    params.set("page", String(nextPage));
-  }
-
-  const queryString = params.toString();
-  return queryString ? `${basePath}/vehiculos?${queryString}` : `${basePath}/vehiculos`;
-}
 
 export default function VehiculosManager({
   vehiculos,
@@ -103,200 +33,49 @@ export default function VehiculosManager({
   pausadosCount,
   basePath = "/dashboard/logistic-admin",
 }: Props) {
-  const router = useRouter();
-  const [addForm, setAddForm] = useState<FormState>(emptyForm);
-  const [editForm, setEditForm] = useState<FormState>(emptyForm);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedSearchBy, setSelectedSearchBy] = useState(searchBy);
-  const [pausingVehicleId, setPausingVehicleId] = useState<number | null>(null);
-  const [detailsVehicleId, setDetailsVehicleId] = useState<number | null>(null);
-  const [pauseReasons, setPauseReasons] = useState<Record<number, string>>({});
-  const [error, setError] = useState<string | null>(null);
+  const controller = useVehiculosController({
+    vehiculos,
+    searchParams: { query: searchQuery, searchBy, status: statusFilter, page: String(page) },
+    page,
+    totalFilteredVehiculos,
+    basePath,
+  });
 
-  function vehicleStatusLabel(estado?: string) {
-    if (estado === "pausado") return "Pausado";
-    return "Activo";
-  }
+  const {
+    filterState,
+    selectedSearchBy,
+    setSelectedSearchBy,
+    addForm,
+    setAddForm,
+    editForm,
+    setEditForm,
+    isSaving,
+    editingId,
+    pausingVehicleId,
+    detailsVehicleId,
+    pauseReasons,
+    error,
+    pageStart,
+    pageEnd,
+    handlers,
+  } = controller;
 
-  function vehicleStatusClass(estado?: string) {
-    if (estado === "pausado") return "bg-amber-100 text-amber-700";
-    return "bg-emerald-100 text-emerald-700";
-  }
+  const {
+    startEdit,
+    cancelEdit,
+    handleAddSubmit,
+    handleUpdateVehicle,
+    handleDelete,
+    handleTogglePause,
+    handleConfirmPause,
+    handleCancelPause,
+    openDetails,
+    closeDetails,
+    submitSearch,
+    changeStatusFilter,
+  } = handlers;
 
-  async function runAction(payload: Record<string, unknown>) {
-    const response = await fetch("/api/logistic-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "No se pudo completar la operación");
-    }
-  }
-
-  function startEdit(vehiculo: Vehiculo) {
-    setEditingId(vehiculo.idVehiculo);
-    setEditForm({
-      patente: vehiculo.patente,
-      tipo: vehiculo.tipo,
-      capacidadBidones: String(vehiculo.capacidadBidones),
-    });
-    setError(null);
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setEditForm(emptyForm);
-    setError(null);
-  }
-
-  async function handleAddSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-
-    const capacidad = Number(addForm.capacidadBidones);
-    if (!addForm.patente.trim() || !addForm.tipo.trim() || !Number.isFinite(capacidad) || capacidad <= 0) {
-      setError("Completá patente, tipo y capacidad válida (> 0).");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await runAction({
-        action: "create_vehicle",
-        patente: addForm.patente,
-        tipo: addForm.tipo,
-        capacidadBidones: capacidad,
-      });
-
-      setAddForm(emptyForm);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleUpdateVehicle(event: React.FormEvent<HTMLFormElement>, idVehiculo: number) {
-    event.preventDefault();
-    setError(null);
-
-    const capacidad = Number(editForm.capacidadBidones);
-    if (!editForm.patente.trim() || !editForm.tipo.trim() || !Number.isFinite(capacidad) || capacidad <= 0) {
-      setError("Completá patente, tipo y capacidad válida (> 0).");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await runAction({
-        action: "update_vehicle",
-        idVehiculo,
-        patente: editForm.patente,
-        tipo: editForm.tipo,
-        capacidadBidones: capacidad,
-      });
-
-      cancelEdit();
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleDelete(idVehiculo: number) {
-    const ok = window.confirm("¿Eliminar este vehículo?");
-    if (!ok) return;
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      await runAction({ action: "delete_vehicle", idVehiculo });
-      if (editingId === idVehiculo) {
-        cancelEdit();
-      }
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar el vehículo");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleTogglePause(vehiculo: Vehiculo) {
-    if (vehiculo.estado !== "pausado") {
-      setPausingVehicleId(vehiculo.idVehiculo);
-      setPauseReasons((current) => ({
-        ...current,
-        [vehiculo.idVehiculo]: vehiculo.motivoPausa ?? current[vehiculo.idVehiculo] ?? "",
-      }));
-      setError(null);
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await runAction({ action: "set_vehicle_state", idVehiculo: vehiculo.idVehiculo, estado: "activo" });
-
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo cambiar el estado del vehículo");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleConfirmPause(vehiculo: Vehiculo) {
-    const motivo = pauseReasons[vehiculo.idVehiculo]?.trim() ?? "";
-    if (!motivo) {
-      setError("Debés indicar un motivo para pausar el vehículo.");
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await runAction({
-        action: "set_vehicle_state",
-        idVehiculo: vehiculo.idVehiculo,
-        estado: "pausado",
-        motivoPausa: motivo,
-      });
-
-      setPausingVehicleId(null);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo pausar el vehículo");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function handleCancelPause(idVehiculo: number) {
-    setPausingVehicleId(null);
-    setPauseReasons((current) => ({ ...current, [idVehiculo]: "" }));
-    setError(null);
-  }
-
-  function openDetails(vehiculo: Vehiculo) {
-    setDetailsVehicleId(vehiculo.idVehiculo);
-  }
-
-  function closeDetails() {
-    setDetailsVehicleId(null);
-  }
-
-  const pageStart = vehiculos.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const pageEnd = Math.min(totalFilteredVehiculos, page * pageSize);
+  const searchPlaceholder = searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar vehículos";
 
   return (
     <div className={`mx-auto max-w-7xl p-4 text-slate-800 md:p-6 ${adminPageShell}`}>
@@ -305,9 +84,7 @@ export default function VehiculosManager({
         <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
           Vehículos
         </h1>
-        <p className="text-sm text-slate-600">
-          Alta, edición y eliminación de flota. Los cambios se guardan en base local.
-        </p>
+        <p className="text-sm text-slate-600">Alta, edición y eliminación de flota. Los cambios se guardan en base local.</p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2">
@@ -344,8 +121,7 @@ export default function VehiculosManager({
             onSubmit={(event) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
-              const queryValue = String(formData.get("query") ?? "");
-              router.push(buildQueryHref(basePath, { query: queryValue, searchBy: selectedSearchBy, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+              submitSearch(String(formData.get("query") ?? ""));
             }}
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
@@ -367,9 +143,7 @@ export default function VehiculosManager({
                       onClick={() => setSelectedSearchBy(option.value)}
                       aria-pressed={selectedSearchBy === option.value}
                       className={`rounded-xl px-3 py-2 text-center text-sm font-medium transition-all ${
-                        selectedSearchBy === option.value
-                          ? "bg-white text-blue-700 shadow-sm ring-1 ring-blue-200"
-                          : "text-slate-600 hover:bg-white hover:text-slate-900"
+                        selectedSearchBy === option.value ? "bg-white text-blue-700 shadow-sm ring-1 ring-blue-200" : "text-slate-600 hover:bg-white hover:text-slate-900"
                       }`}
                     >
                       {option.label}
@@ -383,15 +157,17 @@ export default function VehiculosManager({
                   id="vehiculos-search"
                   name="query"
                   defaultValue={searchQuery}
-                  placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar vehículos"}
+                  placeholder={searchPlaceholder}
                   className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 />
-                <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+                <button type="submit" className={adminButtonClass("edit", "sm")}>
+                  Buscar
+                </button>
               </div>
 
               {searchQuery ? (
                 <Link
-                  href={buildQueryHref(basePath, { query: "", page: 1 }, searchQuery, selectedSearchBy, statusFilter, page)}
+                  href={buildVehiculosQueryHref({ query: "", page: 1 }, filterState, basePath)}
                   className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                 >
                   Limpiar búsqueda
@@ -410,9 +186,7 @@ export default function VehiculosManager({
                 <select
                   name="status"
                   value={statusFilter}
-                  onChange={(event) => {
-                    router.push(buildQueryHref(basePath, { status: event.currentTarget.value as VehiculoStatus, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
-                  }}
+                  onChange={(event) => changeStatusFilter(event.currentTarget.value as VehiculoStatus)}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 >
                   <option value="todos">Todos los estados</option>
@@ -474,9 +248,7 @@ export default function VehiculosManager({
 
       {vehiculos.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          {searchQuery || statusFilter !== "todos"
-            ? `No hay resultados para ${searchQuery ? `"${searchQuery}"` : "el filtro seleccionado"}.`
-            : "No hay vehículos asociados a la empresa."}
+          {searchQuery || statusFilter !== "todos" ? `No hay resultados para ${searchQuery ? `"${searchQuery}"` : "el filtro seleccionado"}.` : "No hay vehículos asociados a la empresa."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -503,7 +275,7 @@ export default function VehiculosManager({
             <tbody>
               {vehiculos.map((vehiculo) => (
                 <Fragment key={vehiculo.idVehiculo}>
-                  <tr className="border-t border-slate-100 text-sm text-slate-700 align-top">
+                  <tr className="border-t border-slate-100 align-top text-sm text-slate-700">
                     <td className="px-3 py-4">
                       {editingId === vehiculo.idVehiculo ? (
                         <input
@@ -537,8 +309,8 @@ export default function VehiculosManager({
                       )}
                     </td>
                     <td className="px-3 py-4">
-                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${vehicleStatusClass(vehiculo.estado)}`}>
-                        {vehicleStatusLabel(vehiculo.estado)}
+                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${vehiculo.estado === "pausado" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {vehiculo.estado === "pausado" ? "Pausado" : "Activo"}
                       </span>
                     </td>
                     <td className="px-3 py-4">
@@ -574,7 +346,7 @@ export default function VehiculosManager({
                       <div className="flex flex-nowrap items-start justify-center gap-1.5 whitespace-nowrap">
                         {editingId === vehiculo.idVehiculo ? (
                           <>
-                            <button type="button" onClick={() => handleUpdateVehicle(new Event("submit") as unknown as React.FormEvent<HTMLFormElement>, vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("save", "sm")}>
+                            <button type="button" onClick={() => void handleUpdateVehicle(vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("save", "sm")}>
                               {isSaving ? "Guardando..." : "Guardar"}
                             </button>
                             <button type="button" onClick={cancelEdit} disabled={isSaving} className={adminButtonClass("cancel", "sm")}>
@@ -586,15 +358,10 @@ export default function VehiculosManager({
                             <button type="button" onClick={() => startEdit(vehiculo)} disabled={isSaving} className={adminButtonClass("edit", "sm")}>
                               Editar
                             </button>
-                            <button type="button" onClick={() => handleDelete(vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("danger", "sm")}>
+                            <button type="button" onClick={() => void handleDelete(vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("danger", "sm")}>
                               Eliminar
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePause(vehiculo)}
-                              disabled={isSaving}
-                              className={adminButtonClass("warning", "sm")}
-                            >
+                            <button type="button" onClick={() => void handleTogglePause(vehiculo)} disabled={isSaving} className={adminButtonClass("warning", "sm")}>
                               {vehiculo.estado === "pausado" ? "Reanudar uso" : "Pausar uso"}
                             </button>
                           </>
@@ -623,12 +390,7 @@ export default function VehiculosManager({
                             />
                           </label>
                           <div className="flex flex-wrap gap-2 lg:justify-end">
-                            <button
-                              type="button"
-                              onClick={() => handleConfirmPause(vehiculo)}
-                              disabled={isSaving}
-                              className={adminButtonClass("warning", "sm")}
-                            >
+                            <button type="button" onClick={() => void handleConfirmPause(vehiculo)} disabled={isSaving} className={adminButtonClass("warning", "sm")}>
                               {isSaving ? "Guardando..." : "Confirmar pausa"}
                             </button>
                             <button type="button" onClick={() => handleCancelPause(vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("cancel", "sm")}>
@@ -684,18 +446,10 @@ export default function VehiculosManager({
           <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredVehiculos}</p>
             <div className="flex items-center gap-2">
-              <Link
-                href={buildQueryHref(basePath, { page: Math.max(1, page - 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
-                aria-disabled={page <= 1}
-                className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
-              >
+              <Link href={buildVehiculosQueryHref({ page: Math.max(1, page - 1) }, filterState, basePath)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
                 Anterior
               </Link>
-              <Link
-                href={buildQueryHref(basePath, { page: Math.min(totalPages, page + 1) }, searchQuery, selectedSearchBy, statusFilter, page)}
-                aria-disabled={page >= totalPages}
-                className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
-              >
+              <Link href={buildVehiculosQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, basePath)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
                 Siguiente
               </Link>
             </div>

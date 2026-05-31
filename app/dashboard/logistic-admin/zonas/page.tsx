@@ -1,34 +1,7 @@
 import { redirect } from "next/navigation";
 import { getLogisticAdminData } from "../data";
 import ZonasManager from "./ui";
-
-const pageSize = 8;
-
-function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function parsePage(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(rawValue ?? "1", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
-
-function filterZonas(zonas: Awaited<ReturnType<typeof getLogisticAdminData>>["zonas"], searchQuery: string) {
-  const normalizedQuery = normalizeSearchValue(searchQuery.trim());
-
-  if (!normalizedQuery) {
-    return zonas;
-  }
-
-  return zonas.filter((zona) => {
-    const haystack = normalizeSearchValue(zona.zona);
-    return haystack.includes(normalizedQuery);
-  });
-}
+import { filterZonas, pageSize, parseZonasFilters } from "./utils";
 
 export default async function LogisticAdminZonasPage({
   searchParams,
@@ -36,12 +9,10 @@ export default async function LogisticAdminZonasPage({
   searchParams: Promise<{ query?: string | string[]; page?: string | string[] }>;
 }) {
   const data = await getLogisticAdminData();
-
   const query = await searchParams;
-  const searchValue = Array.isArray(query.query) ? query.query[0] : query.query ?? "";
-  const requestedPage = parsePage(query.page);
+  const { searchQuery, requestedPage } = parseZonasFilters(query);
 
-  const filteredZonas = filterZonas(data.zonas, searchValue);
+  const filteredZonas = filterZonas(data.zonas, searchQuery);
   const totalFilteredZonas = filteredZonas.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredZonas / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -54,8 +25,8 @@ export default async function LogisticAdminZonasPage({
   if (requestedPage !== safePage) {
     const params = new URLSearchParams();
 
-    if (searchValue.trim()) {
-      params.set("query", searchValue.trim());
+    if (searchQuery.trim()) {
+      params.set("query", searchQuery.trim());
     }
 
     if (safePage > 1) {
@@ -66,14 +37,14 @@ export default async function LogisticAdminZonasPage({
     redirect(nextUrl);
   }
 
-  const zonasKey = paginatedZonas.map((zona) => `${zona.idZona}:${zona.pedidosTotales}:${zona.rutasAsignadas}`).join("|");
+  const zonasKey = [paginatedZonas.map((zona) => `${zona.idZona}:${zona.pedidosTotales}:${zona.rutasAsignadas}`).join("|"), searchQuery].join("|");
 
   return (
     <ZonasManager
       key={zonasKey}
       zonas={paginatedZonas}
       zonasFueraCatalogo={data.zonasFueraCatalogo}
-      searchQuery={searchValue}
+      searchQuery={searchQuery}
       page={safePage}
       totalPages={totalPages}
       totalFilteredZonas={totalFilteredZonas}

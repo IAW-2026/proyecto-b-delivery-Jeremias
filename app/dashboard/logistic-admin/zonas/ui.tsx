@@ -1,31 +1,10 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
-
-type Zona = {
-  idZona: number;
-  zona: string;
-  pedidosTotales: number;
-  pedidosAsignados: number;
-  pedidosReady: number;
-  pedidosCancelados: number;
-  bidonesTotales: number;
-  rutasAsignadas: number;
-  choferesAsignados: number;
-};
-
-type ZonaFueraCatalogo = {
-  zona: string;
-  pedidosTotales: number;
-  pedidosAsignados: number;
-  pedidosReady: number;
-  pedidosCancelados: number;
-  bidonesTotales: number;
-  choferesAsignados: number;
-};
+import { buildZonasQueryHref, statCardClass, type Zona, type ZonaFueraCatalogo } from "./utils";
+import { useZonasController } from "./useZonasController";
 
 type Props = {
   zonas: Zona[];
@@ -42,44 +21,6 @@ type Props = {
   basePath?: string;
 };
 
-type FormState = {
-  nombre: string;
-};
-
-const emptyForm: FormState = {
-  nombre: "",
-};
-
-function statCardClass(kind: "blue" | "emerald" | "amber" | "slate") {
-  switch (kind) {
-    case "blue":
-      return "border-blue-200 bg-blue-50 text-blue-700";
-    case "emerald":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    case "amber":
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
-  }
-}
-
-function buildQueryHref(basePath: string, nextValues: { query?: string; page?: number }, searchQuery: string, page: number) {
-  const params = new URLSearchParams();
-  const nextQuery = nextValues.query ?? searchQuery;
-  const nextPage = nextValues.page ?? page;
-
-  if (nextQuery.trim()) {
-    params.set("query", nextQuery.trim());
-  }
-
-  if (nextPage > 1) {
-    params.set("page", String(nextPage));
-  }
-
-  const queryString = params.toString();
-  return queryString ? `${basePath}/zonas?${queryString}` : `${basePath}/zonas`;
-}
-
 export default function ZonasManager({
   zonas,
   zonasFueraCatalogo,
@@ -89,105 +30,21 @@ export default function ZonasManager({
   totalFilteredZonas,
   totalZonas,
   zonasConPedidos,
+  zonasSinPedidos,
+  totalPedidos,
+  totalRutas,
   basePath = "/dashboard/logistic-admin",
 }: Props) {
-  const router = useRouter();
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [editForm, setEditForm] = useState<FormState>(emptyForm);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editingZonaId, setEditingZonaId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const controller = useZonasController({
+    zonas,
+    searchParams: { query: searchQuery, page: String(page) },
+    page,
+    totalFilteredZonas,
+    basePath,
+  });
 
-  async function runAction(payload: Record<string, unknown>) {
-    const response = await fetch("/api/logistic-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "No se pudo completar la operación");
-    }
-  }
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-
-    const nombre = form.nombre.trim();
-    if (!nombre) {
-      setError("Escribí el nombre del barrio.");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await runAction({ action: "create_zone", nombre });
-
-      setForm(emptyForm);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function startEdit(zona: Zona) {
-    setEditingZonaId(zona.idZona);
-    setEditForm({ nombre: zona.zona });
-    setError(null);
-  }
-
-  function cancelEdit() {
-    setEditingZonaId(null);
-    setEditForm(emptyForm);
-    setError(null);
-  }
-
-  async function handleUpdateZone(idZona: number) {
-    setError(null);
-
-    const nombre = editForm.nombre.trim();
-    if (!nombre) {
-      setError("Escribí el nombre del barrio.");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await runAction({ action: "update_zone", idZona, nombre });
-
-      cancelEdit();
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleDelete(zona: Zona) {
-    if (zona.rutasAsignadas > 0) {
-      setError("No se puede eliminar una zona con rutas asociadas. Primero reasigná o limpiá esas rutas.");
-      return;
-    }
-
-    const ok = window.confirm(`¿Eliminar la zona ${zona.zona}?`);
-    if (!ok) return;
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      await runAction({ action: "delete_zone", idZona: zona.idZona });
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar la zona");
-    } finally {
-      setIsSaving(false);
-    }
-  }
+  const { filterState, form, setForm, editForm, setEditForm, isSaving, editingZonaId, error, pageStart, pageEnd, handlers } = controller;
+  const { handleSubmit, startEdit, cancelEdit, handleUpdateZone, handleDelete, submitSearch } = handlers;
 
   return (
     <div className={adminPageShell}>
@@ -196,9 +53,7 @@ export default function ZonasManager({
         <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
           Zonas
         </h1>
-        <p className="text-sm text-slate-600">
-          Alta, edición y eliminación de barrios de Bahía Blanca para ordenar cobertura y asignaciones.
-        </p>
+        <p className="text-sm text-slate-600">Alta, edición y eliminación de barrios de Bahía Blanca para ordenar cobertura y asignaciones.</p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -209,6 +64,18 @@ export default function ZonasManager({
         <div className={`${adminStatCardClass} ${statCardClass("emerald")}`}>
           <p className="text-sm opacity-80">Con pedidos actualmente</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{zonasConPedidos}</p>
+        </div>
+        <div className={`${adminStatCardClass} ${statCardClass("amber")}`}>
+          <p className="text-sm opacity-80">Sin pedidos</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{zonasSinPedidos}</p>
+        </div>
+        <div className={`${adminStatCardClass} ${statCardClass("slate")}`}>
+          <p className="text-sm opacity-80">Pedidos totales</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalPedidos}</p>
+        </div>
+        <div className={`${adminStatCardClass} ${statCardClass("slate")}`}>
+          <p className="text-sm opacity-80">Rutas activas</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalRutas}</p>
         </div>
       </section>
 
@@ -224,11 +91,7 @@ export default function ZonasManager({
             disabled={isSaving}
           />
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className={adminButtonClass("edit")}
-            >
+            <button type="submit" disabled={isSaving} className={adminButtonClass("edit")}>
               Agregar
             </button>
           </div>
@@ -253,8 +116,7 @@ export default function ZonasManager({
             onSubmit={(event) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
-              const queryValue = String(formData.get("query") ?? "");
-              router.push(buildQueryHref(basePath, { query: queryValue, page: 1 }, searchQuery, page));
+              submitSearch(String(formData.get("query") ?? ""));
             }}
             className="space-y-3"
           >
@@ -270,12 +132,14 @@ export default function ZonasManager({
                 placeholder="Buscar por barrio"
                 className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               />
-              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+              <button type="submit" className={adminButtonClass("edit", "sm")}>
+                Buscar
+              </button>
             </div>
 
             {searchQuery ? (
               <Link
-                href={buildQueryHref(basePath, { query: "", page: 1 }, searchQuery, page)}
+                href={buildZonasQueryHref({ query: "", page: 1 }, filterState, basePath)}
                 className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Limpiar búsqueda
@@ -293,7 +157,7 @@ export default function ZonasManager({
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>
-              Mostrando {zonas.length === 0 ? 0 : (page - 1) * 8 + 1}-{Math.min(totalFilteredZonas, page * 8)} de {totalFilteredZonas} barrios
+              Mostrando {pageStart}-{pageEnd} de {totalFilteredZonas} barrios
             </p>
             <p>
               Página {page} de {totalPages}
@@ -312,7 +176,7 @@ export default function ZonasManager({
             <tbody>
               {zonas.map((zona) => (
                 <Fragment key={zona.idZona}>
-                  <tr className="border-t border-slate-100 text-sm text-slate-700 align-top">
+                  <tr className="border-t border-slate-100 align-top text-sm text-slate-700">
                     <td className="px-4 py-4">
                       {editingZonaId === zona.idZona ? (
                         <input
@@ -341,12 +205,7 @@ export default function ZonasManager({
                       <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
                         {editingZonaId === zona.idZona ? (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => void handleUpdateZone(zona.idZona)}
-                              disabled={isSaving}
-                              className={adminButtonClass("save", "sm")}
-                            >
+                            <button type="button" onClick={() => void handleUpdateZone(zona.idZona)} disabled={isSaving} className={adminButtonClass("save", "sm")}>
                               {isSaving ? "Guardando..." : "Guardar"}
                             </button>
                             <button type="button" onClick={cancelEdit} disabled={isSaving} className={adminButtonClass("cancel", "sm")}>
@@ -360,7 +219,7 @@ export default function ZonasManager({
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDelete(zona)}
+                              onClick={() => void handleDelete(zona)}
                               disabled={isSaving || zona.rutasAsignadas > 0}
                               className={adminButtonClass("danger", "sm")}
                               title={zona.rutasAsignadas > 0 ? "No se puede borrar porque tiene rutas asociadas" : "Eliminar zona"}
@@ -387,14 +246,14 @@ export default function ZonasManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredZonas}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildQueryHref(basePath, { page: Math.max(1, page - 1) }, searchQuery, page)}
+                href={buildZonasQueryHref({ page: Math.max(1, page - 1) }, filterState, basePath)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildQueryHref(basePath, { page: Math.min(totalPages, page + 1) }, searchQuery, page)}
+                href={buildZonasQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, basePath)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >
@@ -408,9 +267,7 @@ export default function ZonasManager({
       {zonasFueraCatalogo.length > 0 ? (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <h2 className="text-lg font-semibold text-amber-900">Zonas detectadas en pedidos que no están en el catálogo</h2>
-          <p className="mt-1 text-sm text-amber-800">
-            Estas aparecen en pedidos, pero todavía no fueron cargadas como barrios editables.
-          </p>
+          <p className="mt-1 text-sm text-amber-800">Estas aparecen en pedidos, pero todavía no fueron cargadas como barrios editables.</p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {zonasFueraCatalogo.map((zona) => (
               <article key={zona.zona} className="rounded-xl border border-amber-200 bg-white p-4">

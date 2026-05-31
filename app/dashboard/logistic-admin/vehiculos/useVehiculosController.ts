@@ -1,0 +1,258 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { buildVehiculosQueryHref, pageSize, parseVehiculosFilters, type SearchBy, type SearchParamsInput, type Vehiculo, type VehiculosFilterState, type VehiculoStatus } from "./utils";
+
+type FormState = {
+  patente: string;
+  tipo: string;
+  capacidadBidones: string;
+};
+
+type UseVehiculosControllerParams = {
+  vehiculos: Vehiculo[];
+  searchParams: SearchParamsInput;
+  page: number;
+  totalFilteredVehiculos: number;
+  basePath?: string;
+};
+
+const emptyForm: FormState = {
+  patente: "",
+  tipo: "",
+  capacidadBidones: "",
+};
+
+export function useVehiculosController({ vehiculos, searchParams, page, totalFilteredVehiculos, basePath = "/dashboard/logistic-admin" }: UseVehiculosControllerParams) {
+  const router = useRouter();
+  const filterState: VehiculosFilterState = parseVehiculosFilters(searchParams);
+  const [addForm, setAddForm] = useState<FormState>(emptyForm);
+  const [editForm, setEditForm] = useState<FormState>(emptyForm);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedSearchBy, setSelectedSearchBy] = useState<SearchBy>(filterState.searchBy);
+  const [pausingVehicleId, setPausingVehicleId] = useState<number | null>(null);
+  const [detailsVehicleId, setDetailsVehicleId] = useState<number | null>(null);
+  const [pauseReasons, setPauseReasons] = useState<Record<number, string>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  const pageStart = vehiculos.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const pageEnd = Math.min(totalFilteredVehiculos, page * pageSize);
+
+  async function runAction(payload: Record<string, unknown>) {
+    const response = await fetch("/api/logistic-admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? "No se pudo completar la operación");
+    }
+  }
+
+  function startEdit(vehiculo: Vehiculo) {
+    setEditingId(vehiculo.idVehiculo);
+    setEditForm({
+      patente: vehiculo.patente,
+      tipo: vehiculo.tipo,
+      capacidadBidones: String(vehiculo.capacidadBidones),
+    });
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditForm(emptyForm);
+    setError(null);
+  }
+
+  async function handleAddSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    const patente = addForm.patente.trim().toUpperCase();
+    const tipo = addForm.tipo.trim();
+    const capacidadBidones = Number(addForm.capacidadBidones);
+
+    if (!patente || !tipo || !Number.isFinite(capacidadBidones) || capacidadBidones <= 0) {
+      setError("Completá patente, tipo y capacidad válida (> 0).");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await runAction({
+        action: "create_vehicle",
+        patente,
+        tipo,
+        capacidadBidones,
+      });
+
+      setAddForm(emptyForm);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleUpdateVehicle(vehiculoId: number) {
+    setError(null);
+
+    const patente = editForm.patente.trim().toUpperCase();
+    const tipo = editForm.tipo.trim();
+    const capacidadBidones = Number(editForm.capacidadBidones);
+
+    if (!patente || !tipo || !Number.isFinite(capacidadBidones) || capacidadBidones <= 0) {
+      setError("Completá patente, tipo y capacidad válida (> 0).");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await runAction({
+        action: "update_vehicle",
+        idVehiculo: vehiculoId,
+        patente,
+        tipo,
+        capacidadBidones,
+      });
+
+      cancelEdit();
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(vehiculoId: number) {
+    const ok = window.confirm("¿Eliminar este vehículo?");
+    if (!ok) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await runAction({ action: "delete_vehicle", idVehiculo: vehiculoId });
+      if (editingId === vehiculoId) {
+        cancelEdit();
+      }
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar el vehículo");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleTogglePause(vehiculo: Vehiculo) {
+    if (vehiculo.estado !== "pausado") {
+      setPausingVehicleId(vehiculo.idVehiculo);
+      setPauseReasons((current) => ({
+        ...current,
+        [vehiculo.idVehiculo]: vehiculo.motivoPausa ?? current[vehiculo.idVehiculo] ?? "",
+      }));
+      setError(null);
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await runAction({ action: "set_vehicle_state", idVehiculo: vehiculo.idVehiculo, estado: "activo" });
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cambiar el estado del vehículo");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleConfirmPause(vehiculo: Vehiculo) {
+    const motivo = pauseReasons[vehiculo.idVehiculo]?.trim() ?? "";
+    if (!motivo) {
+      setError("Debés indicar un motivo para pausar el vehículo.");
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await runAction({
+        action: "set_vehicle_state",
+        idVehiculo: vehiculo.idVehiculo,
+        estado: "pausado",
+        motivoPausa: motivo,
+      });
+
+      setPausingVehicleId(null);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo pausar el vehículo");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleCancelPause(idVehiculo: number) {
+    setPausingVehicleId(null);
+    setPauseReasons((current) => ({ ...current, [idVehiculo]: "" }));
+    setError(null);
+  }
+
+  function openDetails(vehiculo: Vehiculo) {
+    setDetailsVehicleId(vehiculo.idVehiculo);
+  }
+
+  function closeDetails() {
+    setDetailsVehicleId(null);
+  }
+
+  function submitSearch(queryValue: string) {
+    router.push(buildVehiculosQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, filterState, `${basePath}/vehiculos`));
+  }
+
+  function changeStatusFilter(status: "todos" | VehiculoStatus) {
+    router.push(buildVehiculosQueryHref({ status, page: 1 }, filterState, `${basePath}/vehiculos`));
+  }
+
+  return {
+    filterState,
+    selectedSearchBy,
+    setSelectedSearchBy,
+    addForm,
+    setAddForm,
+    editForm,
+    setEditForm,
+    isSaving,
+    editingId,
+    pausingVehicleId,
+    detailsVehicleId,
+    pauseReasons,
+    error,
+    pageStart,
+    pageEnd,
+    handlers: {
+      startEdit,
+      cancelEdit,
+      handleAddSubmit,
+      handleUpdateVehicle,
+      handleDelete,
+      handleTogglePause,
+      handleConfirmPause,
+      handleCancelPause,
+      openDetails,
+      closeDetails,
+      submitSearch,
+      changeStatusFilter,
+    },
+  };
+}

@@ -1,45 +1,22 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { LogisticAdminViewData } from "../data";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
+import { buildChoferesQueryHref, searchOptions, statusOptions, type ChoferStatus, type SearchBy } from "./utils";
+import { useChoferesController } from "./useChoferesController";
 
-type Zona = {
-  idZona: number;
-  nombre: string;
-};
-
-type Vehiculo = {
-  idVehiculo: number;
-  patente: string;
-  tipo: string;
-  capacidadBidones: number;
-  idVendedor: number;
-  estado?: string;
-};
-
-type Chofer = {
-  idChofer: number;
-  nombre: string;
-  telefono: string | null;
-  estado: string;
-  disponible: boolean;
-  idVehiculo: number | null;
-  idZona: number | null;
-  vehiculo?: {
-    patente: string;
-    tipo: string;
-  } | null;
-  zona?: Zona | null;
-};
+type Zona = LogisticAdminViewData["zonasCatalogo"][number];
+type Vehiculo = LogisticAdminViewData["vehiculos"][number];
+type Chofer = LogisticAdminViewData["choferes"][number];
 
 type Props = {
   choferes: Chofer[];
   zonas: Zona[];
   vehiculos: Vehiculo[];
   searchQuery: string;
-  searchBy: "nombre" | "telefono";
+  searchBy: SearchBy;
   statusFilter: "todos" | ChoferStatus;
   page: number;
   totalPages: number;
@@ -49,31 +26,6 @@ type Props = {
   withZoneCount: number;
   withoutZoneCount: number;
   basePath?: string;
-};
-
-type ChoferStatus = "todos" | "activo" | "inactivo" | "pendiente" | "rechazado";
-
-const statusOptions: Array<{ value: Exclude<ChoferStatus, "todos">; label: string }> = [
-  { value: "activo", label: "Activos" },
-  { value: "inactivo", label: "Inactivos" },
-  { value: "pendiente", label: "Pendientes" },
-  { value: "rechazado", label: "Rechazados" },
-];
-
-const searchOptions: Array<{ value: "nombre" | "telefono"; label: string; placeholder: string }> = [
-  { value: "nombre", label: "Nombre", placeholder: "Buscar por nombre" },
-  { value: "telefono", label: "Teléfono", placeholder: "Buscar por teléfono" },
-];
-
-const pageSize = 8;
-
-type ChoferRequest = {
-  id: number;
-  nombre: string;
-  telefono: string;
-  vendorName: string;
-  status: "pending" | "approved" | "rejected";
-  createdAt: string;
 };
 
 function estadoClass(estado: string) {
@@ -89,40 +41,6 @@ function formatEstado(estado: string) {
   if (estado === "pendiente") return "Pendiente";
   if (estado === "rechazado") return "Rechazado";
   return estado.charAt(0).toUpperCase() + estado.slice(1);
-}
-
-function buildQueryHref(
-  basePath: string,
-  nextValues: { query?: string; searchBy?: "nombre" | "telefono"; status?: ChoferStatus; page?: number },
-  searchQuery: string,
-  searchBy: "nombre" | "telefono",
-  statusFilter: ChoferStatus,
-  page: number
-) {
-  const params = new URLSearchParams();
-  const nextQuery = nextValues.query ?? searchQuery;
-  const nextSearchBy = nextValues.searchBy ?? searchBy;
-  const nextStatus = nextValues.status ?? statusFilter;
-  const nextPage = nextValues.page ?? page;
-
-  if (nextQuery.trim()) {
-    params.set("query", nextQuery.trim());
-  }
-
-  if (nextSearchBy !== "nombre") {
-    params.set("searchBy", nextSearchBy);
-  }
-
-  if (nextStatus !== "todos") {
-    params.set("status", nextStatus);
-  }
-
-  if (nextPage > 1) {
-    params.set("page", String(nextPage));
-  }
-
-  const queryString = params.toString();
-  return queryString ? `${basePath}/choferes?${queryString}` : `${basePath}/choferes`;
 }
 
 export default function ChoferesManager({
@@ -142,158 +60,35 @@ export default function ChoferesManager({
   basePath = "/dashboard/logistic-admin",
 }: Props) {
   const router = useRouter();
-  const [savingId, setSavingId] = useState<number | null>(null);
-  const [editingChoferId, setEditingChoferId] = useState<number | null>(null);
-  const [selectedSearchBy, setSelectedSearchBy] = useState(searchBy);
-  const [requests, setRequests] = useState<ChoferRequest[]>([]);
-  const [loadingRequests, setLoadingRequests] = useState(true);
-  const [requestActionId, setRequestActionId] = useState<number | null>(null);
-  const [selectedZones, setSelectedZones] = useState<Record<number, string>>(() => {
-    const initial: Record<number, string> = {};
-    for (const chofer of choferes) {
-      initial[chofer.idChofer] = chofer.idZona ? String(chofer.idZona) : "";
-    }
-    return initial;
+  const controller = useChoferesController({
+    choferes,
+    zonas,
+    vehiculos,
+    searchParams: { query: searchQuery, searchBy, status: statusFilter, page: String(page) },
+    page,
+    totalFilteredChoferes,
+    basePath,
   });
-  const [selectedVehiculos, setSelectedVehiculos] = useState<Record<number, string>>(() => {
-    const initial: Record<number, string> = {};
-    for (const chofer of choferes) {
-      initial[chofer.idChofer] = chofer.idVehiculo ? String(chofer.idVehiculo) : "";
-    }
-    return initial;
-  });
-  const [error, setError] = useState<string | null>(null);
-  const occupiedVehicleIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const chofer of choferes) {
-      if (chofer.idVehiculo !== null) {
-        ids.add(chofer.idVehiculo);
-      }
-    }
-    return ids;
-  }, [choferes]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const {
+    filterState,
+    selectedSearchBy,
+    setSelectedSearchBy,
+    savingId,
+    editingChoferId,
+    requests,
+    loadingRequests,
+    requestActionId,
+    error,
+    pageStart,
+    pageEnd,
+    occupiedVehicleIds,
+    editState,
+    handlers,
+  } = controller;
 
-    async function loadRequests() {
-      try {
-        const response = await fetch("/api/logistic-admin/chofer-requests", { cache: "no-store" });
-        if (!response.ok) return;
-
-        const payload = (await response.json()) as { requests?: ChoferRequest[] };
-        if (!cancelled) {
-          setRequests(payload.requests ?? []);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingRequests(false);
-        }
-      }
-    }
-
-    void loadRequests();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function runAction(payload: Record<string, unknown>) {
-    const response = await fetch("/api/logistic-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "No se pudo completar la operación");
-    }
-  }
-
-  async function handleSaveZone(idChofer: number) {
-    const zoneValue = selectedZones[idChofer];
-    const vehicleValue = selectedVehiculos[idChofer];
-    setSavingId(idChofer);
-    setError(null);
-
-    try {
-      if (!zoneValue) {
-        await runAction({ action: "clear_driver_zone", idChofer });
-      } else {
-        await runAction({ action: "assign_driver_zone", idChofer, idZona: Number(zoneValue) });
-      }
-
-      if (!vehicleValue) {
-        await runAction({ action: "assign_vehicle", idChofer, idVehiculo: null });
-      } else {
-        await runAction({ action: "assign_vehicle", idChofer, idVehiculo: Number(vehicleValue) });
-      }
-
-      setEditingChoferId(null);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar los cambios del chofer");
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  async function handleSetEstado(idChofer: number, estado: string) {
-    setSavingId(idChofer);
-    setError(null);
-    try {
-      await runAction({ action: "set_chofer_estado", idChofer, estado });
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo cambiar el estado");
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  async function handleDelete(idChofer: number) {
-    if (!confirm("¿Eliminar chofer? Esta acción no se puede deshacer.")) return;
-    setSavingId(idChofer);
-    setError(null);
-    try {
-      await runAction({ action: "delete_chofer", idChofer });
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar el chofer");
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  async function handleReviewRequest(requestId: number, action: "approve" | "reject") {
-    setRequestActionId(requestId);
-    try {
-      const options: RequestInit = {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      };
-
-      if (action === "reject") {
-        const reason = window.prompt("Motivo del rechazo (opcional)")?.trim() ?? "";
-        options.body = JSON.stringify({ reason });
-      }
-
-      const response = await fetch(`/api/logistic-admin/chofer-requests/${requestId}/${action}`, options);
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? "No se pudo procesar la solicitud");
-      }
-
-      setRequests((current) => current.filter((request) => request.id !== requestId));
-      router.refresh();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "No se pudo procesar la solicitud");
-    } finally {
-      setRequestActionId(null);
-    }
-  }
+  const { selectedZones, selectedVehiculos } = editState;
+  const { startEdit, cancelEdit, saveEdit, handleSetEstado, handleDelete, handleReviewRequest, setSelectedZones, setSelectedVehiculos } = handlers;
 
   return (
     <div className={`mx-auto max-w-7xl p-4 text-slate-800 md:p-6 ${adminPageShell}`}>
@@ -302,9 +97,7 @@ export default function ChoferesManager({
         <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
           Choferes
         </h1>
-        <p className="max-w-2xl text-sm text-slate-600">
-          Estado del equipo de choferes, disponibilidad, vehículo asignado y barrio operativo.
-        </p>
+        <p className="max-w-2xl text-sm text-slate-600">Estado del equipo de choferes, disponibilidad, vehículo asignado y barrio operativo.</p>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -336,13 +129,9 @@ export default function ChoferesManager({
 
         <div className="mt-4 space-y-3">
           {loadingRequests ? (
-            <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
-              Cargando solicitudes...
-            </p>
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">Cargando solicitudes...</p>
           ) : requests.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
-              No hay solicitudes pendientes.
-            </p>
+            <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">No hay solicitudes pendientes.</p>
           ) : (
             requests.map((request) => (
               <article key={request.id} className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -353,20 +142,10 @@ export default function ChoferesManager({
                     <p className="mt-1 text-xs text-slate-500">Empresa: {request.vendorName}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleReviewRequest(request.id, "approve")}
-                      disabled={requestActionId === request.id}
-                      className={adminButtonClass("success", "sm")}
-                    >
+                    <button type="button" onClick={() => handleReviewRequest(request.id, "approve")} disabled={requestActionId === request.id} className={adminButtonClass("success", "sm")}>
                       Aprobar
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleReviewRequest(request.id, "reject")}
-                      disabled={requestActionId === request.id}
-                      className={adminButtonClass("danger", "sm")}
-                    >
+                    <button type="button" onClick={() => handleReviewRequest(request.id, "reject")} disabled={requestActionId === request.id} className={adminButtonClass("danger", "sm")}>
                       Rechazar
                     </button>
                   </div>
@@ -394,7 +173,7 @@ export default function ChoferesManager({
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
               const queryValue = String(formData.get("query") ?? "");
-              router.push(buildQueryHref(basePath, { query: queryValue, searchBy: selectedSearchBy, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+              router.push(buildChoferesQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`));
             }}
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
@@ -433,14 +212,13 @@ export default function ChoferesManager({
                   placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar choferes"}
                   className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 />
-                <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
+                <button type="submit" className={adminButtonClass("edit", "sm")}>
+                  Buscar
+                </button>
               </div>
               {searchQuery ? (
                 <div>
-                  <Link
-                    href={buildQueryHref(basePath, { query: "", page: 1 }, searchQuery, selectedSearchBy, statusFilter, page)}
-                    className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                  >
+                  <Link href={buildChoferesQueryHref({ query: "", page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`)} className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
                     Limpiar búsqueda
                   </Link>
                 </div>
@@ -459,7 +237,7 @@ export default function ChoferesManager({
                   name="status"
                   value={statusFilter}
                   onChange={(event) => {
-                    router.push(buildQueryHref(basePath, { status: event.currentTarget.value as ChoferStatus, page: 1 }, searchQuery, selectedSearchBy, statusFilter, page));
+                    router.push(buildChoferesQueryHref({ status: event.currentTarget.value as ChoferStatus, page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`));
                   }}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 >
@@ -481,15 +259,13 @@ export default function ChoferesManager({
 
       {choferes.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
-          {searchQuery || statusFilter !== "todos"
-            ? `No hay resultados para ${searchQuery ? `"${searchQuery}"` : "el filtro seleccionado"}.`
-            : "No hay choferes asociados a la empresa."}
+          {searchQuery || statusFilter !== "todos" ? `No hay resultados para ${searchQuery ? `"${searchQuery}"` : "el filtro seleccionado"}.` : "No hay choferes asociados a la empresa."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>
-              Mostrando {choferes.length === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(totalFilteredChoferes, page * pageSize)} de {totalFilteredChoferes} choferes
+              Mostrando {pageStart}-{pageEnd} de {totalFilteredChoferes} choferes
             </p>
             <p>
               Página {page} de {totalPages}
@@ -507,113 +283,95 @@ export default function ChoferesManager({
             </thead>
             <tbody>
               {choferes.map((chofer) => (
-                <Fragment key={chofer.idChofer}>
-                  <tr key={chofer.idChofer} className="border-t border-slate-100 text-sm text-slate-700 align-top">
-                    <td className="px-3 py-4">
-                      <p className="truncate font-medium text-slate-900">{chofer.nombre}</p>
-                      <p className="text-xs text-slate-500">Tel: {chofer.telefono ?? "Sin teléfono"}</p>
-                    </td>
-                    <td className="px-3 py-4">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
-                        {formatEstado(chofer.estado)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4">
-                      {editingChoferId === chofer.idChofer ? (
-                        <select
-                          value={selectedZones[chofer.idChofer] ?? ""}
-                          onChange={(event) => setSelectedZones((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
-                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
-                          disabled={savingId === chofer.idChofer}
-                        >
-                          <option value="">Sin zona</option>
-                          {zonas.map((zona) => (
-                            <option key={zona.idZona} value={zona.idZona}>
-                              {zona.nombre}
+                <tr key={chofer.idChofer} className="border-t border-slate-100 text-sm text-slate-700 align-top">
+                  <td className="px-3 py-4">
+                    <p className="truncate font-medium text-slate-900">{chofer.nombre}</p>
+                    <p className="text-xs text-slate-500">Tel: {chofer.telefono ?? "Sin teléfono"}</p>
+                  </td>
+                  <td className="px-3 py-4">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
+                      {formatEstado(chofer.estado)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-4">
+                    {editingChoferId === chofer.idChofer ? (
+                      <select
+                        value={selectedZones[chofer.idChofer] ?? ""}
+                        onChange={(event) => setSelectedZones((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
+                        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                        disabled={savingId === chofer.idChofer}
+                      >
+                        <option value="">Sin zona</option>
+                        {zonas.map((zona) => (
+                          <option key={zona.idZona} value={zona.idZona}>
+                            {zona.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="truncate font-medium text-slate-900">{chofer.zona?.nombre ?? <span className="font-normal italic text-slate-400">Sin zona</span>}</p>
+                    )}
+                  </td>
+                  <td className="px-3 py-4">
+                    {editingChoferId === chofer.idChofer ? (
+                      <select
+                        value={selectedVehiculos[chofer.idChofer] ?? ""}
+                        onChange={(event) => setSelectedVehiculos((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
+                        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                        disabled={savingId === chofer.idChofer}
+                      >
+                        <option value="">Sin asignar</option>
+                        {vehiculos
+                          .filter((vehiculo) => vehiculo.estado !== "pausado" && (vehiculo.idVehiculo === chofer.idVehiculo || !occupiedVehicleIds.has(vehiculo.idVehiculo)))
+                          .map((vehiculo) => (
+                            <option key={vehiculo.idVehiculo} value={vehiculo.idVehiculo}>
+                              {vehiculo.patente} · {vehiculo.tipo}
+                              {vehiculo.idVehiculo === chofer.idVehiculo ? " (actual)" : ""}
                             </option>
                           ))}
-                        </select>
-                      ) : (
-                        <p className="truncate font-medium text-slate-900">
-                          {chofer.zona?.nombre ?? <span className="font-normal italic text-slate-400">Sin zona</span>}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-3 py-4">
+                      </select>
+                    ) : (
+                      <p className="truncate font-medium text-slate-900">
+                        {chofer.vehiculo?.patente ? `${chofer.vehiculo.patente} (${chofer.vehiculo.tipo})` : <span className="font-normal italic text-slate-400">Sin asignar</span>}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-3 py-4">
+                    <div className="flex flex-wrap justify-center gap-2">
                       {editingChoferId === chofer.idChofer ? (
-                        <select
-                          value={selectedVehiculos[chofer.idChofer] ?? ""}
-                          onChange={(event) => setSelectedVehiculos((current) => ({ ...current, [chofer.idChofer]: event.target.value }))}
-                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400"
-                          disabled={savingId === chofer.idChofer}
-                        >
-                          <option value="">Sin asignar</option>
-                          {vehiculos
-                            .filter((vehiculo) => vehiculo.estado !== "pausado" && (vehiculo.idVehiculo === chofer.idVehiculo || !occupiedVehicleIds.has(vehiculo.idVehiculo)))
-                            .map((vehiculo) => (
-                              <option key={vehiculo.idVehiculo} value={vehiculo.idVehiculo}>
-                                {vehiculo.patente} · {vehiculo.tipo}
-                                {vehiculo.idVehiculo === chofer.idVehiculo ? " (actual)" : ""}
-                              </option>
-                            ))}
-                        </select>
+                        <>
+                          <button type="button" onClick={() => saveEdit(chofer)} disabled={savingId === chofer.idChofer} className={adminButtonClass("save", "sm")}>
+                            {savingId === chofer.idChofer ? "Guardando..." : "Guardar"}
+                          </button>
+                          <button type="button" onClick={() => cancelEdit(chofer)} disabled={savingId === chofer.idChofer} className={adminButtonClass("cancel", "sm")}>
+                            Cancelar
+                          </button>
+                        </>
                       ) : (
-                        <p className="truncate font-medium text-slate-900">
-                          {chofer.vehiculo?.patente ? `${chofer.vehiculo.patente} (${chofer.vehiculo.tipo})` : <span className="font-normal italic text-slate-400">Sin asignar</span>}
-                        </p>
+                        <>
+                          <button type="button" onClick={() => startEdit(chofer)} className={adminButtonClass("edit", "sm")}>
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSetEstado(chofer, chofer.estado === "activo" ? "inactivo" : "activo")}
+                            disabled={savingId === chofer.idChofer}
+                            className={`rounded-xl border px-4 py-2 text-xs font-medium transition-colors disabled:opacity-60 ${
+                              chofer.estado === "activo"
+                                ? "border-amber-200 bg-amber-50/60 text-amber-700 hover:bg-amber-50"
+                                : "border-emerald-200 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-50"
+                            }`}
+                          >
+                            {savingId === chofer.idChofer ? "..." : chofer.estado === "activo" ? "Desactivar" : "Activar"}
+                          </button>
+                          <button type="button" onClick={() => handleDelete(chofer)} disabled={savingId === chofer.idChofer} className={adminButtonClass("danger", "sm")}>
+                            Eliminar
+                          </button>
+                        </>
                       )}
-                    </td>
-                    <td className="px-3 py-4">
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {editingChoferId === chofer.idChofer ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleSaveZone(chofer.idChofer)}
-                              disabled={savingId === chofer.idChofer}
-                              className={adminButtonClass("save", "sm")}
-                            >
-                              {savingId === chofer.idChofer ? "Guardando..." : "Guardar"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingChoferId(null);
-                                setSelectedZones((current) => ({ ...current, [chofer.idChofer]: chofer.idZona ? String(chofer.idZona) : "" }));
-                                setSelectedVehiculos((current) => ({ ...current, [chofer.idChofer]: chofer.idVehiculo ? String(chofer.idVehiculo) : "" }));
-                                setError(null);
-                              }}
-                              className={adminButtonClass("cancel", "sm")}
-                            >
-                              Cancelar
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button type="button" onClick={() => setEditingChoferId(chofer.idChofer)} className={adminButtonClass("edit", "sm")}>
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSetEstado(chofer.idChofer, chofer.estado === "activo" ? "inactivo" : "activo")}
-                              disabled={savingId === chofer.idChofer}
-                              className={`rounded-xl border px-4 py-2 text-xs font-medium transition-colors disabled:opacity-60 ${
-                                chofer.estado === "activo"
-                                  ? "border-amber-200 bg-amber-50/60 text-amber-700 hover:bg-amber-50"
-                                  : "border-emerald-200 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-50"
-                              }`}
-                            >
-                              {savingId === chofer.idChofer ? "..." : chofer.estado === "activo" ? "Desactivar" : "Activar"}
-                            </button>
-                            <button type="button" onClick={() => handleDelete(chofer.idChofer)} disabled={savingId === chofer.idChofer} className={adminButtonClass("danger", "sm")}>
-                              Eliminar
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                </Fragment>
+                    </div>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
@@ -621,14 +379,14 @@ export default function ChoferesManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredChoferes}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildQueryHref(basePath, { page: Math.max(1, page - 1) }, searchQuery, searchBy, statusFilter, page)}
+                href={buildChoferesQueryHref({ page: Math.max(1, page - 1) }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildQueryHref(basePath, { page: Math.min(totalPages, page + 1) }, searchQuery, searchBy, statusFilter, page)}
+                href={buildChoferesQueryHref({ page: Math.min(totalPages, page + 1) }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >
