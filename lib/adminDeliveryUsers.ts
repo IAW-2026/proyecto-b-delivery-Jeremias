@@ -86,8 +86,11 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
       const clerkVisibleRole = clerkRoles[0] ?? null;
       const isGlobalAdmin = Boolean(globalAdminRecord) || clerkRoles.includes(ADMIN_DELIVERY_ROLE);
       const isBlocked = Boolean(accessControlRecord?.isBlocked);
+      
       const localRole = localRoleRecord?.role || "Sin rol";
-      const effectiveRole = isBlocked ? "blocked" : isGlobalAdmin ? ADMIN_DELIVERY_ROLE : clerkVisibleRole || localRole;
+      
+      // CAMBIO CLAVE: El effectiveRole ahora prioriza Clerk y descarta los roles de Prisma
+      const effectiveRole = isBlocked ? "blocked" : isGlobalAdmin ? ADMIN_DELIVERY_ROLE : clerkVisibleRole || "Sin rol";
 
       const primaryEmail = clerkUser.emailAddresses.find(
         (email: { id: string; emailAddress: string }) => email.id === clerkUser.primaryEmailAddressId
@@ -115,22 +118,21 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
       };
     });
 
-  // 4. FILTRO ESTRICTO: Solo delivery y/o logistic_admin que NO sean admin_delivery
+  // 4. FILTRO ESTRICTO: Solo miramos los roles de Clerk
   const users = allMappedUsers.filter((user) => {
-    // Verificamos si el rol objetivo está en la BD local o en Clerk
+    // Verificamos si Clerk dice que tiene el rol objetivo (o si está bloqueado pero su rol base era correcto)
     const hasTargetRole = 
-      user.localRole === "logistic_admin" || 
-      user.localRole === "delivery" ||
       user.effectiveRole === "logistic_admin" || 
-      user.effectiveRole === "delivery";
+      user.effectiveRole === "delivery" ||
+      (user.isBlocked && (user.localRole === "logistic_admin" || user.localRole === "delivery"));
 
-    // Nos aseguramos de que no tenga permisos de administrador por ningún lado
-    const isNotAdmin = 
-      !user.isGlobalAdmin && 
-      user.localRole !== "admin_delivery" && 
-      user.effectiveRole !== "admin_delivery";
+    // Nos aseguramos de que no tenga permisos de administrador
+    const isNotAdmin = !user.isGlobalAdmin && user.localRole !== "admin_delivery";
     
-    return hasTargetRole && isNotAdmin;
+    // Opcional de seguridad: Solo mostramos usuarios que tengan ALGÚN registro en tu BD local
+    const isAppUser = user.localRole !== "Sin rol" || user.idVendedor !== null;
+
+    return hasTargetRole && isNotAdmin && isAppUser;
   });
 
   return {

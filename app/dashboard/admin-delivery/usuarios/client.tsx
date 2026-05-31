@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminButtonClass, adminCardClass, adminStatCardClass } from "../../logistic-admin/styles";
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
@@ -24,23 +24,25 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
   const [filter, setFilter] = useState("all");
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [roleDrafts, setRoleDrafts] = useState<Record<string, string>>({});
-  const [blockReasons, setBlockReasons] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    const nextRoleDrafts: Record<string, string> = {};
-    const nextBlockReasons: Record<string, string> = {};
-
+// REEMPLAZALO POR ESTO:
+  // Inicializamos los estados calculándolos directamente al arrancar, sin usar useEffect
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, string>>(() => {
+    const initialDrafts: Record<string, string> = {};
     for (const user of users) {
-      nextRoleDrafts[user.clerkUserId] = editableRoles.includes(user.localRole as (typeof editableRoles)[number])
+      initialDrafts[user.clerkUserId] = editableRoles.includes(user.localRole as (typeof editableRoles)[number])
         ? user.localRole
         : "delivery";
-      nextBlockReasons[user.clerkUserId] = user.blockedReason ?? "";
     }
+    return initialDrafts;
+  });
 
-    setRoleDrafts(nextRoleDrafts);
-    setBlockReasons(nextBlockReasons);
-  }, [users]);
+  const [blockReasons] = useState<Record<string, string>>(() => {
+    const initialReasons: Record<string, string> = {};
+    for (const user of users) {
+      initialReasons[user.clerkUserId] = user.blockedReason ?? "";
+    }
+    return initialReasons;
+  });
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -142,18 +144,6 @@ export default function AdminDeliveryUsersClient({ users }: { users: AdminDelive
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-600">Usuarios cargados</p>
           <p className="mt-2 text-3xl font-semibold text-sky-600">{users.length}</p>
-        </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Con acceso global</p>
-          <p className="mt-2 text-3xl font-semibold text-emerald-600">
-            {users.filter((user) => user.isGlobalAdmin).length}
-          </p>
-        </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Sin overlay global</p>
-          <p className="mt-2 text-3xl font-semibold text-amber-600">
-            {users.filter((user) => !user.isGlobalAdmin).length}
-          </p>
         </div>
         <div className={adminStatCardClass}>
           <p className="text-sm text-slate-600">Usuarios bloqueados</p>
