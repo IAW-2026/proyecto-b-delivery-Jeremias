@@ -46,6 +46,7 @@ export default async function LogisticAdminPedidosPage({
       <LogisticAdminPedidosUi
         key={ordersKey}
         orders={paginatedOrders}
+        allFilteredOrders={filteredOrders}
         choferes={data.choferes}
         searchQuery={searchQuery}
         searchBy={searchBy}

@@ -57,18 +57,19 @@ export default async function AdminDeliveryPedidosPage({
   ].join("|");
 
   return (
-    <AdminDeliveryPedidosUi
-      key={ordersKey}
-      orders={paginatedOrders}
-      choferes={data.choferes}
-      searchQuery={searchQuery}
-      searchBy={searchBy}
-      assignmentFilter={assignmentFilter}
-      statusFilter={statusFilter}
-      page={safePage}
-      totalPages={totalPages}
-      totalFilteredOrders={totalFilteredOrders}
-      basePath={basePath}
-    />
+      <AdminDeliveryPedidosUi
+        key={ordersKey}
+        orders={paginatedOrders}
+        allFilteredOrders={filteredOrders}
+        choferes={data.choferes}
+        searchQuery={searchQuery}
+        searchBy={searchBy}
+        assignmentFilter={assignmentFilter}
+        statusFilter={statusFilter}
+        page={safePage}
+        totalPages={totalPages}
+        totalFilteredOrders={totalFilteredOrders}
+        basePath={basePath}
+      />
   );
 }

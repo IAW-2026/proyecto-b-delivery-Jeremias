@@ -34,6 +34,7 @@ export type ChoferStatus = {
   };
   vehiculo: ChoferVehiculo | null;
   pedidos: ChoferPedido[];
+  allPedidos: ChoferPedido[];
   cantidadPedidos: number;
   totalBidones: number;
 };
@@ -86,9 +87,32 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
 
   const displayName = clerkUserId ? await getClerkDisplayName(clerkUserId) : "Chofer nuevo";
   const choferId = dbChofer?.idChofer ?? 0;
-  const assignedOrders: any[] = await prisma.pedido.findMany({ where: { idChoferAsignado: choferId } });
+  const [pendingOrders, allAssignedOrders]: [any[], any[]] = await Promise.all([
+    prisma.pedido.findMany({
+      where: {
+        idChoferAsignado: choferId,
+        estado: { notIn: ["entregado", "delivered", "cancelado", "cancelled"] },
+      },
+      orderBy: { idPedido: "asc" },
+    }),
+    prisma.pedido.findMany({
+      where: { idChoferAsignado: choferId },
+      orderBy: { idPedido: "asc" },
+    }),
+  ]);
 
-  const pedidos = assignedOrders.map((pedido) => ({
+  const pedidos = pendingOrders.map((pedido) => ({
+    idPedido: pedido.idPedido,
+    cliente: pedido.cliente,
+    direccion: pedido.direccion,
+    telefono: pedido.telefono ?? "",
+    cantBidones: pedido.cantBidones,
+    zona: pedido.zona,
+    estado: mapStatusToChoferStatus(pedido.estado),
+    motivoRevision: pedido.motivoRevision ?? null,
+  }));
+
+  const allPedidos = allAssignedOrders.map((pedido) => ({
     idPedido: pedido.idPedido,
     cliente: pedido.cliente,
     direccion: pedido.direccion,
@@ -127,6 +151,7 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
     },
     vehiculo: effectiveVehiculo,
     pedidos,
+    allPedidos,
     cantidadPedidos: pedidos.length,
     totalBidones,
   };

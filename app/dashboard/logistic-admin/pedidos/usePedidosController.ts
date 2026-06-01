@@ -17,6 +17,7 @@ type Chofer = {
 
 type UsePedidosControllerParams = {
   orders: LogisticOrder[];
+  allFilteredOrders: LogisticOrder[];
   choferes: Chofer[];
   searchParams: SearchParamsInput;
   page: number;
@@ -24,7 +25,7 @@ type UsePedidosControllerParams = {
   basePath?: string;
 };
 
-export function usePedidosController({ orders, choferes, searchParams, page, totalFilteredOrders, basePath = "/dashboard/logistic-admin" }: UsePedidosControllerParams) {
+export function usePedidosController({ orders, allFilteredOrders, choferes, searchParams, page, totalFilteredOrders, basePath = "/dashboard/logistic-admin" }: UsePedidosControllerParams) {
   const router = useRouter();
   const filterState: PedidosFilterState = parsePedidosFilters(searchParams);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -62,16 +63,16 @@ export function usePedidosController({ orders, choferes, searchParams, page, tot
   }
 
   const totals = useMemo(() => {
-    return orders.reduce(
+    return allFilteredOrders.reduce(
       (accumulator, order) => {
         accumulator[order.status] += 1;
         return accumulator;
       },
       { ready: 0, en_camino: 0, entregado: 0, cancelado: 0, revision: 0 } as Record<OrderStatus, number>
     );
-  }, [orders]);
+  }, [allFilteredOrders]);
 
-  const readyUnassignedCount = orders.filter((order) => order.status === "ready" && order.assignedToChoferId === null).length;
+  const readyUnassignedCount = allFilteredOrders.filter((order) => order.status === "ready" && order.assignedToChoferId === null).length;
   const pageStart = orders.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredOrders, page * pageSize);
 

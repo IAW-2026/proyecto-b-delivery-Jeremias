@@ -14,6 +14,7 @@ type Chofer = {
 
 type Props = {
   orders: LogisticOrder[];
+  allFilteredOrders: LogisticOrder[];
   choferes: Chofer[];
   searchQuery: string;
   searchBy: SearchBy;

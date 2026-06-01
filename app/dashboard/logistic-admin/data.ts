@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { getOrders, type LogisticOrder } from "@/lib/logisticAdminStore";
+import { getOrders, type LogisticOrder, type OrderStatus } from "@/lib/logisticAdminStore";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims, syncClerkRoleMetadata, revokeAllClerkSessions } from "@/lib/roles";
 import { normalizeOrderStatus, normalizeZonaName } from "@/lib/shared/utils";
 
@@ -134,7 +134,12 @@ function isPrismaTimeoutError(error: unknown) {
 }
 
 function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
-  const status =
+  const validStatuses = ["assigned", "asignado", "ready", "cancelled", "cancelado", "delivered", "entregado", "en_camino", "revision"] as const;
+  if (!validStatuses.includes(pedido.estado as never)) {
+    console.warn(`Unknown pedido.estado "${pedido.estado}" for pedido #${pedido.idPedido}, mapping to "ready"`);
+  }
+
+  const status: OrderStatus =
     pedido.estado === "assigned" || pedido.estado === "asignado" || pedido.estado === "ready"
       ? "ready"
       : pedido.estado === "cancelled" || pedido.estado === "cancelado"

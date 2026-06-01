@@ -18,6 +18,7 @@ type Chofer = {
 
 type Props = {
   orders: LogisticOrder[];
+  allFilteredOrders: LogisticOrder[];
   choferes: Chofer[];
   searchQuery: string;
   searchBy: SearchBy;
@@ -54,6 +55,7 @@ function searchOptionMeta(value: SearchBy) {
 
 export default function LogisticAdminPedidosUi({
   orders,
+  allFilteredOrders,
   choferes,
   searchQuery,
   searchBy,
@@ -67,6 +69,7 @@ export default function LogisticAdminPedidosUi({
   const router = useRouter();
   const controller = usePedidosController({
     orders,
+    allFilteredOrders,
     choferes,
     searchParams: { query: searchQuery, searchBy, assign: assignmentFilter, status: statusFilter, page: String(page) },
     page,

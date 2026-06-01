@@ -204,6 +204,10 @@ export async function PATCH(request: NextRequest) {
         },
       });
 
+      if (isBlocked) {
+        await revokeAllClerkSessions(targetUserId).catch(() => false);
+      }
+
       return NextResponse.json({ ok: true, accessControl }, { status: 200 });
     }
 

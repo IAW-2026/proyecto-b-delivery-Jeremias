@@ -21,9 +21,8 @@ export default async function AdminDeliveryZonasPage({
   const totalPages = Math.max(1, Math.ceil(totalFilteredZonas / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
   const paginatedZonas = filteredZonas.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const totalZonas = totalFilteredZonas;
-  const zonasConPedidos = filteredZonas.filter((zona) => zona.pedidosTotales > 0).length;
-  const totalPedidos = filteredZonas.reduce((accumulator, zona) => accumulator + zona.pedidosTotales, 0);
+  const zonasConPedidos = data.zonas.filter((zona) => zona.pedidosTotales > 0).length;
+  const totalPedidos = data.zonas.reduce((accumulator, zona) => accumulator + zona.pedidosTotales, 0);
 
   if (requestedPage !== safePage) {
     const params = new URLSearchParams();
@@ -51,9 +50,9 @@ export default async function AdminDeliveryZonasPage({
       page={safePage}
       totalPages={totalPages}
       totalFilteredZonas={totalFilteredZonas}
-      totalZonas={totalZonas}
+      totalZonas={data.zonas.length}
       zonasConPedidos={zonasConPedidos}
-      zonasSinPedidos={totalZonas - zonasConPedidos}
+      zonasSinPedidos={data.zonas.length - zonasConPedidos}
       totalPedidos={totalPedidos}
       basePath={basePath}
     />

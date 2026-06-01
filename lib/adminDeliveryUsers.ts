@@ -57,11 +57,19 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
   let clerkUsers: User[] = [];
   let clerkUnavailable = false;
 
-  // 1. Intentamos traer los usuarios de Clerk
+  // 1. Intentamos traer los usuarios de Clerk (paginación completa)
   try {
     const client = await clerkClient();
-    const clerkResponse = await client.users.getUserList({ limit: 500 });
-    clerkUsers = clerkResponse.data;
+    const PAGE_SIZE = 500;
+    let totalFetched = 0;
+    let totalCount = 0;
+
+    do {
+      const clerkResponse = await client.users.getUserList({ limit: PAGE_SIZE, offset: totalFetched });
+      clerkUsers.push(...clerkResponse.data);
+      totalFetched += clerkResponse.data.length;
+      totalCount = clerkResponse.totalCount;
+    } while (totalFetched < totalCount);
   } catch (error) {
     console.error("Error al conectar con Clerk:", error);
     clerkUnavailable = true;

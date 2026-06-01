@@ -34,8 +34,9 @@ export default function MiVehiculoPage() {
 
   const vehiculo = data?.vehiculo;
   const totalBidones = data?.totalBidones ?? 0;
-  const bidonesDisponibles = vehiculo ? vehiculo.capacidadBidones - totalBidones : 0;
-  const porcentajeUsado = vehiculo ? Math.round((totalBidones / vehiculo.capacidadBidones) * 100) : 0;
+  const capacidad = vehiculo?.capacidadBidones ?? 0;
+  const bidonesDisponibles = capacidad > 0 ? Math.max(0, capacidad - totalBidones) : 0;
+  const porcentajeUsado = capacidad > 0 ? Math.min(100, Math.round((totalBidones / capacidad) * 100)) : 0;
 
   return (
     <div>

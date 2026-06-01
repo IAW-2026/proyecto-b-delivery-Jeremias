@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const userRole = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
 
     const clerkName = `${clerkUser?.firstName ?? ""} ${clerkUser?.lastName ?? ""}`.trim();
-    const nombreFull = isAdminDelivery ? admin?.nombre ?? clerkName : clerkName;
+    const nombreFull = admin?.nombre ?? clerkName;
     const parts = nombreFull.trim().length > 0 ? nombreFull.trim().split(/\s+/) : [];
     const nombre = parts.shift() ?? "";
     const apellido = parts.join(" ");

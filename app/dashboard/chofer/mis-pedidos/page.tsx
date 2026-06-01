@@ -18,8 +18,8 @@ export default async function MisPedidosPage({ searchParams }: { searchParams: S
   const statusValue: "todos" | PedidoStatus = typeof query.status === "string" && isPedidoStatus(query.status) ? query.status : "todos";
   const requestedPage = parsePage(query.page);
 
-  const pendingPedidos = data.pedidos.filter((pedido) => pedido.estado !== "entregado" && pedido.estado !== "cancelado");
-  const filteredPedidos = filterPedidos(data.pedidos, searchValue, searchBy, statusValue);
+  const pendingPedidos = data.pedidos;
+  const filteredPedidos = filterPedidos(data.allPedidos, searchValue, searchBy, statusValue);
   const filteredCount = filteredPedidos.length;
   const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const safePage = Math.min(requestedPage, totalPages);

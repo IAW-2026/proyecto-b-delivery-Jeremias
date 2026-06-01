@@ -69,7 +69,7 @@ export default function MiZonaPage() {
             <h3 className="font-semibold text-gray-900">Pedidos</h3>
           </div>
           <p className="text-2xl font-bold text-green-600">{data?.cantidadPedidos ?? 0}</p>
-          <p className="text-xs text-gray-600 mt-2">Pedidos en esta zona</p>
+          <p className="text-xs text-gray-600 mt-2">Pedidos pendientes</p>
         </div>
       </div>
 

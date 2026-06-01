@@ -20,7 +20,6 @@ export default async function AdminDeliveryChoferesPage({
   const totalPages = Math.max(1, Math.ceil(totalFilteredChoferes / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
   const paginatedChoferes = filteredChoferes.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const totalChoferes = totalFilteredChoferes;
   const activeCount = filteredChoferes.filter((chofer) => chofer.estado === "activo").length;
   const withZoneCount = filteredChoferes.filter((chofer) => chofer.idZona !== null).length;
   const withoutZoneCount = filteredChoferes.filter((chofer) => chofer.idZona === null).length;
@@ -67,7 +66,7 @@ export default async function AdminDeliveryChoferesPage({
       page={safePage}
       totalPages={totalPages}
       totalFilteredChoferes={totalFilteredChoferes}
-      totalChoferes={totalChoferes}
+      totalChoferes={data.choferes.length}
       activeCount={activeCount}
       withZoneCount={withZoneCount}
       withoutZoneCount={withoutZoneCount}

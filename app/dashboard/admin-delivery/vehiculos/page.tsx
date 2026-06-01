@@ -20,8 +20,7 @@ export default async function AdminDeliveryVehiculosPage({
   const totalPages = Math.max(1, Math.ceil(totalFilteredVehiculos / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
   const paginatedVehiculos = filteredVehiculos.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const totalVehiculos = totalFilteredVehiculos;
-  const activosCount = filteredVehiculos.filter((vehiculo) => vehiculo.estado !== "pausado").length;
+  const activosCount = filteredVehiculos.filter((vehiculo) => vehiculo.estado === "activo").length;
   const pausadosCount = filteredVehiculos.filter((vehiculo) => vehiculo.estado === "pausado").length;
 
   if (requestedPage !== safePage) {
@@ -64,7 +63,7 @@ export default async function AdminDeliveryVehiculosPage({
       page={safePage}
       totalPages={totalPages}
       totalFilteredVehiculos={totalFilteredVehiculos}
-      totalVehiculos={totalVehiculos}
+      totalVehiculos={data.vehiculos.length}
       activosCount={activosCount}
       pausadosCount={pausadosCount}
       basePath={basePath}
