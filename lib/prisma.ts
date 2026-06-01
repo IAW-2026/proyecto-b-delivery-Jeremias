@@ -11,9 +11,8 @@ function normalizeConnectionString(raw: string) {
   try {
     const url = new URL(raw);
 
-    const sslMode = url.searchParams.get("sslmode");
-    if (!sslMode || ["prefer", "require", "verify-ca"].includes(sslMode)) {
-      url.searchParams.set("sslmode", "verify-full");
+    if (!url.searchParams.get("sslmode")) {
+      url.searchParams.set("sslmode", "require");
     }
 
     return url.toString();
