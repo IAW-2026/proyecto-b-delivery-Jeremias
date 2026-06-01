@@ -13,6 +13,23 @@ export default async function ChoferDashboard() {
 
   const userNombre = data.chofer.nombre;
   const isPendingApproval = data.chofer.estado === "pendiente";
+  const isInactive = data.chofer.estado === "inactivo" || data.chofer.estado === "rechazado";
+
+  if (isInactive) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="text-6xl mb-4">🔒</div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Cuenta desactivada</h1>
+            <p className="text-gray-600 text-lg">
+              Fuiste marcado como inactivo, contactate con tu administrador de la empresa.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isPendingApproval) {
     return (

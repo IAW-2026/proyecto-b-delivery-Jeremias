@@ -35,6 +35,7 @@ export default function OnboardingPage() {
   const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [existingRequest, setExistingRequest] = useState<ChoferRequest | null>(null);
+  const [inactiveReason, setInactiveReason] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,11 +87,24 @@ export default function OnboardingPage() {
       try {
         const resp = await fetch("/api/chofer/profile", { cache: "no-store" });
         if (resp.ok) {
-          const payload = (await resp.json().catch(() => null)) as { chofer?: { nombre?: string | null } } | null;
-          const localName = payload?.chofer?.nombre?.trim();
-          if (!cancelled && localName) {
-            setFormData((current) => (current.nombre ? current : { ...current, nombre: localName }));
-            return;
+          const payload = (await resp.json().catch(() => null)) as { chofer?: { nombre?: string | null; estado?: string; idVendedor?: number | null } } | null;
+          const choferData = payload?.chofer;
+          if (!cancelled && choferData) {
+            if (choferData.estado && choferData.estado !== "activo") {
+              if (choferData.estado === "inactivo") {
+                setInactiveReason("Tu cuenta fue desactivada. Contactá al administrador.");
+                return;
+              }
+              if (choferData.estado === "rechazado") {
+                setErrorMessage("Tu solicitud fue rechazada.");
+                return;
+              }
+            }
+            const localName = choferData.nombre?.trim();
+            if (localName) {
+              setFormData((current) => (current.nombre ? current : { ...current, nombre: localName }));
+              return;
+            }
           }
         }
       } catch {
@@ -178,6 +192,19 @@ export default function OnboardingPage() {
   }
 
   const isWaiting = state === "waiting";
+
+  if (inactiveReason) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 p-8 flex items-center">
+        <div className="max-w-md mx-auto text-center">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Cuenta desactivada</h1>
+            <p className="text-gray-600">{inactiveReason}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (state === "selection") {
     return (

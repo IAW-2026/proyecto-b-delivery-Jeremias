@@ -243,7 +243,7 @@ export default function LogisticAdminPedidosUi({
             : "No hay pedidos cargados en este momento."}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="rounded-2xl border border-slate-200 bg-white">
           {editingOrderWarning ? (
             <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {editingOrderWarning}
@@ -257,152 +257,154 @@ export default function LogisticAdminPedidosUi({
               Página {page} de {totalPages}
             </p>
           </div>
-          <table className="w-full table-fixed">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="w-[80px] px-3 py-3">Pedido</th>
-                <th className="w-[110px] px-3 py-3">Fecha</th>
-                <th className="w-[80px] px-3 py-3">Hora</th>
-                <th className="w-[220px] px-3 py-3">Cliente</th>
-                <th className="w-[120px] px-3 py-3">Zona</th>
-                <th className="w-[90px] px-3 py-3">Bidones</th>
-                <th className="w-[180px] px-3 py-3">Chofer</th>
-                <th className="w-[140px] px-3 py-3">Estado</th>
-                <th className="w-[220px] px-3 py-3">Motivo</th>
-                <th className="w-[200px] px-3 py-3 text-center"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => {
-                const assignableChoferes = getAssignablesForZone(order.zona);
-                const currentChofer = choferes.find((chofer) => String(chofer.idChofer) === String(order.assignedToChoferId));
-                const currentChoferIsAssignable = currentChofer ? assignableChoferes.some((chofer) => chofer.idChofer === currentChofer.idChofer) : false;
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="w-[80px] px-3 py-3">Pedido</th>
+                  <th className="w-[110px] px-3 py-3">Fecha</th>
+                  <th className="w-[80px] px-3 py-3">Hora</th>
+                  <th className="w-[220px] px-3 py-3">Cliente</th>
+                  <th className="w-[120px] px-3 py-3">Zona</th>
+                  <th className="w-[90px] px-3 py-3">Bidones</th>
+                  <th className="w-[180px] px-3 py-3">Chofer</th>
+                  <th className="w-[140px] px-3 py-3">Estado</th>
+                  <th className="w-[220px] px-3 py-3">Motivo</th>
+                  <th className="sticky right-0 bg-slate-50 z-10 w-[200px] px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => {
+                  const assignableChoferes = getAssignablesForZone(order.zona);
+                  const currentChofer = choferes.find((chofer) => String(chofer.idChofer) === String(order.assignedToChoferId));
+                  const currentChoferIsAssignable = currentChofer ? assignableChoferes.some((chofer) => chofer.idChofer === currentChofer.idChofer) : false;
 
-                return (
-                  <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
-                    <td className="w-[80px] px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
-                    
-                    {/* Renderizamos solo la fecha con configuración robusta SSR */}
-                    <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700  ">
-                      {order.updatedAt 
-                        ? new Date(order.updatedAt).toLocaleDateString("es-AR", { 
-                            timeZone: "America/Argentina/Buenos_Aires", 
-                            day: "2-digit", 
-                            month: "2-digit", 
-                            year: "numeric" 
-                          }) 
-                        : "—"}
-                    </td>
+                  return (
+                    <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
+                      <td className="w-[80px] px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
 
-                    <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700">
-                      {order.updatedAt 
-                        ? new Date(order.updatedAt).toLocaleTimeString("es-AR", { 
-                            timeZone: "America/Argentina/Buenos_Aires", 
-                            hour: "2-digit", 
-                            minute: "2-digit", 
-                            hour12: false 
-                          }) 
-                        : "—"}
-                    </td>
+                      {/* Renderizamos solo la fecha con configuración robusta SSR */}
+                      <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700  ">
+                        {order.updatedAt 
+                          ? new Date(order.updatedAt).toLocaleDateString("es-AR", { 
+                              timeZone: "America/Argentina/Buenos_Aires", 
+                              day: "2-digit", 
+                              month: "2-digit", 
+                              year: "numeric" 
+                            }) 
+                          : "—"}
+                      </td>
 
-                    <td className="w-[220px] px-3 py-3">
-                      <p className="truncate font-medium text-slate-900">{order.cliente}</p>
-                      <p className="text-xs text-slate-500">{order.direccion}</p>
-                    </td>
-                    <td className="w-[120px] px-3 py-3 truncate">{order.zona}</td>
-                    <td className="w-[90px] px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
-                    <td className="w-[180px] px-3 py-3 align-middle">
-                      {editingOrderId === order.idPedido ? (
-                        <select
-                          value={choferSelection[order.idPedido] ?? ""}
-                          onChange={(event) =>
-                            setChoferSelection((current) => ({
-                              ...current,
-                              [order.idPedido]: event.target.value,
-                            }))
-                          }
-                          disabled={busyId === order.idPedido || (assignableChoferes.length === 0 && !currentChofer)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="">Sin asignar</option>
-                          {currentChofer && !currentChoferIsAssignable ? (
-                            <option value={currentChofer.idChofer} disabled>
-                              {currentChofer.nombre} (fuera de zona)
-                            </option>
-                          ) : null}
-                          {assignableChoferes.map((chofer) => (
-                            <option key={chofer.idChofer} value={chofer.idChofer}>
-                              {chofer.nombre}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <p className="truncate font-medium text-slate-900">
-                          {order.assignedToChoferName ?? "Sin asignar"}
-                          {order.assignedChoferArchived ? (
-                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Archivado</span>
-                          ) : null}
-                        </p>
-                      )}
-                    </td>
-                    <td className="w-[140px] px-3 py-3 align-middle">
-                      {editingOrderId === order.idPedido ? (
-                        <select
-                          value={selectedStatuses[order.idPedido] ?? order.status}
-                          onChange={(event) =>
-                            setSelectedStatuses((current) => ({
-                              ...current,
-                              [order.idPedido]: event.target.value as OrderStatus,
-                            }))
-                          }
-                          disabled={busyId === order.idPedido}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          {statusOptions.map((option) => (
-                            <option key={option.value} value={option.value} disabled={statusNeedsChofer(option.value) && (choferSelection[order.idPedido] ?? "") === ""}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(order.status)}`}>{formatStatus(order.status)}</span>
-                      )}
-                    </td>
-                    <td className="w-[220px] px-3 py-3 align-middle">
-                      {order.status === "revision" && order.motivoRevision ? (
-                        <button type="button" onClick={() => openMotivo(order.idPedido)} className="text-sm font-medium text-blue-600 transition-colors hover:underline">
-                          Ver motivo
-                        </button>
-                      ) : (
-                        <span className="text-sm text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="w-[200px] px-3 py-3 align-middle">
-                      {editingOrderId === order.idPedido ? (
-                        <div className="flex flex-nowrap gap-2 whitespace-nowrap">
-                          <button type="button" onClick={() => saveEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("save", "sm")}>
-                            {busyId === order.idPedido ? "Guardando..." : "Guardar"}
+                      <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700">
+                        {order.updatedAt 
+                          ? new Date(order.updatedAt).toLocaleTimeString("es-AR", { 
+                              timeZone: "America/Argentina/Buenos_Aires", 
+                              hour: "2-digit", 
+                              minute: "2-digit", 
+                              hour12: false 
+                            }) 
+                          : "—"}
+                      </td>
+
+                      <td className="w-[220px] px-3 py-3">
+                        <p className="truncate font-medium text-slate-900">{order.cliente}</p>
+                        <p className="text-xs text-slate-500">{order.direccion}</p>
+                      </td>
+                      <td className="w-[120px] px-3 py-3 truncate">{order.zona}</td>
+                      <td className="w-[90px] px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
+                      <td className="w-[180px] px-3 py-3 align-middle">
+                        {editingOrderId === order.idPedido ? (
+                          <select
+                            value={choferSelection[order.idPedido] ?? ""}
+                            onChange={(event) =>
+                              setChoferSelection((current) => ({
+                                ...current,
+                                [order.idPedido]: event.target.value,
+                              }))
+                            }
+                            disabled={busyId === order.idPedido || (assignableChoferes.length === 0 && !currentChofer)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          >
+                            <option value="">Sin asignar</option>
+                            {currentChofer && !currentChoferIsAssignable ? (
+                              <option value={currentChofer.idChofer} disabled>
+                                {currentChofer.nombre} (fuera de zona)
+                              </option>
+                            ) : null}
+                            {assignableChoferes.map((chofer) => (
+                              <option key={chofer.idChofer} value={chofer.idChofer}>
+                                {chofer.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="truncate font-medium text-slate-900">
+                            {order.assignedToChoferName ?? "Sin asignar"}
+                            {order.assignedChoferArchived ? (
+                              <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Archivado</span>
+                            ) : null}
+                          </p>
+                        )}
+                      </td>
+                      <td className="w-[140px] px-3 py-3 align-middle">
+                        {editingOrderId === order.idPedido ? (
+                          <select
+                            value={selectedStatuses[order.idPedido] ?? order.status}
+                            onChange={(event) =>
+                              setSelectedStatuses((current) => ({
+                                ...current,
+                                [order.idPedido]: event.target.value as OrderStatus,
+                              }))
+                            }
+                            disabled={busyId === order.idPedido}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          >
+                            {statusOptions.map((option) => (
+                              <option key={option.value} value={option.value} disabled={statusNeedsChofer(option.value) && (choferSelection[order.idPedido] ?? "") === ""}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(order.status)}`}>{formatStatus(order.status)}</span>
+                        )}
+                      </td>
+                      <td className="w-[220px] px-3 py-3 align-middle">
+                        {order.status === "revision" && order.motivoRevision ? (
+                          <button type="button" onClick={() => openMotivo(order.idPedido)} className="text-sm font-medium text-blue-600 transition-colors hover:underline">
+                            Ver motivo
                           </button>
-                          <button type="button" onClick={() => cancelEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("cancel", "sm")}>
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-nowrap gap-2 whitespace-nowrap">
-                          <button type="button" onClick={() => startEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("edit", "sm")}>
-                            Editar
-                          </button>
-                          <button type="button" onClick={() => handleDelete(order)} disabled={busyId === order.idPedido} className={adminButtonClass("danger", "sm")}>
-                            Eliminar
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                        ) : (
+                          <span className="text-sm text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="sticky right-0 bg-white z-10 w-[200px] px-3 py-3 align-middle shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                        {editingOrderId === order.idPedido ? (
+                          <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+                            <button type="button" onClick={() => saveEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("save", "sm")}>
+                              {busyId === order.idPedido ? "Guardando..." : "Guardar"}
+                            </button>
+                            <button type="button" onClick={() => cancelEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("cancel", "sm")}>
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+                            <button type="button" onClick={() => startEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("edit", "sm")}>
+                              Editar
+                            </button>
+                            <button type="button" onClick={() => handleDelete(order)} disabled={busyId === order.idPedido} className={adminButtonClass("danger", "sm")}>
+                              Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredOrders}</p>
             <div className="flex items-center gap-2">

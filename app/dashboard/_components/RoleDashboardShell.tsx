@@ -60,10 +60,10 @@ export default function RoleDashboardShell({ children, displayName, navigationIt
         <nav className="p-4" aria-label="Navegación principal">{navigationItems.map(renderNavItem)}</nav>
       </aside>
 
-      <main className="flex flex-1 flex-col">
+      <main className="flex flex-1 flex-col min-w-0">
         <div className="flex items-center justify-end bg-white p-4 shadow-sm" />
 
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 min-w-0">
           <div className="rounded-lg bg-white p-6 shadow-sm">{children}</div>
         </div>
       </main>

@@ -52,6 +52,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     if (isDelivery) {
       const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
       if (dbChofer?.estado === "activo") return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
+      if (dbChofer?.estado === "inactivo" || dbChofer?.estado === "rechazado") return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
       return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
     }
     if (isAdmin) return NextResponse.redirect(new URL("/dashboard/logistic-admin", request.url));
@@ -64,11 +65,16 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     const dbChofer = await prisma.chofer.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
     const choferRequest = await prisma.choferRequest.findUnique({ where: { clerkUserId: userId } }).catch(() => null);
     const hasActiveChofer = dbChofer?.estado === "activo";
+    const isInactiveOrRejected = dbChofer?.estado === "inactivo" || dbChofer?.estado === "rechazado";
 
-    if (!hasActiveChofer) {
+    if (!hasActiveChofer && !isInactiveOrRejected) {
       if (!pathname.startsWith("/dashboard/chofer/onboarding")) {
         return NextResponse.redirect(new URL("/dashboard/chofer/onboarding", request.url));
       }
+    }
+
+    if (isInactiveOrRejected && pathname.startsWith("/dashboard/chofer/onboarding")) {
+      return NextResponse.redirect(new URL("/dashboard/chofer", request.url));
     }
 
     if (choferRequest?.status === "pending" && !pathname.startsWith("/dashboard/chofer/onboarding")) {
