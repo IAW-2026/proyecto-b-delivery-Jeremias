@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 
 type ChoferStatusResponse = {
-  ruta: {
+  chofer: {
     idZona: number;
-    idRuta: number;
     zona: string;
     estado: string;
-    fecha: string;
   };
   cantidadPedidos: number;
 };
@@ -34,13 +32,11 @@ export default function MiZonaPage() {
     };
   }, []);
 
-  const fechaFormato = data
-    ? new Date(data.ruta.fecha).toLocaleDateString("es-AR", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      })
-    : "cargando...";
+  const fechaFormato = new Date().toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 
   return (
     <div>
@@ -57,13 +53,13 @@ export default function MiZonaPage() {
         <div className="text-center">
           <p className="text-gray-600 text-sm font-medium mb-2">Zona Asignada</p>
           <h2 className="text-5xl font-bold text-purple-600 mb-2">
-            {data?.ruta.zona ?? "Sin zona asignada"}
+            {data?.chofer.zona ?? "Sin zona asignada"}
           </h2>
           <p className="text-gray-600">Zona para entrega hoy</p>
         </div>
       </div>
 
-      {/* Información de la Ruta */}
+      {/* Información de la Zona */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 
         {/* Pedidos en Zona */}
@@ -77,16 +73,16 @@ export default function MiZonaPage() {
         </div>
       </div>
 
-      {/* Estado de la Ruta */}
+      {/* Estado */}
       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Estado de la Ruta</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">Estado</h3>
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <p className="text-sm text-gray-600 mb-2">Estado</p>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               <p className="text-lg font-semibold text-green-600 capitalize">
-                {data?.ruta.estado ?? "sin estado"}
+                {data?.chofer.estado ?? "sin estado"}
               </p>
             </div>
           </div>
@@ -108,13 +104,13 @@ export default function MiZonaPage() {
           <div>
             <p className="text-sm text-gray-600 mb-1">Zona ID</p>
             <p className="text-lg font-semibold text-gray-900">
-              {data?.ruta.idZona ?? "-"}
+              {data?.chofer.idZona ?? "-"}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">Ruta ID</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {data?.ruta.idRuta ?? "-"}
+            <p className="text-sm text-gray-600 mb-1">Estado</p>
+            <p className="text-lg font-semibold text-gray-900 capitalize">
+              {data?.chofer.estado ?? "-"}
             </p>
           </div>
         </div>
@@ -135,7 +131,7 @@ export default function MiZonaPage() {
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <p className="text-sm text-green-800">
           <span className="font-semibold">💡 Consejo:</span> Verifica los
-          horarios de tu ruta antes de comenzar las entregas. Asegúrate de tener
+          datos de tu zona antes de comenzar las entregas. Asegúrate de tener
           suficientes bidones en el vehículo.
         </p>
       </div>

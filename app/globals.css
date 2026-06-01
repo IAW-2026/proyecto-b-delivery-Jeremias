@@ -67,6 +67,14 @@ body {
   }
 }
 
+/* Ensure all form inputs have dark text (avoid inheriting --foreground which can look gray) */
+input, textarea, select, ::file-selector-button {
+  color: #111827;
+}
+input:disabled, textarea:disabled, select:disabled {
+  color: #6b7280;
+}
+
 /* Helpful utility classes for components that may not use Tailwind tokens yet */
 .btn-primary {
   background-color: var(--primary);

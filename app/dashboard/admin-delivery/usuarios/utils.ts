@@ -1,4 +1,5 @@
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
+import { normalizeSearchValue } from "@/lib/shared/utils";
 
 export const searchOptions = [
   { value: "nombre", label: "Nombre", placeholder: "Buscar por nombre" },
@@ -23,13 +24,6 @@ export function isSearchBy(value: string | null): value is UserSearchBy {
 
 export function isUserFilter(value: string | null): value is UserFilter {
   return value === "all" || value === "active" || value === "blocked" || value === "delivery" || value === "logistic_admin";
-}
-
-export function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
 }
 
 export function parseUsersFilters(searchParams: { get: (name: string) => string | null }): FilterValues {

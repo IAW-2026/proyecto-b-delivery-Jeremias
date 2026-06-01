@@ -3,6 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getOrders, type LogisticOrder } from "@/lib/logisticAdminStore";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims, syncClerkRoleMetadata, revokeAllClerkSessions } from "@/lib/roles";
+import { normalizeOrderStatus, normalizeZonaName } from "@/lib/shared/utils";
 
 type VendorHint = {
   id: number;
@@ -44,7 +45,6 @@ type ZonaResumen = {
   pedidosReady: number;
   pedidosCancelados: number;
   bidonesTotales: number;
-  rutasAsignadas: number;
   choferesAsignados: number;
 };
 
@@ -61,9 +61,6 @@ type ZonaFueraCatalogo = {
 type ZonaCatalogoRecord = {
   idZona: number;
   nombre: string;
-  _count: {
-    ruta: number;
-  };
 };
 
 type ZonaSelectorRecord = {
@@ -77,12 +74,7 @@ function isArchivedChofer(chofer: ChoferRecord) {
 
 type UserRoleRecord = {
   idVendedor: number;
-  role: string;
   nombreEmpresa: string | null;
-};
-
-type AdminDeliveryRecord = {
-  nombre: string;
 };
 
 type PedidoDbRecord = {
@@ -205,23 +197,6 @@ async function safeCurrentUser() {
   }
 }
 
-function normalizeZonaName(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function normalizeOrderStatus(value: string) {
-  if (value === "ready" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision") {
-    return value;
-  }
-
-  if (value === "assigned") return "ready";
-  if (value === "asignado") return "ready";
-  if (value === "cancelled") return "cancelado";
-  if (value === "delivered") return "entregado";
-
-  return "ready";
-}
-
 function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoRecord[], choferes: ChoferRecord[]) {
   const ordersByZone = new Map<
     string,
@@ -292,7 +267,6 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
       pedidosReady: stats?.pedidosReady ?? 0,
       pedidosCancelados: stats?.pedidosCancelados ?? 0,
       bidonesTotales: stats?.bidonesTotales ?? 0,
-      rutasAsignadas: zona._count.ruta,
       choferesAsignados: choferesByZone.get(key) ?? 0,
     };
 
@@ -345,7 +319,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     () =>
       prisma.userRole.findUnique({
         where: { clerkUserId: userId },
-        select: { idVendedor: true, role: true, nombreEmpresa: true },
+        select: { idVendedor: true, nombreEmpresa: true },
       }),
     null,
     "userRole.findUnique"
@@ -408,8 +382,8 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
       await prisma.userRole.create({
         data: {
           clerkUserId: userId,
-          role: "logistic_admin",
           idVendedor: inferredVendorId,
+          role: "logistic_admin",
         },
       });
     } catch (err) {
@@ -423,7 +397,6 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     () =>
       prisma.zona.findMany({
         orderBy: { nombre: "asc" },
-        include: { _count: { select: { ruta: true } } },
       }),
     [],
     "zona.findMany"

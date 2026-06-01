@@ -1,4 +1,9 @@
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
+import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
+
+export function statusNeedsChofer(status: OrderStatus) {
+  return status === "en_camino" || status === "entregado";
+}
 
 export const searchOptions = ["cliente", "calle", "chofer", "zona"] as const;
 
@@ -11,8 +16,6 @@ export const statusOptions: Array<{ value: OrderStatus; label: string }> = [
   { value: "cancelado", label: "Cancelado" },
   { value: "revision", label: "Revisión" },
 ];
-
-export const pageSize = 8;
 
 export type SearchParamsInput = {
   query?: string | string[];
@@ -31,19 +34,6 @@ export type PedidosFilterState = {
   assignmentFilter: "todos" | "sin_asignar";
   requestedPage: number;
 };
-
-export function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-export function parsePage(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(rawValue ?? "1", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
 
 export function isOrderStatus(value: string | undefined): value is OrderStatus {
   return typeof value === "string" && statusOptions.some((option) => option.value === value);

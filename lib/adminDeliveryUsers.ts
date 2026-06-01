@@ -27,13 +27,17 @@ function buildDisplayName(params: {
   clerkUser: User;
   choferName?: string | null;
   adminDeliveryName?: string | null;
+  effectiveRole: string;
 }) {
-  const { clerkUser, choferName, adminDeliveryName } = params;
+  const { clerkUser, choferName, adminDeliveryName, effectiveRole } = params;
 
-  const localName = choferName?.trim() || adminDeliveryName?.trim();
-  if (localName) {
-    return localName;
+  if (effectiveRole === "delivery") {
+    const deliveryName = choferName?.trim();
+    if (deliveryName) return deliveryName;
   }
+
+  const adminName = adminDeliveryName?.trim();
+  if (adminName) return adminName;
 
   const nameFromClerk = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
   if (nameFromClerk) {
@@ -100,6 +104,7 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
         clerkUser,
         choferName: choferRecord?.nombre,
         adminDeliveryName: globalAdminRecord?.nombre,
+        effectiveRole,
       });
 
       return {

@@ -1,4 +1,4 @@
-import { getAuth } from "@clerk/nextjs/server";
+import { getAuth, clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
@@ -55,9 +55,10 @@ export async function PATCH(request: NextRequest) {
           action?: unknown;
           nombre?: unknown;
           telefono?: unknown;
-          role?: unknown;
-          idVendedor?: unknown;
-          blockedReason?: unknown;
+      role?: unknown;
+      idVendedor?: unknown;
+      nombreEmpresa?: unknown;
+      blockedReason?: unknown;
         }
       | null;
 
@@ -103,19 +104,56 @@ export async function PATCH(request: NextRequest) {
 
     if (action === "set_local_role") {
       const role = typeof body.role === "string" ? body.role.trim() : "";
-      const existingRole = await prisma.userRole.findUnique({
-        where: { clerkUserId: targetUserId },
-        select: { idVendedor: true },
-      });
-      const idVendedorFromBody = Number(body.idVendedor ?? 0);
-      const idVendedor = existingRole?.idVendedor ?? (Number.isFinite(idVendedorFromBody) ? idVendedorFromBody : 0);
 
       if (!ALLOWED_LOCAL_ROLES.includes(role as (typeof ALLOWED_LOCAL_ROLES)[number])) {
         return NextResponse.json({ error: "Invalid role" }, { status: 400 });
       }
 
-      if (!idVendedor) {
-        return NextResponse.json({ error: "Missing idVendedor for new role assignment" }, { status: 400 });
+      const existingRole = await prisma.userRole.findUnique({
+        where: { clerkUserId: targetUserId },
+        select: { idVendedor: true, nombreEmpresa: true },
+      });
+
+      let idVendedor: number;
+      if (body.idVendedor !== null && body.idVendedor !== undefined && body.idVendedor !== "") {
+        const parsed = Number(body.idVendedor);
+        idVendedor = Number.isFinite(parsed) && parsed >= 0 ? parsed : (existingRole?.idVendedor ?? 0);
+      } else {
+        idVendedor = existingRole?.idVendedor ?? 0;
+      }
+
+      const nombreEmpresa = typeof body.nombreEmpresa === "string"
+        ? body.nombreEmpresa.trim() || null
+        : (existingRole?.nombreEmpresa ?? null);
+
+      if (role === "delivery" && idVendedor > 0) {
+        const client = await clerkClient();
+        let nombre = "Chofer";
+        try {
+          const clerkUser = await client.users.getUser(targetUserId);
+          const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ").trim();
+          if (fullName) nombre = fullName;
+        } catch {
+          // fallback to default
+        }
+
+        await prisma.chofer.upsert({
+          where: { clerkUserId: targetUserId },
+          create: {
+            clerkUserId: targetUserId,
+            nombre,
+            idVendedor,
+            nombreEmpresa,
+            estado: "activo",
+            disponible: true,
+          },
+          update: {
+            nombre,
+            idVendedor,
+            nombreEmpresa,
+            estado: "activo",
+          },
+        });
       }
 
       const synced = await syncClerkRoleMetadata(targetUserId, role);
@@ -129,9 +167,12 @@ export async function PATCH(request: NextRequest) {
           clerkUserId: targetUserId,
           role,
           idVendedor,
+          nombreEmpresa,
         },
         update: {
           role,
+          idVendedor,
+          nombreEmpresa,
         },
       });
 

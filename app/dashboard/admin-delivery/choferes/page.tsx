@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getLogisticAdminData } from "../../logistic-admin/data";
 import AdminDeliveryChoferesUi from "./ui";
-import { filterChoferes, pageSize, parseChoferesFilters, type SearchParamsInput } from "./utils";
+import { pageSize } from "@/lib/shared/utils";
+import { filterChoferes, parseChoferesFilters, type SearchParamsInput } from "./utils";
 
 const basePath = "/dashboard/admin-delivery";
 

@@ -1,3 +1,5 @@
+import { normalizeSearchValue, parsePage } from "@/lib/shared/utils";
+
 export const searchOptions = ["cliente", "direccion", "zona"] as const;
 
 export type SearchBy = (typeof searchOptions)[number];
@@ -17,19 +19,6 @@ export type SearchParamsInput = {
   status?: string | string[];
   page?: string | string[];
 };
-
-export function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-}
-
-export function parsePage(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(rawValue ?? "1", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
 
 export function isPedidoStatus(value: string): value is PedidoStatus {
   return value === "ready" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision";

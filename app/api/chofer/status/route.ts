@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { setOrderStatus } from "@/lib/logisticAdminStore";
 import { getChoferStatus } from "@/lib/choferStatus";
 
 export async function GET(request: NextRequest) {

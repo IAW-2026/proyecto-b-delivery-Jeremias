@@ -17,7 +17,6 @@ type Props = {
   zonasConPedidos: number;
   zonasSinPedidos: number;
   totalPedidos: number;
-  totalRutas: number;
   basePath?: string;
 };
 
@@ -32,7 +31,6 @@ export default function ZonasManager({
   zonasConPedidos,
   zonasSinPedidos,
   totalPedidos,
-  totalRutas,
   basePath = "/dashboard/logistic-admin",
 }: Props) {
   const controller = useZonasController({
@@ -72,10 +70,6 @@ export default function ZonasManager({
         <div className={`${adminStatCardClass} ${statCardClass("slate")}`}>
           <p className="text-sm opacity-80">Pedidos totales</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{totalPedidos}</p>
-        </div>
-        <div className={`${adminStatCardClass} ${statCardClass("slate")}`}>
-          <p className="text-sm opacity-80">Rutas activas</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{totalRutas}</p>
         </div>
       </section>
 
@@ -220,9 +214,9 @@ export default function ZonasManager({
                             <button
                               type="button"
                               onClick={() => void handleDelete(zona)}
-                              disabled={isSaving || zona.rutasAsignadas > 0}
+                              disabled={isSaving}
                               className={adminButtonClass("danger", "sm")}
-                              title={zona.rutasAsignadas > 0 ? "No se puede borrar porque tiene rutas asociadas" : "Eliminar zona"}
+                              title="Eliminar zona"
                             >
                               Eliminar
                             </button>

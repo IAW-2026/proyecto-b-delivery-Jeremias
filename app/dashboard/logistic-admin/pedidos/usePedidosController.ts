@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
-import { pageSize, parsePedidosFilters, type PedidosFilterState, type SearchBy, type SearchParamsInput } from "./utils";
+import { normalizeZonaName } from "@/lib/shared/utils";
+import { pageSize } from "@/lib/shared/utils";
+import { parsePedidosFilters, statusNeedsChofer, type PedidosFilterState, type SearchBy, type SearchParamsInput } from "./utils";
 
 type Chofer = {
   idChofer: number;
@@ -21,18 +23,6 @@ type UsePedidosControllerParams = {
   totalFilteredOrders: number;
   basePath?: string;
 };
-
-function statusNeedsChofer(status: OrderStatus) {
-  return status === "en_camino" || status === "entregado";
-}
-
-function normalizeZonaName(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
 export function usePedidosController({ orders, choferes, searchParams, page, totalFilteredOrders, basePath = "/dashboard/logistic-admin" }: UsePedidosControllerParams) {
   const router = useRouter();
@@ -218,7 +208,6 @@ export function usePedidosController({ orders, choferes, searchParams, page, tot
   }
 
   return {
-    basePath,
     filterState,
     selectedSearchBy,
     setSelectedSearchBy,
@@ -249,7 +238,6 @@ export function usePedidosController({ orders, choferes, searchParams, page, tot
       handleDelete,
       setChoferSelection,
       setSelectedStatuses,
-      setMotivoOrderId,
     },
   };
 }

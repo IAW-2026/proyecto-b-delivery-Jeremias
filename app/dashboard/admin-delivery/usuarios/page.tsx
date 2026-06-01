@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
+import { getVendors } from "@/lib/vendors";
 import AdminDeliveryUsersUi from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,10 @@ export default async function AdminDeliveryUsersPage() {
     redirect("/signin");
   }
 
-  const data = await getAdminDeliveryUsersData({ excludeClerkUserId: userId });
+  const [data, vendors] = await Promise.all([
+    getAdminDeliveryUsersData({ excludeClerkUserId: userId }),
+    getVendors(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -25,7 +29,7 @@ export default async function AdminDeliveryUsersPage() {
         </div>
       ) : null}
 
-      <AdminDeliveryUsersUi users={data.users} />
+      <AdminDeliveryUsersUi users={data.users} vendors={vendors} />
     </div>
   );
 }

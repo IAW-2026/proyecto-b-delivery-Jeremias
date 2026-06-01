@@ -70,7 +70,7 @@ async function getCompanyContext(request: NextRequest) {
 
   const userRole = await prisma.userRole.findUnique({
     where: { clerkUserId: userId },
-    select: { idVendedor: true, role: true },
+    select: { idVendedor: true },
   });
   const roles = resolveRolesFromClaims(sessionClaims);
 
@@ -211,18 +211,10 @@ export async function POST(request: NextRequest) {
 
       const zona = await prisma.zona.findUnique({
         where: { idZona: body.idZona },
-        include: { _count: { select: { ruta: true } } },
       });
 
       if (!zona) {
         return NextResponse.json({ error: "Zone not found" }, { status: 404 });
-      }
-
-      if (zona._count.ruta > 0) {
-        return NextResponse.json(
-          { error: "No se puede eliminar una zona que ya tiene rutas asociadas" },
-          { status: 409 }
-        );
       }
 
       await prisma.zona.delete({
@@ -375,14 +367,8 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const result = await prisma.$transaction(async (transaction: Prisma.TransactionClient) => {
-          await transaction.ruta_pedido.deleteMany({
-            where: { id_pedido: body.idPedido },
-          });
-
-          return transaction.pedido.deleteMany({
-            where: { idPedido: body.idPedido },
-          });
+        const result = await prisma.pedido.deleteMany({
+          where: { idPedido: body.idPedido },
         });
 
         if (result.count === 0) {

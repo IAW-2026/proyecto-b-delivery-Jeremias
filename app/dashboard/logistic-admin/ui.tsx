@@ -57,7 +57,7 @@ type Props = {
   choferes: Chofer[];
   vehiculos: Vehiculo[];
   orders: Order[];
-  zonas: Array<{ idZona: number; zona: string; pedidosTotales: number; pedidosAsignados: number; pedidosReady: number; pedidosCancelados: number; bidonesTotales: number; rutasAsignadas: number }>;
+  zonas: Array<{ idZona: number; zona: string; pedidosTotales: number; pedidosAsignados: number; pedidosReady: number; pedidosCancelados: number; bidonesTotales: number }>;
   zonasFueraCatalogo: Array<{ zona: string; pedidosTotales: number; pedidosAsignados: number; pedidosReady: number; pedidosCancelados: number; bidonesTotales: number }>;
 };
 

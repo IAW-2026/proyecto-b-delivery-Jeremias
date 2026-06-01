@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { buildVehiculosQueryHref, pageSize, parseVehiculosFilters, type SearchBy, type SearchParamsInput, type Vehiculo, type VehiculosFilterState, type VehiculoStatus } from "./utils";
+import { pageSize } from "@/lib/shared/utils";
+import { buildVehiculosQueryHref, parseVehiculosFilters, type SearchBy, type SearchParamsInput, type Vehiculo, type VehiculosFilterState, type VehiculoStatus } from "./utils";
 
 type FormState = {
   patente: string;

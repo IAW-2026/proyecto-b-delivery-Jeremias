@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getLogisticAdminData } from "../data";
 import LogisticAdminPedidosUi from "./ui";
-import { parsePedidosFilters, filterOrders, pageSize, type SearchParamsInput } from "./utils";
+import { pageSize } from "@/lib/shared/utils";
+import { parsePedidosFilters, filterOrders, type SearchParamsInput } from "./utils";
 
 export default async function LogisticAdminPedidosPage({
   searchParams,

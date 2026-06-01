@@ -19,18 +19,6 @@ type ChoferVehiculo = {
   idVendedor: number;
 };
 
-type ChoferRuta = {
-  idRuta: number;
-  idChofer: number;
-  idVendedor: number;
-  idZona: number;
-  fecha: Date;
-  horaInicio: Date | null;
-  horaFin: Date | null;
-  estado: string;
-  zona: string;
-};
-
 export type { ChoferPedido };
 
 export type ChoferStatus = {
@@ -40,9 +28,10 @@ export type ChoferStatus = {
     telefono: string;
     estado: string;
     idVehiculo: number | null;
+    idZona: number | null;
+    zona: string;
     vehiculo: ChoferVehiculo | null;
   };
-  ruta: ChoferRuta;
   vehiculo: ChoferVehiculo | null;
   pedidos: ChoferPedido[];
   cantidadPedidos: number;
@@ -132,18 +121,9 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
       telefono: dbChofer?.telefono ?? "",
       estado: dbChofer?.estado ?? "pendiente",
       idVehiculo: dbChofer?.idVehiculo ?? null,
-      vehiculo: effectiveVehiculo,
-    },
-    ruta: {
-      idRuta: 0,
-      idChofer: dbChofer?.idChofer ?? 0,
-      idVendedor: dbChofer?.idVendedor ?? 0,
       idZona: zonaId,
-      fecha: new Date(0),
-      horaInicio: null,
-      horaFin: null,
-      estado: dbChofer?.estado ?? "pendiente",
       zona: zonaNombre,
+      vehiculo: effectiveVehiculo,
     },
     vehiculo: effectiveVehiculo,
     pedidos,

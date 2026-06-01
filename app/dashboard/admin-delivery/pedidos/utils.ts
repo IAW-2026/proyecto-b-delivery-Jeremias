@@ -1,6 +1,5 @@
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
-
-export const pageSize = 8;
+import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions: OrderStatus[] = ["ready", "en_camino", "entregado", "cancelado", "revision"];
 export const searchOptions = ["cliente", "calle", "chofer", "zona"] as const;
@@ -24,19 +23,6 @@ export type PedidosFilterState = {
   assignmentFilter: "todos" | "sin_asignar";
   requestedPage: number;
 };
-
-export function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-export function parsePage(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(rawValue ?? "1", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
 
 export function isOrderStatus(value: string | undefined): value is OrderStatus {
   return typeof value === "string" && statusOptions.includes(value as OrderStatus);

@@ -5,10 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent } from "react";
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
 import { buildUsersQueryHref, editableRoles, filterUsers, getInitialRoleDraft, parseUsersFilters, roleLabel, type UserFilter, type UserSearchBy } from "./utils";
+import type { Vendor } from "@/lib/vendors";
 
 type UpdatePayload = Record<string, unknown>;
 
-export function useUsuariosController(users: AdminDeliveryUserRow[]) {
+export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Vendor[]) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -28,6 +29,13 @@ export function useUsuariosController(users: AdminDeliveryUserRow[]) {
       initialDrafts[user.clerkUserId] = getInitialRoleDraft(user);
     }
     return initialDrafts;
+  });
+  const [vendorDrafts, setVendorDrafts] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    for (const user of users) {
+      initial[user.clerkUserId] = user.idVendedor ?? 0;
+    }
+    return initial;
   });
 
   const blockReasons = useMemo(() => {
@@ -115,12 +123,22 @@ export function useUsuariosController(users: AdminDeliveryUserRow[]) {
         [user.clerkUserId]: getInitialRoleDraft(user),
       }));
     }
+
+    setVendorDrafts((current) => ({
+      ...current,
+      [user.clerkUserId]: user.idVendedor ?? 0,
+    }));
   }
 
   function cancelRoleEdit(user: AdminDeliveryUserRow) {
     setRoleDrafts((current) => ({
       ...current,
       [user.clerkUserId]: getInitialRoleDraft(user),
+    }));
+
+    setVendorDrafts((current) => ({
+      ...current,
+      [user.clerkUserId]: user.idVendedor ?? 0,
     }));
 
     setEditingUserId((current) => (current === user.clerkUserId ? null : current));
@@ -133,22 +151,31 @@ export function useUsuariosController(users: AdminDeliveryUserRow[]) {
     }));
   }
 
-  function saveRole(user: AdminDeliveryUserRow) {
-    if (user.idVendedor === null) {
-      setMessage("No se puede cambiar el rol local de este usuario porque no tiene idVendedor asociado.");
-      return;
-    }
+  function updateVendorDraft(clerkUserId: string, vendorId: number) {
+    setVendorDrafts((current) => ({
+      ...current,
+      [clerkUserId]: vendorId,
+    }));
+  }
 
+  function saveRole(user: AdminDeliveryUserRow) {
     const nextRole = roleDrafts[user.clerkUserId] ?? "delivery";
+    const selectedVendorId = vendorDrafts[user.clerkUserId] ?? 0;
+
+    const selectedVendor = selectedVendorId > 0
+      ? vendors.find((v) => v.id === selectedVendorId)
+      : undefined;
+    const nombreEmpresa = selectedVendor?.nombre ?? null;
 
     void updateUser(
       {
         clerkUserId: user.clerkUserId,
         action: "set_local_role",
         role: nextRole,
-        idVendedor: user.idVendedor,
+        idVendedor: selectedVendorId,
+        nombreEmpresa,
       },
-      `Rol local actualizado a ${roleLabel(nextRole)}.`,
+      `Rol local actualizado a ${roleLabel(nextRole)}.${nombreEmpresa ? ` Empresa: ${nombreEmpresa}` : ""}`,
       () => setEditingUserId(null)
     );
   }
@@ -178,6 +205,7 @@ export function useUsuariosController(users: AdminDeliveryUserRow[]) {
     editingUserId,
     message,
     roleDrafts,
+    vendorDrafts,
     setQueryInput,
     setSelectedSearchBy,
     handlers: {
@@ -187,6 +215,7 @@ export function useUsuariosController(users: AdminDeliveryUserRow[]) {
       startRoleEdit,
       cancelRoleEdit,
       updateRoleDraft,
+      updateVendorDraft,
       saveRole,
       toggleBlock,
     },

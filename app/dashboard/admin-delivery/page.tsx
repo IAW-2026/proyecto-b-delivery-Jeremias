@@ -5,24 +5,6 @@ import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
 
 export const dynamic = "force-dynamic";
 
-function formatOrderStatus(status: string) {
-  if (status === "ready") return "Listo";
-  if (status === "en_camino") return "En camino";
-  if (status === "entregado") return "Entregado";
-  if (status === "cancelado") return "Cancelado";
-  if (status === "revision") return "Revisión";
-  return status;
-}
-
-function getStatusColor(status: string) {
-  if (status === "ready") return "bg-sky-100 text-sky-700 border-sky-200";
-  if (status === "en_camino") return "bg-indigo-100 text-indigo-700 border-indigo-200";
-  if (status === "entregado") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-  if (status === "cancelado") return "bg-rose-100 text-rose-700 border-rose-200";
-  if (status === "revision") return "bg-amber-100 text-amber-700 border-amber-200";
-  return "bg-slate-100 text-slate-700 border-slate-200";
-}
-
 function getUserEventTone(type: string) {
   if (type === "user_block") return "bg-rose-100 text-rose-700 border-rose-200";
   if (type === "user_role") return "bg-blue-100 text-blue-700 border-blue-200";

@@ -62,8 +62,6 @@ export default function ChoferesManager({
   const router = useRouter();
   const controller = useChoferesController({
     choferes,
-    zonas,
-    vehiculos,
     searchParams: { query: searchQuery, searchBy, status: statusFilter, page: String(page) },
     page,
     totalFilteredChoferes,

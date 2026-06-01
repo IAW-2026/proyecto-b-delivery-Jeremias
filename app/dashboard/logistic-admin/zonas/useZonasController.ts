@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { buildZonasQueryHref, pageSize, parseZonasFilters, type SearchParamsInput, type Zona, type ZonasFilterState } from "./utils";
+import { pageSize } from "@/lib/shared/utils";
+import { buildZonasQueryHref, parseZonasFilters, type SearchParamsInput, type Zona, type ZonasFilterState } from "./utils";
 
 type FormState = {
   nombre: string;
@@ -101,11 +102,6 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
   }
 
   async function handleDelete(zona: Zona) {
-    if (zona.rutasAsignadas > 0) {
-      setError("No se puede eliminar una zona con rutas asociadas. Primero reasigná o limpiá esas rutas.");
-      return;
-    }
-
     const ok = window.confirm(`¿Eliminar la zona ${zona.zona}?`);
     if (!ok) return;
 

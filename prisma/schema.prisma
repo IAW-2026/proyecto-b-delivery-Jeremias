@@ -35,7 +35,6 @@ model Chofer {
   nombreEmpresa String? @map("nombre_empresa")
   vehiculo    Vehiculo? @relation(fields: [idVehiculo], references: [idVehiculo])
   zona        zona?     @relation(fields: [idZona], references: [idZona])
-  ruta        ruta[]
   pedidosAsignados Pedido[] @relation("ChoferPedidos")
 
   @@map("chofer")
@@ -110,39 +109,14 @@ model Pedido {
   telefono    String?
   cantBidones Int
   zona        String
-  ruta_pedido ruta_pedido[]
 
   choferAsignado Chofer? @relation("ChoferPedidos", fields: [idChoferAsignado], references: [idChofer])
 
   @@map("pedido")
 }
 
-model ruta {
-  id_ruta     Int           @id @default(autoincrement())
-  id_chofer   Int
-  id_vendedor Int
-  fecha       DateTime
-  hora_inicio DateTime?
-  hora_fin    DateTime?
-  estado      String        @default("pendiente")
-  id_zona     Int
-  chofer      Chofer        @relation(fields: [id_chofer], references: [idChofer])
-  zona        zona          @relation(fields: [id_zona], references: [idZona])
-  ruta_pedido ruta_pedido[]
-}
-
-model ruta_pedido {
-  id_ruta   Int
-  id_pedido Int
-  pedido    Pedido @relation(fields: [id_pedido], references: [idPedido])
-  ruta      ruta   @relation(fields: [id_ruta], references: [id_ruta])
-
-  @@id([id_ruta, id_pedido])
-}
-
 model zona {
   idZona Int    @id @default(autoincrement())
   nombre String @unique
   choferes Chofer[]
-  ruta   ruta[]
 }

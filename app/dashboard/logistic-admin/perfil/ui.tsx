@@ -36,7 +36,7 @@ export default function PerfilPage({ fallbackName }: Props) {
 
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="mb-1 text-2xl font-semibold">{fullName || "Sin nombre"}</h2>
+          <h2 className="mb-1 text-black font-semibold">{fullName || "Sin nombre"}</h2>
           <p className="text-sm text-slate-600">{profile.nombreEmpresa || "Empresa no informada"}</p>
         </div>
         {!isEditing ? (
@@ -54,7 +54,6 @@ export default function PerfilPage({ fallbackName }: Props) {
               value={form.nombre}
               onChange={(event) => handleChange("nombre", event.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
-              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
               required
             />
@@ -66,7 +65,6 @@ export default function PerfilPage({ fallbackName }: Props) {
               value={form.apellido}
               onChange={(event) => handleChange("apellido", event.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
-              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
               required
             />
@@ -78,7 +76,6 @@ export default function PerfilPage({ fallbackName }: Props) {
               value={form.telefono}
               onChange={(event) => handleChange("telefono", event.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
-              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
             />
           </div>
@@ -89,7 +86,6 @@ export default function PerfilPage({ fallbackName }: Props) {
               value={form.nombreEmpresa}
               onChange={(event) => handleChange("nombreEmpresa", event.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
-              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
             />
           </div>

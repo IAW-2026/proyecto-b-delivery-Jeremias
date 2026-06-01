@@ -1,3 +1,5 @@
+import { splitFullName } from "@/lib/shared/utils";
+
 export type AdminProfileForm = {
   nombre: string;
   apellido: string;
@@ -6,19 +8,6 @@ export type AdminProfileForm = {
 };
 
 export type AdminProfilePayload = Partial<AdminProfileForm> | null | undefined;
-
-export function splitFullName(fullName: string) {
-  const trimmed = fullName.trim();
-  if (!trimmed) {
-    return { nombre: "", apellido: "" };
-  }
-
-  const parts = trimmed.split(/\s+/);
-  const nombre = parts.shift() ?? "";
-  const apellido = parts.join(" ");
-
-  return { nombre, apellido };
-}
 
 export function normalizeProfile(profile: AdminProfilePayload, fallbackName?: string | null): AdminProfileForm {
   const combinedName = [profile?.nombre ?? "", profile?.apellido ?? ""].filter(Boolean).join(" ").trim();

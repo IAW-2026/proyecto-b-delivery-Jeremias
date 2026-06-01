@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getLogisticAdminData } from "../data";
 import ChoferesManager from "./ui";
-import { buildChoferesQueryHref, filterChoferes, pageSize, parseChoferesFilters, type SearchParamsInput } from "./utils";
+import { pageSize } from "@/lib/shared/utils";
+import { buildChoferesQueryHref, filterChoferes, parseChoferesFilters, type SearchParamsInput } from "./utils";
 
 export default async function LogisticAdminChoferesPage({
   searchParams,

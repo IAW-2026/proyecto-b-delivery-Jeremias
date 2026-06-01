@@ -27,6 +27,7 @@
 #Carpetas
 /PlanesIA
 /Tareas a hacer
+/OpenCode
 
 # debug
 npm-debug.log*

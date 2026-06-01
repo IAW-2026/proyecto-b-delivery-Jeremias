@@ -1,6 +1,5 @@
 import type { LogisticAdminViewData } from "../../logistic-admin/data";
-
-export const pageSize = 8;
+import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions = ["activo", "inactivo", "pendiente", "rechazado"] as const;
 export const searchOptions = ["nombre", "telefono"] as const;
@@ -22,19 +21,6 @@ export type ChoferesFilterState = {
   statusFilter: "todos" | ChoferStatus;
   requestedPage: number;
 };
-
-export function normalizeSearchValue(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-export function parsePage(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(rawValue ?? "1", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
 
 export function isChoferStatus(value: string | undefined): value is ChoferStatus {
   return typeof value === "string" && statusOptions.includes(value as ChoferStatus);

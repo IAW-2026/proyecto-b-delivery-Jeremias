@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getLogisticAdminData } from "../data";
 import ZonasManager from "./ui";
-import { filterZonas, pageSize, parseZonasFilters } from "./utils";
+import { pageSize } from "@/lib/shared/utils";
+import { filterZonas, parseZonasFilters } from "./utils";
 
 export default async function LogisticAdminZonasPage({
   searchParams,
@@ -20,7 +21,6 @@ export default async function LogisticAdminZonasPage({
   const totalZonas = totalFilteredZonas;
   const zonasConPedidos = filteredZonas.filter((zona) => zona.pedidosTotales > 0).length;
   const totalPedidos = filteredZonas.reduce((accumulator, zona) => accumulator + zona.pedidosTotales, 0);
-  const totalRutas = filteredZonas.reduce((accumulator, zona) => accumulator + zona.rutasAsignadas, 0);
 
   if (requestedPage !== safePage) {
     const params = new URLSearchParams();
@@ -37,7 +37,7 @@ export default async function LogisticAdminZonasPage({
     redirect(nextUrl);
   }
 
-  const zonasKey = [paginatedZonas.map((zona) => `${zona.idZona}:${zona.pedidosTotales}:${zona.rutasAsignadas}`).join("|"), searchQuery].join("|");
+  const zonasKey = [paginatedZonas.map((zona) => `${zona.idZona}:${zona.pedidosTotales}`).join("|"), searchQuery].join("|");
 
   return (
     <ZonasManager
@@ -52,7 +52,6 @@ export default async function LogisticAdminZonasPage({
       zonasConPedidos={zonasConPedidos}
       zonasSinPedidos={totalZonas - zonasConPedidos}
       totalPedidos={totalPedidos}
-      totalRutas={totalRutas}
     />
   );
 }

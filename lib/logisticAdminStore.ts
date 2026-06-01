@@ -10,6 +10,7 @@ export type PedidoEntrante = {
 };
 
 import { getMockPedidos } from "@/lib/mocks/ARCHIVED/pedidos";
+import { normalizeOrderStatus, normalizeZonaName, nowIso } from "@/lib/shared/utils";
 
 export type OrderStatus = "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
 
@@ -20,19 +21,6 @@ export type LogisticOrder = PedidoEntrante & {
   status: OrderStatus;
   updatedAt: string;
 };
-
-function normalizeOrderStatus(value: string): OrderStatus {
-  if (value === "ready" || value === "en_camino" || value === "entregado" || value === "cancelado" || value === "revision") {
-    return value;
-  }
-
-  if (value === "assigned") return "ready";
-  if (value === "asignado") return "ready";
-  if (value === "cancelled") return "cancelado";
-  if (value === "delivered") return "entregado";
-
-  return "ready";
-}
 
 type ChoferWithZona = {
   idChofer: number;
@@ -83,14 +71,6 @@ function cloneOrder(order: LogisticOrder): LogisticOrder {
     estado: normalizeOrderStatus(order.status),
     status: normalizeOrderStatus(order.status),
   };
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function normalizeZonaName(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? "";
 }
 
 function applyAutomaticZoneAssignments(choferes: ChoferWithZona[]) {

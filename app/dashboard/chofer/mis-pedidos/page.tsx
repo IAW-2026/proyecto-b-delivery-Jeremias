@@ -2,7 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import MisPedidosUI from "./ui";
 import { getChoferStatus } from "@/lib/choferStatus";
-import { filterPedidos, isPedidoStatus, isSearchBy, parsePage, type PedidoStatus, type SearchBy, type SearchParamsInput } from "./utils";
+import { pageSize, parsePage } from "@/lib/shared/utils";
+import { filterPedidos, isPedidoStatus, isSearchBy, type PedidoStatus, type SearchBy, type SearchParamsInput } from "./utils";
 
 type SearchParams = Promise<SearchParamsInput>;
 
@@ -19,7 +20,6 @@ export default async function MisPedidosPage({ searchParams }: { searchParams: S
 
   const pendingPedidos = data.pedidos.filter((pedido) => pedido.estado !== "entregado" && pedido.estado !== "cancelado");
   const filteredPedidos = filterPedidos(data.pedidos, searchValue, searchBy, statusValue);
-  const pageSize = 8;
   const filteredCount = filteredPedidos.length;
   const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const safePage = Math.min(requestedPage, totalPages);

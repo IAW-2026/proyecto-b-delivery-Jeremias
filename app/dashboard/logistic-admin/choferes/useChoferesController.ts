@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LogisticAdminViewData } from "../data";
-import { pageSize, type ChoferesFilterState, type SearchBy, type SearchParamsInput, parseChoferesFilters } from "./utils";
+import { pageSize } from "@/lib/shared/utils";
+import { type ChoferesFilterState, type SearchBy, type SearchParamsInput, parseChoferesFilters } from "./utils";
 
 type Chofer = LogisticAdminViewData["choferes"][number];
-type Zona = LogisticAdminViewData["zonasCatalogo"][number];
-type Vehiculo = LogisticAdminViewData["vehiculos"][number];
 
 type ChoferRequest = {
   id: number;
@@ -20,8 +19,6 @@ type ChoferRequest = {
 
 type UseChoferesControllerParams = {
   choferes: Chofer[];
-  zonas: Zona[];
-  vehiculos: Vehiculo[];
   searchParams: SearchParamsInput;
   page: number;
   totalFilteredChoferes: number;

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
 import { adminButtonClass } from "../styles";
 import { usePedidosController } from "./usePedidosController";
-import { buildPedidosQueryHref, searchOptions, statusOptions, type SearchBy } from "./utils";
+import { buildPedidosQueryHref, searchOptions, statusOptions, statusNeedsChofer, type SearchBy } from "./utils";
 
 type Chofer = {
   idChofer: number;
@@ -42,10 +42,6 @@ function formatStatus(status: OrderStatus) {
   if (status === "cancelado") return "Cancelado";
   if (status === "revision") return "Revisión";
   return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function statusNeedsChofer(status: OrderStatus) {
-  return status === "en_camino" || status === "entregado";
 }
 
 function searchOptionMeta(value: SearchBy) {

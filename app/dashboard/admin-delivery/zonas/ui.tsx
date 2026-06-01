@@ -17,7 +17,6 @@ type Props = {
   zonasConPedidos: number;
   zonasSinPedidos: number;
   totalPedidos: number;
-  totalRutas: number;
   basePath?: string;
 };
 

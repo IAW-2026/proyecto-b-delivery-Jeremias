@@ -1,3 +1,5 @@
+import { nowIso } from "@/lib/shared/utils";
+
 export type ReadyOrderInput = {
   idPedido: number;
   idVendedor: number;
@@ -23,10 +25,6 @@ const store: ReadyOrdersStore = globalForReadyOrders.readyOrdersStore ?? {
 
 if (process.env.NODE_ENV !== "production") {
   globalForReadyOrders.readyOrdersStore = store;
-}
-
-function nowIso() {
-  return new Date().toISOString();
 }
 
 export function upsertReadyOrders(pedidos: ReadyOrderInput[]) {

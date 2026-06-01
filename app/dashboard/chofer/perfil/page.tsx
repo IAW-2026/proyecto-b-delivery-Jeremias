@@ -2,6 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import { splitFullName } from "@/lib/shared/utils";
 
 type ChoferProfileForm = {
   nombre: string;
@@ -12,19 +13,6 @@ type ChoferProfileForm = {
   alias: string;
   cuilCuit: string;
 };
-
-function splitFullName(fullName: string) {
-  const trimmed = fullName.trim();
-  if (!trimmed) {
-    return { nombre: "", apellido: "" };
-  }
-
-  const parts = trimmed.split(/\s+/);
-  const nombre = parts.shift() ?? "";
-  const apellido = parts.join(" ");
-
-  return { nombre, apellido };
-}
 
 function normalizeProfile(
   profile: Partial<ChoferProfileForm> | null | undefined,
@@ -157,8 +145,8 @@ export default function PerfilPage() {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold mb-1">Perfil del Chofer</h2>
-          <p className="text-sm text-gray-600">{`${profile.nombre} ${profile.apellido}`.trim()}</p>
+          <h2 className="text-2xl text-sky-400 font-semibold mb-1">Perfil del Chofer</h2>
+          <p className="text-sm text-black">{`${profile.nombre} ${profile.apellido}`.trim()}</p>
         </div>
         {!isEditing ? (
           <button
@@ -178,7 +166,7 @@ export default function PerfilPage() {
             <input
               value={form.nombre}
               onChange={(e) => handleChange("nombre", e.target.value)}
-              className="mt-1 block w-full border border-gray-200 rounded-md p-2"
+              className="mt-1 block w-full border border-gray-200 rounded-md p-2 text-gray-900"
               disabled={!isEditing}
               required
             />
@@ -189,7 +177,7 @@ export default function PerfilPage() {
             <input
               value={form.apellido}
               onChange={(e) => handleChange("apellido", e.target.value)}
-              className="mt-1 block w-full border border-gray-200 rounded-md p-2"
+              className="mt-1 block w-full border border-gray-200 rounded-md p-2 text-gray-900"
               disabled={!isEditing}
               required
             />
@@ -216,7 +204,7 @@ export default function PerfilPage() {
             <input
               value={form.telefono}
               onChange={(e) => handleChange("telefono", e.target.value)}
-              className="mt-1 block w-full border border-gray-200 rounded-md p-2"
+              className="mt-1 block w-full border border-gray-200 rounded-md p-2 text-gray-900"
               disabled={!isEditing}
             />
           </div>
@@ -226,7 +214,7 @@ export default function PerfilPage() {
             <input
               value={form.cbuCvu}
               onChange={(e) => handleChange("cbuCvu", e.target.value)}
-              className="mt-1 block w-full border border-gray-200 rounded-md p-2"
+              className="mt-1 block w-full border border-gray-200 rounded-md p-2 text-gray-900"
               disabled={!isEditing}
             />
           </div>
@@ -236,7 +224,7 @@ export default function PerfilPage() {
             <input
               value={form.alias}
               onChange={(e) => handleChange("alias", e.target.value)}
-              className="mt-1 block w-full border border-gray-200 rounded-md p-2"
+              className="mt-1 block w-full border border-gray-200 rounded-md p-2 text-gray-900"
               disabled={!isEditing}
             />
           </div>
@@ -246,7 +234,7 @@ export default function PerfilPage() {
             <input
               value={form.cuilCuit}
               onChange={(e) => handleChange("cuilCuit", e.target.value)}
-              className="mt-1 block w-full border border-gray-200 rounded-md p-2"
+              className="mt-1 block w-full border border-gray-200 rounded-md p-2 text-gray-900"
               disabled={!isEditing}
             />
           </div>
