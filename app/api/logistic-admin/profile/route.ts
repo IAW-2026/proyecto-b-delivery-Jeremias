@@ -97,8 +97,8 @@ export async function PUT(request: NextRequest) {
       const lastName = nameParts.join(" ");
 
       await client.users.updateUser(userId, {
-        firstName: firstName || null,
-        lastName: lastName || null,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
       });
     }
 
