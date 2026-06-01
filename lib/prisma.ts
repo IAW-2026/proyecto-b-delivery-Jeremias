@@ -7,20 +7,6 @@ import { Pool } from "pg";
 // runtime constructor (any) — prefer named export, fallback to default or module itself
 const PrismaClientCtor: any = (PrismaPkg as any).PrismaClient ?? (PrismaPkg as any).default ?? PrismaPkg;
 
-function normalizeConnectionString(raw: string) {
-  try {
-    const url = new URL(raw);
-
-    if (!url.searchParams.get("sslmode")) {
-      url.searchParams.set("sslmode", "require");
-    }
-
-    return url.toString();
-  } catch {
-    return raw;
-  }
-}
-
 const prismaClientSingleton = () => {
   const connectionString = process.env.DATABASE_URL;
 
@@ -28,12 +14,13 @@ const prismaClientSingleton = () => {
     throw new Error("DATABASE_URL is not defined");
   }
 
-  const normalizedConnectionString = normalizeConnectionString(connectionString);
   const connectTimeoutMs = Number.parseInt(process.env.PG_CONNECT_TIMEOUT_MS ?? "5000", 10);
+  const connectionTimeout = Number.isFinite(connectTimeoutMs) ? connectTimeoutMs : 5000;
 
   const pool = new Pool({
-    connectionString: normalizedConnectionString,
-    connectionTimeoutMillis: Number.isFinite(connectTimeoutMs) ? connectTimeoutMs : 5000,
+    connectionString,
+    connectionTimeoutMillis: connectionTimeout,
+    ssl: { rejectUnauthorized: false },
   });
   const adapter = new PrismaPg(pool);
 
