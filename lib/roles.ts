@@ -73,9 +73,12 @@ export function resolveRolesFromClaims(sessionClaims: unknown): string[] {
   const claimRoles = [
     ...claimSources.flatMap((source) => {
       if (!source || typeof source !== "object") return [];
-      return normalizeRoles((source as Record<string, unknown>).role);
+      const record = source as Record<string, unknown>;
+      // `role` es la clave canónica; `roles` es legacy (tolerada en transición)
+      return [...normalizeRoles(record.role), ...normalizeRoles(record.roles)];
     }),
     ...normalizeRoles(claims.role),
+    ...normalizeRoles(claims.roles),
     ...normalizeRoles(claims.org_role),
   ];
 
@@ -104,7 +107,8 @@ export async function fetchClerkRoles(userId: string): Promise<string[]> {
 
     const user = await response.json();
     const metadata = user.public_metadata ?? user.publicMetadata ?? {};
-    return normalizeRoles(metadata.role);
+    // `role` canónico + `roles` legacy (tolerado en transición)
+    return [...new Set([...normalizeRoles(metadata.role), ...normalizeRoles(metadata.roles)])];
   } catch {
     return [];
   }
@@ -131,6 +135,8 @@ export async function syncClerkRoleMetadata(userId: string, role: string): Promi
       publicMetadata: {
         ...metadata,
         role: [role],
+        // Eliminar la clave legacy `roles` para evitar roles fantasma
+        roles: null,
       },
     });
 

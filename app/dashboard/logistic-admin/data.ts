@@ -414,6 +414,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     choferes = await safePrismaQuery(
       () =>
         prisma.chofer.findMany({
+          where: { clerkUserId: { not: userId } },
           include: { vehiculo: true, zona: true },
           orderBy: { idChofer: "asc" },
         }),

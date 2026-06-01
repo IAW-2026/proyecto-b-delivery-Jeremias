@@ -8,6 +8,7 @@ export type AdminDeliveryUserRow = {
   email: string;
   effectiveRole: string;
   isGlobalAdmin: boolean;
+  isAppUser: boolean;
   isBlocked: boolean;
   blockedReason: string | null;
   blockedAt: string | null;
@@ -18,6 +19,10 @@ export type AdminDeliveryUserRow = {
 };
 
 const ADMIN_DELIVERY_ROLE = "admin_delivery";
+
+// Roles que identifican a un usuario como perteneciente a NUESTRA app.
+// `seller` se incluye porque mapea a logistic_admin; `buyer` (u otros) quedan fuera.
+const APP_ROLES = new Set(["delivery", "logistic_admin", "admin_delivery", "seller"]);
 
 type GetAdminDeliveryUsersDataOptions = {
   excludeClerkUserId?: string | null;
@@ -92,14 +97,22 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
       const accessControlRecord = dbAccessControls.find((access: { clerkUserId: string }) => access.clerkUserId === clerkUser.id);
       const choferRecord = dbChoferes.find((c: { clerkUserId: string }) => c.clerkUserId === clerkUser.id);
 
-      const clerkRoles = getEffectiveRoles(
-        normalizeRoles((clerkUser as User & { publicMetadata?: { role?: unknown } }).publicMetadata?.role)
+      // Roles crudos de Clerk (sin el "delivery" que getEffectiveRoles agrega por defecto)
+      const rawClerkRoles = normalizeRoles(
+        (clerkUser as User & { publicMetadata?: { role?: unknown } }).publicMetadata?.role
       );
+      const clerkRoles = getEffectiveRoles(rawClerkRoles);
       const clerkVisibleRole = clerkRoles[0] ?? null;
       const isGlobalAdmin = Boolean(globalAdminRecord) || clerkRoles.includes(ADMIN_DELIVERY_ROLE);
       const isBlocked = Boolean(accessControlRecord?.isBlocked);
-      
+
       const localRole = localRoleRecord?.role || "Sin rol";
+
+      // Pertenece a la app si tiene un rol de app en Clerk (crudo) o algún registro local.
+      // Esto excluye buyers (rol no-app y sin datos en nuestra BD).
+      const hasAppRoleInClerk = rawClerkRoles.some((role) => APP_ROLES.has(role));
+      const hasLocalRecord = Boolean(localRoleRecord) || Boolean(globalAdminRecord) || Boolean(choferRecord);
+      const isAppUser = hasAppRoleInClerk || hasLocalRecord;
       
       // CAMBIO CLAVE: El effectiveRole ahora prioriza Clerk y descarta los roles de Prisma
       const effectiveRole = isBlocked ? "blocked" : isGlobalAdmin ? ADMIN_DELIVERY_ROLE : clerkVisibleRole || "Sin rol";
@@ -121,6 +134,7 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
         email: primaryEmail,
         effectiveRole,
         isGlobalAdmin,
+        isAppUser,
         isBlocked,
         blockedReason: accessControlRecord?.blockedReason ?? null,
         blockedAt: accessControlRecord?.blockedAt ? accessControlRecord.blockedAt.toISOString() : null,
@@ -131,22 +145,9 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
       };
     });
 
-  // 4. FILTRO ESTRICTO: Solo miramos los roles de Clerk
-  const users = allMappedUsers.filter((user) => {
-    // Verificamos si Clerk dice que tiene el rol objetivo (o si está bloqueado pero su rol base era correcto)
-    const hasTargetRole = 
-      user.effectiveRole === "logistic_admin" || 
-      user.effectiveRole === "delivery" ||
-      (user.isBlocked && (user.localRole === "logistic_admin" || user.localRole === "delivery"));
-
-    // Nos aseguramos de que no tenga permisos de administrador
-    const isNotAdmin = !user.isGlobalAdmin && user.localRole !== "admin_delivery";
-    
-    // Opcional de seguridad: Solo mostramos usuarios que tengan ALGÚN registro en tu BD local
-    const isAppUser = user.localRole !== "Sin rol" || user.idVendedor !== null;
-
-    return hasTargetRole && isNotAdmin && isAppUser;
-  });
+  // 4. FILTRO: el admin global ve TODOS los usuarios de la app (delivery,
+  // logistic_admin y admin_delivery), y se excluyen los que no son de la app (buyers).
+  const users = allMappedUsers.filter((user) => user.isAppUser);
 
   return {
     users,

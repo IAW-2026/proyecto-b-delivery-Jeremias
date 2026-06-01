@@ -109,9 +109,16 @@ model Pedido {
   telefono    String?
   cantBidones Int
   zona        String
+  // Empresa dueña del pedido (vendedor). Se usa para acotar la visibilidad por logistic_admin.
+  idVendedor  Int           @default(0) @map("id_vendedor")
+  // ID del pedido en el sistema externo que nos lo envía (referencia para upsert).
+  idPedidoExterno Int?       @map("id_pedido_externo")
 
   choferAsignado Chofer? @relation("ChoferPedidos", fields: [idChoferAsignado], references: [idChofer])
 
+  // Un mismo id externo puede repetirse entre vendedores, pero es único dentro de cada uno.
+  @@unique([idVendedor, idPedidoExterno], name: "vendorExternalOrder", map: "pedido_vendor_external_unique")
+  @@index([idVendedor])
   @@map("pedido")
 }
 

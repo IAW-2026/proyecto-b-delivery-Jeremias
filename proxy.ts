@@ -8,6 +8,66 @@ async function resolveRoles(sessionClaims: unknown) {
   return resolveRolesFromClaims(sessionClaims);
 }
 
+// Asegura que un usuario autenticado tenga los roles adecuados en Clerk.
+// Clave canónica: publicMetadata.role (arreglo). `roles` es la clave legacy.
+async function ensureProperRoles(userId: string) {
+  try {
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+
+    const user = await client.users.getUser(userId);
+    const publicMetadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
+
+    const canonicalRoles = Array.isArray(publicMetadata.role)
+      ? (publicMetadata.role as string[])
+      : typeof publicMetadata.role === "string"
+        ? [publicMetadata.role as string]
+        : [];
+    const legacyRoles = Array.isArray(publicMetadata.roles) ? (publicMetadata.roles as string[]) : [];
+
+    // Fusionar clave canónica + legacy (migración)
+    const rolesArray = [...new Set([...canonicalRoles, ...legacyRoles])];
+    const hasLegacyKey = publicMetadata.roles !== undefined;
+
+    let updatedRoles = [...rolesArray];
+    let needsUpdate = hasLegacyKey;
+
+    // Regla 1: si no hay roles, asignar delivery
+    if (rolesArray.length === 0) {
+      updatedRoles = ["delivery"];
+      needsUpdate = true;
+    }
+    // Regla 2: si no tiene delivery, agregarlo
+    else if (!rolesArray.includes("delivery")) {
+      updatedRoles = [...rolesArray, "delivery"];
+      needsUpdate = true;
+    }
+
+    // Regla 3: si tiene seller, agregar logistic_admin (si no lo tiene)
+    if (rolesArray.includes("seller") && !updatedRoles.includes("logistic_admin")) {
+      updatedRoles = [...updatedRoles, "logistic_admin"];
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      await client.users.updateUserMetadata(userId, {
+        publicMetadata: {
+          role: updatedRoles,
+          // Eliminar la clave legacy para evitar roles fantasma
+          roles: null,
+        },
+      });
+      console.log(`[Role Assignment] Updated roles for user ${userId}: ${JSON.stringify(rolesArray)} -> ${JSON.stringify(updatedRoles)}`);
+    }
+
+    return updatedRoles;
+  } catch (error) {
+    console.error(`[Role Assignment Error] Failed to ensure proper roles for user ${userId}:`, error);
+    // No bloqueamos el acceso si falla la asignación de roles
+    return [];
+  }
+}
+
 export const proxy = clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
   if (pathname === "/blocked") {
@@ -22,6 +82,11 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     }
 
     return NextResponse.next();
+  }
+
+  // Asegurar/persistir los roles del usuario en Clerk al navegar la app
+  if (userId) {
+    await ensureProperRoles(userId);
   }
 
   const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");

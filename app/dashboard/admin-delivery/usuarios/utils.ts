@@ -75,8 +75,11 @@ export function getDisplayRole(user: AdminDeliveryUserRow) {
 }
 
 export function getInitialRoleDraft(user: AdminDeliveryUserRow) {
-  const normalizedRole = normalizeStoredRole(user.localRole);
-  return editableRoles.includes(normalizedRole as (typeof editableRoles)[number]) ? normalizedRole : "delivery";
+  // Preferimos el rol local; si no es editable (p. ej. "Sin rol"),
+  // caemos al rol efectivo de Clerk para no degradar accidentalmente a delivery.
+  const candidates = [normalizeStoredRole(user.localRole), normalizeStoredRole(user.effectiveRole)];
+  const match = candidates.find((role) => editableRoles.includes(role as (typeof editableRoles)[number]));
+  return match ?? "delivery";
 }
 
 export function filterUsers(users: AdminDeliveryUserRow[], values: FilterValues) {

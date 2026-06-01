@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getOrders } from "@/lib/logisticAdminStore";
+import { getReadyOrders } from "@/lib/readyOrdersStore";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 
 type PedidoConChofer = Prisma.PedidoGetPayload<{
@@ -47,19 +48,26 @@ async function seedPedidosFromStoreIfEmpty() {
   const storeOrders = getOrders();
   if (storeOrders.length === 0) return;
 
+  const readyOrders = getReadyOrders();
+  const vendorMap = new Map(readyOrders.map(order => [order.idPedido, order.idVendedor]));
+
   await prisma.pedido.createMany({
-    data: storeOrders.map((order) => ({
-      idPedido: order.idPedido,
-      estado: order.status,
-      direccion: order.direccion,
-      cliente: order.cliente,
-      telefono: order.telefono ?? null,
-      cantBidones: order.cantBidones,
-      zona: order.zona,
-      idChoferAsignado: order.assignedToChoferId,
-      assignedAt: order.assignedToChoferId ? new Date(order.updatedAt) : null,
-      updatedAt: new Date(order.updatedAt),
-    })),
+    data: storeOrders.map((order) => {
+      const idVendedor = vendorMap.get(order.idPedido) ?? 0;
+      return {
+        idPedido: order.idPedido,
+        estado: order.status,
+        direccion: order.direccion,
+        cliente: order.cliente,
+        telefono: order.telefono ?? null,
+        cantBidones: order.cantBidones,
+        zona: order.zona,
+        idVendedor: idVendedor,
+        idChoferAsignado: order.assignedToChoferId,
+        assignedAt: order.assignedToChoferId ? new Date(order.updatedAt) : null,
+        updatedAt: new Date(order.updatedAt),
+      };
+    }),
     skipDuplicates: true,
   });
 }
@@ -90,33 +98,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (context.idVendedor === null) {
-      const pedidosDb = await prisma.pedido.findMany({ include: { choferAsignado: true } });
-      return NextResponse.json(
-        {
-          ok: true,
-          company: null,
-          choferes: [],
-          vehiculos: [],
-          pedidos: pedidosDb.map(mapPedidoToLogisticOrder),
-        },
-        { status: 200 }
-      );
-    }
+     if (context.idVendedor === null) {
+       const pedidosDb = await prisma.pedido.findMany({ where: {}, include: { choferAsignado: true } });
+       return NextResponse.json(
+         {
+           ok: true,
+           company: null,
+           choferes: [],
+           vehiculos: [],
+           pedidos: pedidosDb.map(mapPedidoToLogisticOrder),
+         },
+         { status: 200 }
+       );
+     }
 
-    const [choferes, vehiculos] = await Promise.all([
-      prisma.chofer.findMany({
-        where: { idVendedor: context.idVendedor },
-        include: { vehiculo: true },
-        orderBy: { idChofer: "asc" },
-      }),
-      prisma.vehiculo.findMany({
-        where: { idVendedor: context.idVendedor },
-        orderBy: { idVehiculo: "asc" },
-      }),
-    ]);
+     const [choferes, vehiculos] = await Promise.all([
+       prisma.chofer.findMany({
+         where: { idVendedor: context.idVendedor },
+         include: { vehiculo: true },
+         orderBy: { idChofer: "asc" },
+       }),
+       prisma.vehiculo.findMany({
+         where: { idVendedor: context.idVendedor },
+         orderBy: { idVehiculo: "asc" },
+       }),
+     ]);
 
-    const pedidosDb = await prisma.pedido.findMany({ include: { choferAsignado: true } });
+     const pedidosDb = await prisma.pedido.findMany({ where: { idVendedor: context.idVendedor }, include: { choferAsignado: true } });
 
     return NextResponse.json(
       {
