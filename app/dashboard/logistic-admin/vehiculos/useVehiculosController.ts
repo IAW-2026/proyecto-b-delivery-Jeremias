@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { pageSize } from "@/lib/shared/utils";
 import { buildVehiculosQueryHref, parseVehiculosFilters, type SearchBy, type SearchParamsInput, type Vehiculo, type VehiculosFilterState, type VehiculoStatus } from "./utils";
+import * as actions from "@/lib/actions/logistic-admin";
 
 type FormState = {
   patente: string;
@@ -41,19 +42,6 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
   const pageStart = vehiculos.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredVehiculos, page * pageSize);
 
-  async function runAction(payload: Record<string, unknown>) {
-    const response = await fetch("/api/logistic-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "No se pudo completar la operación");
-    }
-  }
-
   function startEdit(vehiculo: Vehiculo) {
     setEditingId(vehiculo.idVehiculo);
     setEditForm({
@@ -85,15 +73,8 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
 
     setIsSaving(true);
     try {
-      await runAction({
-        action: "create_vehicle",
-        patente,
-        tipo,
-        capacidadBidones,
-      });
-
+      await actions.createVehicle(patente, tipo, capacidadBidones);
       setAddForm(emptyForm);
-      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
     } finally {
@@ -101,9 +82,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     }
   }
 
-  async function handleUpdateVehicle(vehiculoId: number) {
-    setError(null);
-
+  async function handleUpdateVehicle(vehiculoId: number, original: Vehiculo) {
     const patente = editForm.patente.trim().toUpperCase();
     const tipo = editForm.tipo.trim();
     const capacidadBidones = Number(editForm.capacidadBidones);
@@ -113,19 +92,21 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
       return;
     }
 
+    // Optimistic: close editor immediately
+    cancelEdit();
+    setError(null);
     setIsSaving(true);
-    try {
-      await runAction({
-        action: "update_vehicle",
-        idVehiculo: vehiculoId,
-        patente,
-        tipo,
-        capacidadBidones,
-      });
 
-      cancelEdit();
-      router.refresh();
+    try {
+      await actions.updateVehicle(vehiculoId, { patente, tipo, capacidadBidones });
     } catch (e) {
+      // Revert: reopen editor with original values
+      setEditingId(vehiculoId);
+      setEditForm({
+        patente: original.patente,
+        tipo: original.tipo,
+        capacidadBidones: String(original.capacidadBidones),
+      });
       setError(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
     } finally {
       setIsSaving(false);
@@ -140,11 +121,10 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     setError(null);
 
     try {
-      await runAction({ action: "delete_vehicle", idVehiculo: vehiculoId });
+      await actions.deleteVehicle(vehiculoId);
       if (editingId === vehiculoId) {
         cancelEdit();
       }
-      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar el vehículo");
     } finally {
@@ -167,8 +147,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     setError(null);
 
     try {
-      await runAction({ action: "set_vehicle_state", idVehiculo: vehiculo.idVehiculo, estado: "activo" });
-      router.refresh();
+      await actions.setVehicleState(vehiculo.idVehiculo, "activo");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cambiar el estado del vehículo");
     } finally {
@@ -187,15 +166,8 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     setError(null);
 
     try {
-      await runAction({
-        action: "set_vehicle_state",
-        idVehiculo: vehiculo.idVehiculo,
-        estado: "pausado",
-        motivoPausa: motivo,
-      });
-
+      await actions.setVehicleState(vehiculo.idVehiculo, "pausado", motivo);
       setPausingVehicleId(null);
-      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo pausar el vehículo");
     } finally {

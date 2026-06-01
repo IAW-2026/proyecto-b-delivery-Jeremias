@@ -6,8 +6,7 @@ import type { FormEvent } from "react";
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
 import { buildUsersQueryHref, editableRoles, filterUsers, getInitialRoleDraft, parseUsersFilters, roleLabel, type UserFilter, type UserSearchBy } from "./utils";
 import type { Vendor } from "@/lib/vendors";
-
-type UpdatePayload = Record<string, unknown>;
+import * as actions from "@/lib/actions/admin-delivery";
 
 export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Vendor[]) {
   const router = useRouter();
@@ -53,29 +52,16 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
 
   const blockedUsersCount = useMemo(() => users.filter((user) => user.isBlocked).length, [users]);
 
-  async function updateUser(payload: UpdatePayload, successMessage: string, onSuccess?: () => void) {
-    setPendingUserId(typeof payload.clerkUserId === "string" ? payload.clerkUserId : null);
+  async function updateUser(clerkUserId: string, action: () => Promise<void>, successMessage: string, onSuccess?: () => void) {
+    setPendingUserId(clerkUserId);
     setMessage(null);
 
     try {
-      const response = await fetch("/api/admin-delivery/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const responsePayload = (await response.json().catch(() => null)) as { error?: string } | null;
-
-      if (!response.ok) {
-        setMessage(responsePayload?.error ?? "No se pudo actualizar el usuario.");
-        return;
-      }
-
+      await action();
       setMessage(successMessage);
       onSuccess?.();
-      router.refresh();
-    } catch {
-      setMessage("No se pudo actualizar el usuario.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "No se pudo actualizar el usuario.");
     } finally {
       setPendingUserId(null);
     }
@@ -168,27 +154,27 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     const nombreEmpresa = selectedVendor?.nombre ?? null;
 
     void updateUser(
-      {
-        clerkUserId: user.clerkUserId,
-        action: "set_local_role",
-        role: nextRole,
-        idVendedor: selectedVendorId,
-        nombreEmpresa,
-      },
+      user.clerkUserId,
+      () => actions.setLocalRole(user.clerkUserId, nextRole, selectedVendorId, nombreEmpresa),
       `Rol local actualizado a ${roleLabel(nextRole)}.${nombreEmpresa ? ` Empresa: ${nombreEmpresa}` : ""}`,
       () => setEditingUserId(null)
     );
   }
 
   function toggleBlock(user: AdminDeliveryUserRow) {
-    void updateUser(
-      {
-        clerkUserId: user.clerkUserId,
-        action: user.isBlocked ? "unblock_user" : "block_user",
-        blockedReason: blockReasons[user.clerkUserId] ?? "",
-      },
-      user.isBlocked ? "Usuario desbloqueado." : "Usuario bloqueado."
-    );
+    if (user.isBlocked) {
+      void updateUser(
+        user.clerkUserId,
+        () => actions.unblockUser(user.clerkUserId),
+        "Usuario desbloqueado."
+      );
+    } else {
+      void updateUser(
+        user.clerkUserId,
+        () => actions.blockUser(user.clerkUserId, blockReasons[user.clerkUserId] ?? ""),
+        "Usuario bloqueado."
+      );
+    }
   }
 
   return {

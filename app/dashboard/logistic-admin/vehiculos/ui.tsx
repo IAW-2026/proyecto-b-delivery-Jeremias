@@ -357,7 +357,7 @@ export default function VehiculosManager({
                       <div className="flex flex-nowrap items-start justify-center gap-1.5 whitespace-nowrap">
                         {editingId === vehiculo.idVehiculo ? (
                           <>
-                            <button type="button" onClick={() => void handleUpdateVehicle(vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("save", "sm")}>
+                            <button type="button" onClick={() => void handleUpdateVehicle(vehiculo.idVehiculo, vehiculo)} disabled={isSaving} className={adminButtonClass("save", "sm")}>
                               {isSaving ? "Guardando..." : "Guardar"}
                             </button>
                             <button type="button" onClick={cancelEdit} disabled={isSaving} className={adminButtonClass("cancel", "sm")}>

@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
 import { normalizeZonaName } from "@/lib/shared/utils";
 import { pageSize } from "@/lib/shared/utils";
 import { parsePedidosFilters, statusNeedsChofer, type PedidosFilterState, type SearchBy, type SearchParamsInput } from "./utils";
+import * as actions from "@/lib/actions/logistic-admin";
 
 type Chofer = {
   idChofer: number;
@@ -26,7 +26,6 @@ type UsePedidosControllerParams = {
 };
 
 export function usePedidosController({ orders, allFilteredOrders, choferes, searchParams, page, totalFilteredOrders, basePath = "/dashboard/logistic-admin" }: UsePedidosControllerParams) {
-  const router = useRouter();
   const filterState: PedidosFilterState = parsePedidosFilters(searchParams);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
@@ -92,19 +91,6 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
       : null
     : null;
 
-  async function runAction(payload: Record<string, unknown>) {
-    const response = await fetch("/api/logistic-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "No se pudo completar la operación");
-    }
-  }
-
   function startEdit(order: LogisticOrder) {
     setEditingOrderId(order.idPedido);
     setChoferSelection((current) => ({
@@ -140,47 +126,52 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
   }
 
   async function saveEdit(order: LogisticOrder) {
-    setBusyId(order.idPedido);
+    const nextChoferId = choferSelection[order.idPedido] ?? "";
+    const nextStatus = selectedStatuses[order.idPedido] ?? order.status;
+    const assignableChoferes = getAssignablesForZone(order.zona);
+    const currentChoferId = order.assignedToChoferId !== null ? String(order.assignedToChoferId) : "";
+    const selectedChofer = nextChoferId ? assignableChoferes.find((chofer) => String(chofer.idChofer) === nextChoferId) : null;
+
+    if (selectedChofer && selectedChofer.idVehiculo === null) {
+      setError("Ese chofer no tiene vehículo asignado. No se puede asignar el pedido.");
+      return;
+    }
+
+    if (selectedChofer && selectedChofer.zona?.nombre && normalizeZonaName(selectedChofer.zona.nombre) !== normalizeZonaName(order.zona)) {
+      setError("Ese chofer no pertenece a la zona del pedido.");
+      return;
+    }
+
+    if (nextChoferId && !selectedChofer && nextChoferId !== currentChoferId) {
+      setError("Solo podés asignar un chofer activo de la misma zona del pedido.");
+      return;
+    }
+
+    if (statusNeedsChofer(nextStatus) && !nextChoferId) {
+      setError("Ese estado requiere un chofer asignado.");
+      return;
+    }
+
+    // Optimistic: close editor immediately
+    setEditingOrderId(null);
     setError(null);
+    setBusyId(order.idPedido);
 
     try {
-      const nextChoferId = choferSelection[order.idPedido] ?? "";
-      const nextStatus = selectedStatuses[order.idPedido] ?? order.status;
-      const assignableChoferes = getAssignablesForZone(order.zona);
-      const currentChoferId = order.assignedToChoferId !== null ? String(order.assignedToChoferId) : "";
-      const selectedChofer = nextChoferId ? assignableChoferes.find((chofer) => String(chofer.idChofer) === nextChoferId) : null;
-
-      if (selectedChofer && selectedChofer.idVehiculo === null) {
-        throw new Error("Ese chofer no tiene vehículo asignado. No se puede asignar el pedido.");
-      }
-
-      if (selectedChofer && selectedChofer.zona?.nombre && normalizeZonaName(selectedChofer.zona.nombre) !== normalizeZonaName(order.zona)) {
-        throw new Error("Ese chofer no pertenece a la zona del pedido.");
-      }
-
-      if (nextChoferId && !selectedChofer && nextChoferId !== currentChoferId) {
-        throw new Error("Solo podés asignar un chofer activo de la misma zona del pedido.");
-      }
-
-      if (statusNeedsChofer(nextStatus) && !nextChoferId) {
-        throw new Error("Ese estado requiere un chofer asignado.");
-      }
-
       if (nextChoferId !== currentChoferId) {
         if (!nextChoferId) {
-          await runAction({ action: "unassign_order", idPedido: order.idPedido });
+          await actions.unassignOrder(order.idPedido);
         } else {
-          await runAction({ action: "assign_order", idPedido: order.idPedido, idChofer: Number(nextChoferId) });
+          await actions.assignOrder(order.idPedido, Number(nextChoferId));
         }
       }
 
       if (nextStatus !== order.status) {
-        await runAction({ action: "update_order_status", idPedido: order.idPedido, status: nextStatus });
+        await actions.updateOrderStatus(order.idPedido, nextStatus);
       }
-
-      setEditingOrderId(null);
-      router.refresh();
     } catch (e) {
+      // Revert: reopen editor with error
+      setEditingOrderId(order.idPedido);
       setError(e instanceof Error ? e.message : "No se pudo guardar los cambios");
     } finally {
       setBusyId(null);
@@ -199,8 +190,7 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
         setEditingOrderId(null);
       }
 
-      await runAction({ action: "delete_order", idPedido: order.idPedido });
-      router.refresh();
+      await actions.deleteOrder(order.idPedido);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar el pedido");
     } finally {

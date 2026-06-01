@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { LogisticAdminViewData } from "../data";
 import { pageSize } from "@/lib/shared/utils";
 import { type ChoferesFilterState, type SearchBy, type SearchParamsInput, parseChoferesFilters } from "./utils";
+import * as actions from "@/lib/actions/logistic-admin";
 
 type Chofer = LogisticAdminViewData["choferes"][number];
 
@@ -89,19 +90,6 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
     };
   }, []);
 
-  async function runAction(payload: Record<string, unknown>) {
-    const response = await fetch("/api/logistic-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "No se pudo completar la operación");
-    }
-  }
-
   function startEdit(chofer: Chofer) {
     setEditingChoferId(chofer.idChofer);
     setSelectedZones((current) => ({
@@ -129,28 +117,29 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
   }
 
   async function saveEdit(chofer: Chofer) {
-    setSavingId(chofer.idChofer);
     setError(null);
 
+    const zoneValue = selectedZones[chofer.idChofer];
+    const vehicleValue = selectedVehiculos[chofer.idChofer];
+
+    // Optimistic: close editor immediately
+    setEditingChoferId(null);
+    setSavingId(chofer.idChofer);
+
     try {
-      const zoneValue = selectedZones[chofer.idChofer];
-      const vehicleValue = selectedVehiculos[chofer.idChofer];
-
       if (!zoneValue) {
-        await runAction({ action: "clear_driver_zone", idChofer: chofer.idChofer });
+        await actions.clearDriverZone(chofer.idChofer);
       } else {
-        await runAction({ action: "assign_driver_zone", idChofer: chofer.idChofer, idZona: Number(zoneValue) });
+        await actions.assignDriverZone(chofer.idChofer, Number(zoneValue));
       }
 
-      if (!vehicleValue) {
-        await runAction({ action: "assign_vehicle", idChofer: chofer.idChofer, idVehiculo: null });
-      } else {
-        await runAction({ action: "assign_vehicle", idChofer: chofer.idChofer, idVehiculo: Number(vehicleValue) });
-      }
-
-      setEditingChoferId(null);
-      router.refresh();
+      await actions.assignVehicle(
+        chofer.idChofer,
+        vehicleValue ? Number(vehicleValue) : undefined
+      );
     } catch (e) {
+      // Revert: reopen editor
+      setEditingChoferId(chofer.idChofer);
       setError(e instanceof Error ? e.message : "No se pudo guardar los cambios del chofer");
     } finally {
       setSavingId(null);
@@ -162,8 +151,7 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
     setError(null);
 
     try {
-      await runAction({ action: "set_chofer_estado", idChofer: chofer.idChofer, estado });
-      router.refresh();
+      await actions.setChoferEstado(chofer.idChofer, estado);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cambiar el estado");
     } finally {
@@ -178,8 +166,7 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
     setError(null);
 
     try {
-      await runAction({ action: "delete_chofer", idChofer: chofer.idChofer });
-      router.refresh();
+      await actions.deleteChofer(chofer.idChofer);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar el chofer");
     } finally {
@@ -187,28 +174,18 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
     }
   }
 
-  async function handleReviewRequest(requestId: number, action: "approve" | "reject") {
+  async function handleReviewRequest(requestId: number, reviewAction: "approve" | "reject") {
     setRequestActionId(requestId);
 
     try {
-      const options: RequestInit = {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      };
-
-      if (action === "reject") {
+      if (reviewAction === "approve") {
+        await actions.approveChoferRequest(requestId);
+      } else {
         const reason = window.prompt("Motivo del rechazo (opcional)")?.trim() ?? "";
-        options.body = JSON.stringify({ reason });
-      }
-
-      const response = await fetch(`/api/logistic-admin/chofer-requests/${requestId}/${action}`, options);
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? "No se pudo procesar la solicitud");
+        await actions.rejectChoferRequest(requestId, reason || undefined);
       }
 
       setRequests((current) => current.filter((request) => request.id !== requestId));
-      router.refresh();
     } catch (error) {
       setError(error instanceof Error ? error.message : "No se pudo procesar la solicitud");
     } finally {

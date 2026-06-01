@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { buildQueryHref, type PedidoStatus, type SearchBy } from "./utils";
+import * as actions from "@/lib/actions/chofer";
 
 type Pedido = {
   idPedido: number;
@@ -54,19 +55,8 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
     setPendingId(idPedido);
 
     try {
-      const response = await fetch("/api/chofer/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idPedido, estado: nuevoEstado, motivoRevision }),
-      });
-
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error ?? "No se pudo actualizar el estado");
-      }
-
+      await actions.updatePedidoStatus(idPedido, nuevoEstado, motivoRevision);
       setRevisionPendingId(null);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo actualizar el estado");
     } finally {

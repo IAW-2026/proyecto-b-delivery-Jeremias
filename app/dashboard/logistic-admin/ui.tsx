@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OrderStatus } from "@/lib/logisticAdminStore";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "./styles";
+import * as actions from "@/lib/actions/logistic-admin";
 
 type Vehiculo = {
   idVehiculo: number;
@@ -188,10 +189,7 @@ export default function LogisticAdminBoard({
               <button
                 type="button"
                 onClick={async () => {
-                  await fetch(`/api/vendors/${inferredVendor.id}/link`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                  });
+                  await actions.linkVendor(inferredVendor.id);
                   router.refresh();
                 }}
                 className={adminButtonClass("warning")}

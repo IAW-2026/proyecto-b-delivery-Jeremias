@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { pageSize } from "@/lib/shared/utils";
 import { buildZonasQueryHref, parseZonasFilters, type SearchParamsInput, type Zona, type ZonasFilterState } from "./utils";
+import * as actions from "@/lib/actions/logistic-admin";
 
 type FormState = {
   nombre: string;
@@ -33,19 +34,6 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
   const pageStart = zonas.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredZonas, page * pageSize);
 
-  async function runAction(payload: Record<string, unknown>) {
-    const response = await fetch("/api/logistic-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "No se pudo completar la operación");
-    }
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -58,9 +46,8 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
 
     setIsSaving(true);
     try {
-      await runAction({ action: "create_zone", nombre });
+      await actions.createZone(nombre);
       setForm(emptyForm);
-      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
     } finally {
@@ -91,9 +78,8 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
 
     setIsSaving(true);
     try {
-      await runAction({ action: "update_zone", idZona, nombre });
+      await actions.updateZone(idZona, nombre);
       cancelEdit();
-      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
     } finally {
@@ -108,8 +94,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
     setIsSaving(true);
     setError(null);
     try {
-      await runAction({ action: "delete_zone", idZona: zona.idZona });
-      router.refresh();
+      await actions.deleteZone(zona.idZona);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar la zona");
     } finally {
