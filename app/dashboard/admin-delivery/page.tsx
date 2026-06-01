@@ -97,9 +97,15 @@ export default async function AdminDeliveryPage() {
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 h-2 w-2 rounded-full bg-amber-500"></div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-amber-900">Conexión inestable con la base de datos</p>
               <p className="mt-1 text-sm text-amber-700">Mostrando datos almacenados en caché. Las métricas se actualizarán automáticamente al reconectar.</p>
+              {data.dbError ? (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-amber-600 hover:text-amber-800">Ver error técnico</summary>
+                  <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-amber-100 p-3 text-xs text-amber-900">{data.dbError}</pre>
+                </details>
+              ) : null}
             </div>
           </div>
         </div>

@@ -104,6 +104,7 @@ export type LogisticAdminViewData = {
   zonasCatalogo: ZonaSelectorRecord[];
   companyName: string | null;
   databaseUnavailable: boolean;
+  dbError?: string;
 };
 
 function isPrismaTimeoutError(error: unknown) {
@@ -306,11 +307,15 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
 
   let databaseUnavailable = false;
 
+  let dbError: string | undefined;
+
   async function safePrismaQuery<T>(query: () => Promise<T>, fallback: T, context: string): Promise<T> {
     try {
       return await query();
     } catch (error) {
       databaseUnavailable = true;
+      const message = error instanceof Error ? error.message : String(error);
+      dbError = `[${context}] ${message}`;
       console.error(`Prisma error in ${context}:`, error);
       return fallback;
     }
@@ -501,5 +506,6 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     zonasFueraCatalogo: zonasResumen.zonasFueraCatalogo,
     zonasCatalogo: zonasCatalogo.map((zona) => ({ idZona: zona.idZona, nombre: zona.nombre })),
     databaseUnavailable,
+    dbError,
   };
 }

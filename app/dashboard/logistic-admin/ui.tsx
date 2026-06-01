@@ -55,6 +55,7 @@ type Props = {
   companyName: string | null;
   inferredVendor?: { id: number; nombre?: string } | undefined;
   databaseUnavailable: boolean;
+  dbError?: string;
   choferes: Chofer[];
   vehiculos: Vehiculo[];
   orders: Order[];
@@ -103,6 +104,7 @@ export default function LogisticAdminBoard({
   companyName,
   inferredVendor,
   databaseUnavailable,
+  dbError,
   choferes,
   vehiculos,
   orders,
@@ -174,6 +176,12 @@ export default function LogisticAdminBoard({
           <p className="text-sm">
             Mostramos una vista limitada temporalmente. Reintentá en unos segundos mientras se restablece la conexión.
           </p>
+          {dbError ? (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs font-medium text-amber-600 hover:text-amber-800">Ver error técnico</summary>
+              <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-amber-100 p-3 text-xs text-amber-900">{dbError}</pre>
+            </details>
+          ) : null}
         </div>
       ) : null}
 

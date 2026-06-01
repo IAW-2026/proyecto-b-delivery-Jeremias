@@ -11,6 +11,7 @@ export default async function LogisticAdminPage() {
       companyName={data.companyName}
       inferredVendor={data.inferredVendor}
       databaseUnavailable={data.databaseUnavailable}
+      dbError={data.dbError}
       choferes={data.choferes}
       vehiculos={data.vehiculos}
       orders={data.orders}
