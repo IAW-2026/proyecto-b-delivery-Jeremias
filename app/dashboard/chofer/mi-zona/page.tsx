@@ -43,7 +43,7 @@ export default function MiZonaPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2" style={{ color: "#00AEEF" }}>
-          🗺️ Zona
+          <span aria-hidden="true">🗺️</span> Zona
         </h1>
         <p className="text-gray-600">Información de la zona asignada para hoy</p>
       </div>
@@ -65,7 +65,7 @@ export default function MiZonaPage() {
         {/* Pedidos en Zona */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl">📦</span>
+            <span className="text-3xl" aria-hidden="true">📦</span>
             <h3 className="font-semibold text-gray-900">Pedidos</h3>
           </div>
           <p className="text-2xl font-bold text-green-600">{data?.cantidadPedidos ?? 0}</p>
@@ -119,7 +119,7 @@ export default function MiZonaPage() {
       {/* Mapa (Placeholder) */}
       <div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center border border-gray-300 mb-6">
         <div className="text-center">
-          <p className="text-2xl mb-2">🗺️</p>
+          <p className="text-2xl mb-2" aria-hidden="true">🗺️</p>
           <p className="text-gray-600 font-medium">Mapa de la zona</p>
           <p className="text-xs text-gray-500 mt-1">
             Próxima actualización: integración con Google Maps

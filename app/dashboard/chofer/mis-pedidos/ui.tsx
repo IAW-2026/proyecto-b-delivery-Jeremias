@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { buildQueryHref, type PedidoStatus, type SearchBy } from "./utils";
 
 type Pedido = {
@@ -41,6 +41,13 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
   const [motivoPedidoId, setMotivoPedidoId] = useState<number | null>(null);
   const [revisionPendingId, setRevisionPendingId] = useState<number | null>(null);
   const [revisionReasons, setRevisionReasons] = useState<Record<number, string>>({});
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (motivoPedidoId !== null) {
+      dialogRef.current?.focus();
+    }
+  }, [motivoPedidoId]);
 
   async function handleCambiarEstado(idPedido: number, nuevoEstado: Pedido["estado"], motivoRevision?: string) {
     setError(null);
@@ -105,7 +112,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
     <div>
       <div className="mb-6">
         <h1 className="mb-2 text-3xl font-bold" style={{ color: "#00AEEF" }}>
-          📦 Mis pedidos
+          <span aria-hidden="true">📦</span> Mis pedidos
         </h1>
         <p className="text-gray-600">Pedidos listos para entregar</p>
       </div>
@@ -416,10 +423,12 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeMotivo}>
               <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={`motivo-pedido-${pedido.idPedido}`}
-                className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+                tabIndex={-1}
+                className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="flex items-start justify-between gap-4">

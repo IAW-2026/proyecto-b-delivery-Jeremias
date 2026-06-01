@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
 import { adminButtonClass } from "../styles";
 import { usePedidosController } from "./usePedidosController";
@@ -92,6 +93,13 @@ export default function LogisticAdminPedidosUi({
 
   const { choferSelection, selectedStatuses } = editState;
   const { getAssignablesForZone, startEdit, cancelEdit, openMotivo, closeMotivo, saveEdit, handleDelete, setChoferSelection, setSelectedStatuses } = handlers;
+  const motivoDialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (motivoOrderId !== null) {
+      motivoDialogRef.current?.focus();
+    }
+  }, [motivoOrderId]);
 
   const searchOptionLabels = searchOptions.map((value) => ({ value, ...searchOptionMeta(value) }));
 
@@ -413,7 +421,7 @@ export default function LogisticAdminPedidosUi({
 
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeMotivo}>
-              <div role="dialog" aria-modal="true" aria-labelledby={`motivo-revision-${order.idPedido}`} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <div ref={motivoDialogRef} role="dialog" aria-modal="true" aria-labelledby={`motivo-revision-${order.idPedido}`} tabIndex={-1} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 id={`motivo-revision-${order.idPedido}`} className="text-xl font-semibold text-slate-900">

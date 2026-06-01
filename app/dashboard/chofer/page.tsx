@@ -112,7 +112,7 @@ export default async function ChoferDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link href="/dashboard/chofer/mis-pedidos">
           <div className="bg-blue-50 hover:bg-blue-100 rounded-lg p-6 cursor-pointer transition-colors border-l-4 border-blue-500">
-            <div className="text-3xl mb-3">📦</div>
+            <div className="text-3xl mb-3" aria-hidden="true">📦</div>
             <h3 className="font-semibold text-blue-900">Ver Mis Pedidos</h3>
             <p className="text-sm text-blue-700 mt-1">{data.cantidadPedidos} pedidos pendientes</p>
           </div>
@@ -120,7 +120,7 @@ export default async function ChoferDashboard() {
 
         <Link href="/dashboard/chofer/mi-zona">
           <div className="bg-purple-50 hover:bg-purple-100 rounded-lg p-6 cursor-pointer transition-colors border-l-4 border-purple-500">
-            <div className="text-3xl mb-3">🗺️</div>
+            <div className="text-3xl mb-3" aria-hidden="true">🗺️</div>
             <h3 className="font-semibold text-purple-900">Mi Zona</h3>
             <p className="text-sm text-purple-700 mt-1">Información de la zona {data.chofer.zona}</p>
           </div>
@@ -128,7 +128,7 @@ export default async function ChoferDashboard() {
 
         <Link href="/dashboard/chofer/mi-vehiculo">
           <div className="bg-orange-50 hover:bg-orange-100 rounded-lg p-6 cursor-pointer transition-colors border-l-4 border-orange-500">
-            <div className="text-3xl mb-3">🚛</div>
+            <div className="text-3xl mb-3" aria-hidden="true">🚛</div>
             <h3 className="font-semibold text-orange-900">Mi Vehículo</h3>
             <p className="text-sm text-orange-700 mt-1">
               {data.vehiculo?.patente ?? "Sin vehículo"} - {data.vehiculo?.tipo ?? "Sin tipo"}

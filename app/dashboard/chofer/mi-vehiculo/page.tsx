@@ -42,7 +42,7 @@ export default function MiVehiculoPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2" style={{ color: "#00AEEF" }}>
-          🚛 Vehículo
+          <span aria-hidden="true">🚛</span> Vehículo
         </h1>
         <p className="text-gray-600">Detalles del vehículo asignado</p>
       </div>
@@ -58,7 +58,7 @@ export default function MiVehiculoPage() {
               {vehiculo?.patente ?? "Sin vehículo"}
             </h2>
           </div>
-          <div className="text-7xl opacity-30">🚛</div>
+          <div className="text-7xl opacity-30" aria-hidden="true">🚛</div>
         </div>
       </div>
 
@@ -95,7 +95,7 @@ export default function MiVehiculoPage() {
       {/* Capacidad de Carga */}
       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 mb-6">
         <h3 className="font-semibold text-gray-900 mb-4">
-          📊 Capacidad de Carga
+          <span aria-hidden="true">📊</span> Capacidad de Carga
         </h3>
 
         {/* Barra de Progreso */}

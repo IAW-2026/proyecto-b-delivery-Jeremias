@@ -57,7 +57,7 @@ export default function RoleDashboardShell({ children, displayName, navigationIt
           <UserMenu initialDisplayName={displayName ?? undefined} />
         </div>
 
-        <nav className="p-4">{navigationItems.map(renderNavItem)}</nav>
+        <nav className="p-4" aria-label="Navegación principal">{navigationItems.map(renderNavItem)}</nav>
       </aside>
 
       <main className="flex flex-1 flex-col">

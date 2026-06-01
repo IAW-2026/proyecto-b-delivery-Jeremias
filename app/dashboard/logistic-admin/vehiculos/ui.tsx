@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import Link from "next/link";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
 import { buildVehiculosQueryHref, searchOptions, statusOptions, type SearchBy, type Vehiculo, type VehiculoStatus } from "./utils";
@@ -77,6 +77,14 @@ export default function VehiculosManager({
     submitSearch,
     changeStatusFilter,
   } = handlers;
+
+  const detailsDialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (detailsVehicleId !== null) {
+      detailsDialogRef.current?.focus();
+    }
+  }, [detailsVehicleId]);
 
   const searchPlaceholder = searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar vehículos";
 
@@ -417,10 +425,12 @@ export default function VehiculosManager({
               return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeDetails}>
                   <div
+                    ref={detailsDialogRef}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby={`vehicle-details-${vehicle.idVehiculo}`}
-                    className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+                    tabIndex={-1}
+                    className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="flex items-start justify-between gap-4">
