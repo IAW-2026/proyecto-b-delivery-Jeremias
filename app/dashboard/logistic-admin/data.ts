@@ -299,7 +299,7 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
 }
 
 export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
   if (!userId) {
     redirect("/signin");
   }
@@ -310,13 +310,9 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     try {
       return await query();
     } catch (error) {
-      if (isPrismaTimeoutError(error)) {
-        databaseUnavailable = true;
-        console.error(`Prisma timeout in ${context}:`, error);
-        return fallback;
-      }
-
-      throw error;
+      databaseUnavailable = true;
+      console.error(`Prisma error in ${context}:`, error);
+      return fallback;
     }
   }
 
@@ -343,7 +339,6 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     null,
     "logisticAdmin.findUnique"
   );
-  const { sessionClaims } = await auth();
   const roles = resolveRolesFromClaims(sessionClaims);
   const canAccess = roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin");
   // Prefer local DB name (logisticAdmin.nombre) when available; fall back to Clerk name
