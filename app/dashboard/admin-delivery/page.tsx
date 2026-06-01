@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getLogisticAdminData } from "../logistic-admin/data";
-import { adminButtonClass, adminCardClass, adminPageShell, adminStatCardClass } from "../logistic-admin/styles";
+import { adminCardClass, adminPageShell } from "../logistic-admin/styles";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
 
 export const dynamic = "force-dynamic";
@@ -14,244 +14,223 @@ function formatOrderStatus(status: string) {
   return status;
 }
 
+function getStatusColor(status: string) {
+  if (status === "ready") return "bg-sky-100 text-sky-700 border-sky-200";
+  if (status === "en_camino") return "bg-indigo-100 text-indigo-700 border-indigo-200";
+  if (status === "entregado") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+  if (status === "cancelado") return "bg-rose-100 text-rose-700 border-rose-200";
+  if (status === "revision") return "bg-amber-100 text-amber-700 border-amber-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function getUserEventTone(type: string) {
+  if (type === "user_block") return "bg-rose-100 text-rose-700 border-rose-200";
+  if (type === "user_role") return "bg-blue-100 text-blue-700 border-blue-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function getUserEventLabel(type: string) {
+  if (type === "user_block") return "Baneo";
+  if (type === "user_role") return "Rol";
+  return "Acción";
+}
+
 export default async function AdminDeliveryPage() {
   const [data, globalUsersData] = await Promise.all([getLogisticAdminData(), getAdminDeliveryUsersData()]);
+
   const activeDrivers = data.choferes.filter((driver) => driver.estado === "activo");
   const workingVehicles = data.vehiculos.filter((vehicle) => vehicle.estado !== "pausado");
   const readyOrders = data.orders.filter((order) => order.status === "ready" && order.assignedToChoferId === null);
-  const recentOrders = [...data.orders].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 5);
-  const mostActiveZones = [...data.zonas].sort((left, right) => {
-    const leftScore = left.pedidosTotales + left.pedidosAsignados + left.bidonesTotales;
-    const rightScore = right.pedidosTotales + right.pedidosAsignados + right.bidonesTotales;
-    return rightScore - leftScore;
-  }).slice(0, 5);
+
   const zonesWithoutCatalog = [...data.zonasFueraCatalogo].sort((left, right) => {
     const leftScore = left.pedidosTotales + left.pedidosAsignados + left.bidonesTotales;
     const rightScore = right.pedidosTotales + right.pedidosAsignados + right.bidonesTotales;
     return rightScore - leftScore;
   });
 
+  const usersArray = globalUsersData?.users || [];
+
+  const userEvents = usersArray.flatMap((rawUser) => {
+    const user = rawUser as typeof rawUser & {
+      role?: string;
+      roleChangedAt?: string | Date;
+      isBlocked?: boolean;
+      blockedReason?: string;
+      blockedAt?: string | Date;
+    };
+
+    const events: Array<{
+      id: string;
+      type: "user_role" | "user_block";
+      title: string;
+      description: string;
+      updatedAt: string | Date;
+    }> = [];
+
+    if (user.roleChangedAt) {
+      events.push({
+        id: `role-${user.clerkUserId}`,
+        type: "user_role",
+        title: `Rol actualizado a ${user.role ?? "desconocido"}`,
+        description: `Usuario ${user.clerkUserId.slice(-6)}...`,
+        updatedAt: user.roleChangedAt,
+      });
+    }
+
+    if (user.isBlocked) {
+      events.push({
+        id: `block-${user.clerkUserId}`,
+        type: "user_block",
+        title: "Acceso bloqueado",
+        description: user.blockedReason ?? "Revisión de seguridad",
+        updatedAt: user.blockedAt ?? new Date(),
+      });
+    }
+
+    return events;
+  });
+
+  const recentUserActivity = userEvents
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, 5);
+
   return (
     <div className={`mx-auto max-w-7xl ${adminPageShell}`}>
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>Inicio</h1>
+          <p className="mt-2 max-w-2xl text-sm" style={{ color: "var(--muted)" }}>
+            Vista general de la operación, con foco en accesos de usuarios y señales básicas para entrar rápido al trabajo del día.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-700">Sistema operativo</span>
+        </div>
+      </header>
 
       {data.databaseUnavailable ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <p className="font-semibold">No se pudo conectar a la base de datos</p>
-          <p className="text-sm">
-            Mostramos una vista limitada temporalmente. Reintentá en unos segundos mientras se restablece la conexión.
-          </p>
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 h-2 w-2 rounded-full bg-amber-500"></div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Conexión inestable con la base de datos</p>
+              <p className="mt-1 text-sm text-amber-700">Mostrando datos almacenados en caché. Las métricas se actualizarán automáticamente al reconectar.</p>
+            </div>
+          </div>
         </div>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Pedidos listos sin asignar</p>
-          <p className="mt-2 text-3xl font-semibold text-sky-600">{readyOrders.length}</p>
-        </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Choferes activos</p>
-          <p className="mt-2 text-3xl font-semibold text-emerald-600">{activeDrivers.length}</p>
-        </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Vehículos operativos</p>
-          <p className="mt-2 text-3xl font-semibold text-amber-600">{workingVehicles.length}</p>
-        </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Zonas con catálogo</p>
-          <p className="mt-2 text-3xl font-semibold text-purple-600">{data.zonas.length}</p>
-        </div>
-        <div className={adminStatCardClass}>
-          <p className="text-sm text-slate-600">Usuarios con acceso global</p>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">{globalUsersData.globalAdminCount}</p>
-        </div>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Pedidos en Cola", value: readyOrders.length, style: { color: "var(--primary)" } },
+          { label: "Choferes Activos", value: activeDrivers.length, style: { color: "var(--success)" } },
+          { label: "Flota Operativa", value: workingVehicles.length, style: { color: "var(--primary)" } },
+          { label: "Zonas Cubiertas", value: data.zonas.length, style: { color: "var(--accent)" } },
+        ].map((stat, idx) => (
+          <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--muted)" }}>{stat.label}</p>
+            <p className="mt-2 text-3xl font-bold tracking-tight" style={stat.style}>{stat.value}</p>
+          </div>
+        ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="space-y-6">
-          <section className={`${adminCardClass} p-6`}>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Alcance total</h2>
-                <p className="text-sm text-slate-500">
-                  Este panel gobierna toda la operación: lectura operativa completa y control de accesos globales.
-                </p>
-              </div>
-              <div className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
-                Modo superusuario
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Cobertura operativa</p>
-                <p className="mt-1 text-base font-semibold text-slate-900">Pedidos, choferes, vehículos y zonas</p>
-                <p className="mt-2 text-sm text-slate-600">Todo lo que ve `logistic_admin`, más la capa global de usuarios y permisos.</p>
-              </article>
-              <article className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-                <p className="text-sm uppercase tracking-[0.18em] text-sky-500">Control global</p>
-                <p className="mt-1 text-base font-semibold text-slate-900">{globalUsersData.users.length} usuarios operativos visibles</p>
-                <p className="mt-2 text-sm text-slate-600">La tabla global excluye tu propio usuario para evitar auto-revocación.</p>
-              </article>
-            </div>
-          </section>
-
-          <section className={`${adminCardClass} p-6`}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Cobertura global</h2>
-                <p className="text-sm text-slate-500">
-                  La plataforma completa se ve desde aquí. No hay filtrado por vendedor en esta vista.
-                </p>
-              </div>
-              <div className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
-                Nivel superior
+          <section className={`${adminCardClass} flex h-full flex-col overflow-hidden bg-white shadow-sm`}>
+            <div className="border-b border-slate-100 p-6 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Historial reciente</h2>
+                  <p className="text-sm text-slate-500">Últimas acciones sobre usuarios: cambios de rol y bloqueos.</p>
+                </div>
+                <Link href="/dashboard/admin-delivery/pedidos" className="rounded-lg bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+                  Abrir módulo
+                </Link>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {mostActiveZones.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500 sm:col-span-2">
-                  No hay zonas registradas todavía.
-                </p>
+            <div className="flex-1 p-6">
+              {recentUserActivity.length === 0 ? (
+                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                  Aún no hay cambios recientes sobre usuarios.
+                </div>
               ) : (
-                mostActiveZones.map((zone) => (
-                  <article key={zone.idZona} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Zona</p>
-                        <h3 className="mt-1 text-base font-semibold text-slate-900">{zone.zona}</h3>
+                <div className="relative space-y-6 before:absolute before:inset-y-0 before:left-3.5 before:w-px before:bg-slate-200">
+                  {recentUserActivity.map((item) => (
+                    <article key={item.id} className="relative flex gap-4">
+                      <div className={`relative mt-1 flex h-7 w-7 flex-none items-center justify-center rounded-full ring-4 ring-white ${item.type === "user_block" ? "bg-rose-100" : "bg-blue-100"}`}>
+                        <div className={`h-2.5 w-2.5 rounded-full ${item.type === "user_block" ? "bg-rose-500" : "bg-blue-500"}`} />
                       </div>
-                      <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white">
-                        {zone.rutasAsignadas} rutas
-                      </span>
-                    </div>
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-sm text-slate-600">
-                      <div className="rounded-xl bg-white p-3 text-center">
-                        <p className="text-lg font-semibold text-sky-600">{zone.pedidosTotales}</p>
-                        <p>Total</p>
-                      </div>
-                      <div className="rounded-xl bg-white p-3 text-center">
-                        <p className="text-lg font-semibold text-amber-600">{zone.pedidosAsignados}</p>
-                        <p>Asignados</p>
-                      </div>
-                      <div className="rounded-xl bg-white p-3 text-center">
-                        <p className="text-lg font-semibold text-emerald-600">{zone.bidonesTotales}</p>
-                        <p>Bidones</p>
-                      </div>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className={`${adminCardClass} p-6`}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Actividad reciente global</h2>
-                <p className="text-sm text-slate-500">Lectura compacta de los últimos movimientos de toda la operación.</p>
-              </div>
-              <Link href="/dashboard/admin-delivery/pedidos" className="text-sm font-medium text-sky-600 hover:text-sky-700">
-                Abrir pedidos
-              </Link>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {recentOrders.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                  Todavía no hay pedidos cargados.
-                </p>
-              ) : (
-                recentOrders.map((order) => (
-                  <article key={order.idPedido} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-semibold text-slate-900">Pedido #{order.idPedido}</h3>
-                          <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white">
-                            {formatOrderStatus(order.status)}
-                          </span>
+                      <div className="flex-auto rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-colors hover:bg-slate-50">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
+                              <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${getUserEventTone(item.type)}`}>
+                                {getUserEventLabel(item.type)}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm text-slate-600">{item.description}</p>
+                          </div>
+                          <time className="whitespace-nowrap text-xs font-medium text-slate-400">
+                            {new Date(item.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </time>
                         </div>
-                        <p className="mt-1 text-sm text-slate-600">{order.direccion}</p>
-                        <p className="text-sm text-slate-500">
-                          {order.cliente} · {order.cantBidones} bidones · {order.zona}
-                        </p>
                       </div>
-                      <p className="text-sm text-slate-400">{new Date(order.updatedAt).toLocaleString()}</p>
-                    </div>
-                  </article>
-                ))
+                    </article>
+                  ))}
+                </div>
               )}
             </div>
           </section>
         </div>
 
         <aside className="space-y-6">
-          <section className={`${adminCardClass} p-6`}>
-            <h2 className="text-xl font-semibold text-slate-900">Accesos rápidos</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              Navegación directa a las zonas operativas que también ve este rol.
-            </p>
-
-            <div className="mt-4 flex flex-col gap-3">
-              <Link href="/dashboard/admin-delivery/usuarios" className={adminButtonClass("save")}>
-                Usuarios globales
-              </Link>
-              <Link href="/dashboard/admin-delivery/pedidos" className={adminButtonClass("save")}>
-                Pedidos globales
-              </Link>
-              <Link href="/dashboard/admin-delivery/choferes" className={adminButtonClass("edit")}>
-                Choferes
-              </Link>
-              <Link href="/dashboard/admin-delivery/vehiculos" className={adminButtonClass("warning")}>
-                Vehículos
-              </Link>
-              <Link href="/dashboard/admin-delivery/zonas" className={adminButtonClass("success")}>
-                Zonas
-              </Link>
-              <Link href="/dashboard/admin-delivery/perfil" className={adminButtonClass("save")}>
-                Perfil global
-              </Link>
+          <section className={`${adminCardClass} bg-white shadow-sm`}>
+            <div className="border-b border-slate-100 p-6 pb-4">
+              <h2 className="text-lg font-semibold text-slate-900">Resumen corto</h2>
+              <p className="text-sm text-slate-500">Indicadores mínimos para entrar sin ruido.</p>
             </div>
-          </section>
 
-          <section className={`${adminCardClass} p-6`}>
-            <h2 className="text-xl font-semibold text-slate-900">Zonas fuera de catálogo</h2>
-            <p className="mt-2 text-sm text-slate-500">
-              Alertas de zonas detectadas que todavía no viven en el catálogo oficial.
-            </p>
+            <div className="p-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Zonas sin catálogo</p>
+                    <p className="text-xs text-slate-500">Pendientes de mapeo</p>
+                  </div>
+                  <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-semibold ${zonesWithoutCatalog.length > 0 ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+                    {zonesWithoutCatalog.length}
+                  </span>
+                </div>
 
-            <div className="mt-4 space-y-3">
-              {zonesWithoutCatalog.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                  No se detectaron zonas fuera del catálogo.
-                </p>
-              ) : (
-                zonesWithoutCatalog.map((zone) => (
-                  <article key={zone.zona} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-amber-900">{zone.zona}</h3>
-                        <p className="text-sm text-amber-800">{zone.pedidosTotales} pedidos · {zone.pedidosAsignados} asignados</p>
-                      </div>
-                      <p className="text-sm font-semibold text-amber-900">{zone.bidonesTotales} bidones</p>
-                    </div>
-                  </article>
-                ))
-              )}
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Pedidos listos</p>
+                    <p className="text-xs text-slate-500">Sin chofer asignado</p>
+                  </div>
+                  <span className="inline-flex items-center rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-sm font-semibold text-sky-700">
+                    {readyOrders.length}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Usuarios activos</p>
+                    <p className="text-xs text-slate-500">Con datos localizados</p>
+                  </div>
+                  <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-700">
+                    {usersArray.length}
+                  </span>
+                </div>
+              </div>
             </div>
-          </section>
-
-          <section className={`${adminCardClass} p-6`}>
-            <h2 className="text-xl font-semibold text-slate-900">Reglas activas</h2>
-            <ul className="mt-4 space-y-3 text-sm text-slate-600">
-              <li className="rounded-2xl bg-slate-50 p-3">Clerk solo se usa para lectura de usuario y rol.</li>
-              <li className="rounded-2xl bg-slate-50 p-3">La normalización de delivery y logistic_admin sigue habilitada.</li>
-              <li className="rounded-2xl bg-slate-50 p-3">admin_delivery domina sobre cualquier otro rol.</li>
-              <li className="rounded-2xl bg-slate-50 p-3">No se permite revocar tu propio acceso global desde esta pantalla.</li>
-            </ul>
           </section>
         </aside>
+
       </section>
     </div>
   );

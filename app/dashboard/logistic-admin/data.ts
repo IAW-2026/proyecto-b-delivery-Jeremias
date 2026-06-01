@@ -71,6 +71,10 @@ type ZonaSelectorRecord = {
   nombre: string;
 };
 
+function isArchivedChofer(chofer: ChoferRecord) {
+  return chofer.estado === "inactivo" && chofer.disponible === false && chofer.idVehiculo === null && chofer.idZona === null;
+}
+
 type UserRoleRecord = {
   idVendedor: number;
   role: string;
@@ -348,15 +352,22 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   );
 
   const user = await safeCurrentUser();
-  const adminProfile = await safePrismaQuery<AdminDeliveryRecord | null>(
-    () => prisma.adminDelivery.findUnique({ where: { clerkUserId: userId }, select: { nombre: true } }),
+  const adminProfile = await safePrismaQuery<{ nombre: string } | null>(
+    async () => {
+      const logisticAdminProfile = await prisma.logisticAdmin.findUnique({ where: { clerkUserId: userId }, select: { nombre: true } });
+      if (logisticAdminProfile) {
+        return logisticAdminProfile;
+      }
+
+      return prisma.adminDelivery.findUnique({ where: { clerkUserId: userId }, select: { nombre: true } });
+    },
     null,
-    "adminDelivery.findUnique"
+    "logisticAdmin.findUnique"
   );
   const { sessionClaims } = await auth();
   const roles = resolveRolesFromClaims(sessionClaims);
   const canAccess = roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin");
-  // Prefer local DB name (adminDelivery.nombre) when available; fall back to Clerk name
+  // Prefer local DB name (logisticAdmin.nombre) when available; fall back to Clerk name
   const localName = adminProfile?.nombre?.trim();
   const userName = (localName && localName.length > 0
     ? localName
@@ -464,21 +475,23 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     );
   }
 
-        const assignedByVehicle = new Map<number, { idChofer: number; nombre: string }>();
-        for (const chofer of choferes as ChoferRecord[]) {
-          if (chofer.idVehiculo !== null) {
-            assignedByVehicle.set(chofer.idVehiculo, { idChofer: chofer.idChofer, nombre: chofer.nombre });
-          }
-        }
+  const visibleChoferes = (choferes as ChoferRecord[]).filter((chofer) => !isArchivedChofer(chofer));
 
-        const vehiculosWithAssignment = (vehiculos as VehiculoRecord[]).map((vehiculo) => {
-          const assigned = assignedByVehicle.get(vehiculo.idVehiculo);
-          return {
-            ...vehiculo,
-            assignedToChoferId: assigned?.idChofer ?? null,
-            assignedToChoferName: assigned?.nombre ?? null,
-          };
-        });
+  const assignedByVehicle = new Map<number, { idChofer: number; nombre: string }>();
+  for (const chofer of visibleChoferes) {
+    if (chofer.idVehiculo !== null) {
+      assignedByVehicle.set(chofer.idVehiculo, { idChofer: chofer.idChofer, nombre: chofer.nombre });
+    }
+  }
+
+  const vehiculosWithAssignment = (vehiculos as VehiculoRecord[]).map((vehiculo) => {
+    const assigned = assignedByVehicle.get(vehiculo.idVehiculo);
+    return {
+      ...vehiculo,
+      assignedToChoferId: assigned?.idChofer ?? null,
+      assignedToChoferName: assigned?.nombre ?? null,
+    };
+  });
 
   await safePrismaQuery(() => seedPedidosFromStoreIfEmpty(), undefined, "pedido.seedFromStoreIfEmpty");
 
@@ -491,7 +504,12 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     getOrders(),
     "pedido.findMany"
   );
-  const zonasResumen = buildZonasResumen(orders, zonasCatalogo, choferes as ChoferRecord[]);
+  // Mark orders whose assigned chofer is archived (exists in DB but not in visibleChoferes)
+  const ordersWithArchivedFlag = orders.map((o) => ({
+    ...o,
+    assignedChoferArchived: o.assignedToChoferId !== null && !visibleChoferes.some((c) => c.idChofer === o.assignedToChoferId),
+  }));
+  const zonasResumen = buildZonasResumen(orders, zonasCatalogo, visibleChoferes);
 
   return {
     userName,
@@ -503,9 +521,9 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
         : inferredVendorId
         ? { id: inferredVendorId, nombre: inferredVendorName ?? undefined }
         : undefined,
-    choferes,
+    choferes: visibleChoferes,
     vehiculos: vehiculosWithAssignment,
-    orders,
+    orders: ordersWithArchivedFlag,
     zonas: zonasResumen.zonas,
     zonasFueraCatalogo: zonasResumen.zonasFueraCatalogo,
     zonasCatalogo: zonasCatalogo.map((zona) => ({ idZona: zona.idZona, nombre: zona.nombre })),

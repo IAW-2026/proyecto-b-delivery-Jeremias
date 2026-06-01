@@ -77,6 +77,15 @@ model AdminDelivery {
   @@map("admin_delivery")
 }
 
+model LogisticAdmin {
+  idLogisticAdmin Int     @id @default(autoincrement()) @map("id_logistic_admin")
+  clerkUserId     String  @unique @map("clerk_user_id")
+  nombre          String
+  telefono        String? @map("telefono")
+
+  @@map("logistic_admin")
+}
+
 model UserAccessControl {
   id                   Int       @id @default(autoincrement())
   clerkUserId          String    @unique @map("clerk_user_id")

@@ -254,6 +254,8 @@ export default function LogisticAdminPedidosUi({
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="w-[80px] px-3 py-3">Pedido</th>
+                <th className="w-[110px] px-3 py-3">Fecha</th>
+                <th className="w-[80px] px-3 py-3">Hora</th>
                 <th className="w-[220px] px-3 py-3">Cliente</th>
                 <th className="w-[120px] px-3 py-3">Zona</th>
                 <th className="w-[90px] px-3 py-3">Bidones</th>
@@ -272,6 +274,30 @@ export default function LogisticAdminPedidosUi({
                 return (
                   <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
                     <td className="w-[80px] px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
+                    
+                    {/* Renderizamos solo la fecha con configuración robusta SSR */}
+                    <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700  ">
+                      {order.updatedAt 
+                        ? new Date(order.updatedAt).toLocaleDateString("es-AR", { 
+                            timeZone: "America/Argentina/Buenos_Aires", 
+                            day: "2-digit", 
+                            month: "2-digit", 
+                            year: "numeric" 
+                          }) 
+                        : "—"}
+                    </td>
+
+                    <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700">
+                      {order.updatedAt 
+                        ? new Date(order.updatedAt).toLocaleTimeString("es-AR", { 
+                            timeZone: "America/Argentina/Buenos_Aires", 
+                            hour: "2-digit", 
+                            minute: "2-digit", 
+                            hour12: false 
+                          }) 
+                        : "—"}
+                    </td>
+
                     <td className="w-[220px] px-3 py-3">
                       <p className="truncate font-medium text-slate-900">{order.cliente}</p>
                       <p className="text-xs text-slate-500">{order.direccion}</p>
@@ -304,7 +330,12 @@ export default function LogisticAdminPedidosUi({
                           ))}
                         </select>
                       ) : (
-                        <p className="truncate font-medium text-slate-900">{order.assignedToChoferName ?? "Sin asignar"}</p>
+                        <p className="truncate font-medium text-slate-900">
+                          {order.assignedToChoferName ?? "Sin asignar"}
+                          {order.assignedChoferArchived ? (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Archivado</span>
+                          ) : null}
+                        </p>
                       )}
                     </td>
                     <td className="w-[140px] px-3 py-3 align-middle">

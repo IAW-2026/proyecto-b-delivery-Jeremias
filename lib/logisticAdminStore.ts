@@ -16,6 +16,7 @@ export type OrderStatus = "ready" | "en_camino" | "entregado" | "cancelado" | "r
 export type LogisticOrder = PedidoEntrante & {
   assignedToChoferId: number | null;
   assignedToChoferName: string | null;
+  assignedChoferArchived?: boolean;
   status: OrderStatus;
   updatedAt: string;
 };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "@clerk/nextjs/server";
+import { clerkClient, currentUser, getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 
 type AdminProfilePayload = {
   nombre?: unknown;
@@ -16,23 +17,25 @@ function toOptionalString(value: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = getAuth(request);
+    const { userId, sessionClaims } = getAuth(request);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const admin = await prisma.adminDelivery.findUnique({ where: { clerkUserId: userId } });
+    const roles = resolveRolesFromClaims(sessionClaims);
+    const isAdminDelivery = roles.includes(ADMIN_DELIVERY_ROLE);
+    const clerkUser = await currentUser();
+    const logisticAdminProfile = await prisma.logisticAdmin.findUnique({ where: { clerkUserId: userId } });
+    const legacyAdminProfile = isAdminDelivery ? null : await prisma.adminDelivery.findUnique({ where: { clerkUserId: userId } });
+    const admin = isAdminDelivery ? await prisma.adminDelivery.findUnique({ where: { clerkUserId: userId } }) : logisticAdminProfile ?? legacyAdminProfile;
     const userRole = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
 
-    const nombreFull = admin?.nombre ?? null;
-    let nombre = "";
-    let apellido = "";
-    let telefono = admin?.telefono ?? null;
-    if (nombreFull) {
-      const parts = nombreFull.trim().split(/\s+/);
-      nombre = parts.shift() ?? "";
-      apellido = parts.join(" ");
-    }
+    const clerkName = `${clerkUser?.firstName ?? ""} ${clerkUser?.lastName ?? ""}`.trim();
+    const nombreFull = isAdminDelivery ? admin?.nombre ?? clerkName : clerkName;
+    const parts = nombreFull.trim().length > 0 ? nombreFull.trim().split(/\s+/) : [];
+    const nombre = parts.shift() ?? "";
+    const apellido = parts.join(" ");
+    const telefono = isAdminDelivery ? admin?.telefono ?? null : null;
 
     return NextResponse.json({ ok: true, profile: { nombre: nombre || null, apellido: apellido || null, nombreEmpresa: userRole?.nombreEmpresa ?? null, telefono: telefono ?? null } }, { status: 200 });
   } catch (error) {
@@ -60,12 +63,44 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Missing name" }, { status: 400 });
     }
 
-    // Create or update admin record in local DB (upsert) so users can save their profile
-    const updatedAdmin = await prisma.adminDelivery.upsert({
-      where: { clerkUserId: userId },
-      create: { clerkUserId: userId, nombre: fullName, telefono: toOptionalString(body.telefono) },
-      update: { nombre: fullName, telefono: toOptionalString(body.telefono) },
-    });
+    const { sessionClaims } = getAuth(request);
+    const roles = resolveRolesFromClaims(sessionClaims);
+    const isAdminDelivery = roles.includes(ADMIN_DELIVERY_ROLE);
+
+    let savedName = fullName;
+    let savedPhone: string | null = toOptionalString(body.telefono);
+
+    if (isAdminDelivery) {
+      const updatedAdmin = await prisma.adminDelivery.upsert({
+        where: { clerkUserId: userId },
+        create: { clerkUserId: userId, nombre: fullName, telefono: savedPhone },
+        update: { nombre: fullName, telefono: savedPhone },
+      });
+
+      savedName = updatedAdmin.nombre;
+      savedPhone = updatedAdmin.telefono ?? null;
+    } else {
+      const updatedLogisticAdmin = await prisma.logisticAdmin.upsert({
+        where: { clerkUserId: userId },
+        create: { clerkUserId: userId, nombre: fullName, telefono: savedPhone },
+        update: { nombre: fullName, telefono: savedPhone },
+      });
+
+      await prisma.adminDelivery.deleteMany({ where: { clerkUserId: userId } });
+
+      savedName = updatedLogisticAdmin.nombre;
+      savedPhone = updatedLogisticAdmin.telefono ?? null;
+
+      const client = await clerkClient();
+      const nameParts = fullName.split(/\s+/);
+      const firstName = nameParts.shift() ?? "";
+      const lastName = nameParts.join(" ");
+
+      await client.users.updateUser(userId, {
+        firstName: firstName || null,
+        lastName: lastName || null,
+      });
+    }
 
     // update userRole.nombreEmpresa if provided and exists
     const nombreEmpresa = toOptionalString(body.nombreEmpresa);
@@ -75,7 +110,7 @@ export async function PUT(request: NextRequest) {
       updatedUserRole = await prisma.userRole.update({ where: { clerkUserId: userId }, data: { nombreEmpresa } });
     }
 
-    return NextResponse.json({ ok: true, profile: { nombre: updatedAdmin.nombre, nombreEmpresa: updatedUserRole?.nombreEmpresa ?? existingRole?.nombreEmpresa ?? null, telefono: updatedAdmin.telefono ?? null } }, { status: 200 });
+    return NextResponse.json({ ok: true, profile: { nombre: savedName, nombreEmpresa: updatedUserRole?.nombreEmpresa ?? existingRole?.nombreEmpresa ?? null, telefono: savedPhone } }, { status: 200 });
   } catch (error) {
     console.error("logistic-admin profile PUT error:", error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

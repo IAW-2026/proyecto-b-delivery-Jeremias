@@ -551,7 +551,15 @@ export async function POST(request: NextRequest) {
         }
 
         await prisma.$transaction(async (transaction: Prisma.TransactionClient) => {
-          await transaction.chofer.delete({ where: { idChofer: body.idChofer } });
+          await transaction.chofer.update({
+            where: { idChofer: body.idChofer },
+            data: {
+              estado: "inactivo",
+              disponible: false,
+              idVehiculo: null,
+              idZona: null,
+            },
+          });
 
           // Reset onboarding flow: allow this user to request a company again.
           await transaction.choferRequest.deleteMany({

@@ -1,10 +1,16 @@
 @import "tailwindcss";
 
+/* Accessible color tokens — use these across components */
 :root {
-  --background: #ffffff;
-  --foreground: #1B263B;
-  --primary: #00AEEF;
-  --accent: #FF8C00;
+  --background: #ffffff; /* white */
+  --foreground: #0f172a; /* slate-900 - strong contrast */
+  --muted: #6b7280; /* gray-500 for secondary text */
+  --primary: #0369a1; /* teal/blue dark (good contrast on white) */
+  --primary-contrast: #ffffff;
+  --accent: #f97316; /* orange */
+  --success: #059669; /* green-600 */
+  --danger: #dc2626; /* red-600 */
+  --focus: #0ea5e9; /* accent focus ring */
 }
 
 @theme inline {
@@ -16,17 +22,69 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Dark mode with accessible contrasts */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #ffffff;
-    --foreground: #1B263B;
-    --primary: #00AEEF;
-    --accent: #FF8C00;
+    --background: #0b1220; /* near-black blue */
+    --foreground: #e6eef8; /* very light text */
+    --muted: #9aa6b2;
+    --primary: #0ea5e9; /* brighter primary for dark bg */
+    --primary-contrast: #0b1220;
+    --accent: #fb923c;
+    --success: #34d399;
+    --danger: #f87171;
+    --focus: #60a5fa;
   }
 }
 
+/* Base typography using tokens */
 body {
-  background: #FFFFFF;
-  color: #1B263B;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improve focus visibility (keyboard navigation / accessibility) */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 40%, transparent);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Helpful utility classes for components that may not use Tailwind tokens yet */
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-contrast);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.badge-accent {
+  background-color: var(--accent);
+  color: var(--primary-contrast);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden; clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap; border: 0; padding: 0; margin: -1px;
 }

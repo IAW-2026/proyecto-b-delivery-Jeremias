@@ -53,7 +53,8 @@ export default function PerfilPage({ fallbackName }: Props) {
             <input
               value={form.nombre}
               onChange={(event) => handleChange("nombre", event.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-200 p-2"
+              className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
+              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
               required
             />
@@ -64,7 +65,8 @@ export default function PerfilPage({ fallbackName }: Props) {
             <input
               value={form.apellido}
               onChange={(event) => handleChange("apellido", event.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-200 p-2"
+              className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
+              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
               required
             />
@@ -75,7 +77,8 @@ export default function PerfilPage({ fallbackName }: Props) {
             <input
               value={form.telefono}
               onChange={(event) => handleChange("telefono", event.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-200 p-2"
+              className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
+              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
             />
           </div>
@@ -85,7 +88,8 @@ export default function PerfilPage({ fallbackName }: Props) {
             <input
               value={form.nombreEmpresa}
               onChange={(event) => handleChange("nombreEmpresa", event.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-200 p-2"
+              className="mt-1 block w-full rounded-md border border-gray-200 p-2 text-slate-900 bg-white"
+              style={{ color: "var(--foreground)" }}
               disabled={!isEditing}
             />
           </div>

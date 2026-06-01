@@ -32,7 +32,9 @@ export default function RoleDashboardShell({ children, displayName, navigationIt
             : "text-gray-700 hover:bg-gray-50"
         }`}
       >
-        <span className={`text-xl ${item.disabled ? "opacity-60" : ""}`}>{item.disabled ? "🔒" : item.icon}</span>
+        <span className={`text-xl leading-none ${item.disabled ? "opacity-60" : ""}`} aria-hidden>
+          {item.disabled ? <span aria-hidden="true">🔒</span> : <span>{item.icon}</span>}
+        </span>
         <span className="font-medium">{item.label}</span>
       </div>
     );
