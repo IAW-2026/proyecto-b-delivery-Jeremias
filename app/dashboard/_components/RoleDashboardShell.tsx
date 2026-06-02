@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import UserMenu from "@/app/components/UserMenu";
 
 export type RoleNavigationItem = {
@@ -21,6 +22,31 @@ type RoleDashboardShellProps = {
 export default function RoleDashboardShell({ children, displayName, navigationItems }: RoleDashboardShellProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const { isLoaded, userId } = useAuth();
+
+  useEffect(() => {
+    if (isLoaded && !userId) {
+      window.location.href = "/signin";
+    }
+  }, [isLoaded, userId]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/user-role");
+        if (res.status === 403) {
+          window.location.href = "/blocked";
+        } else if (res.status === 401) {
+          window.location.href = "/signin";
+        }
+      } catch {
+        // ignore network errors
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   function closeSidebar() {
     setSidebarOpen(false);
