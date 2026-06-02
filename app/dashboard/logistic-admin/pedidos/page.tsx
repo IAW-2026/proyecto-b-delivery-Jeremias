@@ -14,7 +14,7 @@ export default async function LogisticAdminPedidosPage({
   const ordersKey = data.orders.map((order) => `${order.idPedido}:${order.status}:${order.assignedToChoferId ?? "none"}`).join("|");
   const { searchQuery, searchBy, statusFilter, assignmentFilter, requestedPage } = parsePedidosFilters(query);
 
-  const filteredOrders = filterOrders(data.orders, searchQuery, searchBy, statusFilter, assignmentFilter);
+  const filteredOrders = filterOrders(data.orders, searchQuery, searchBy, statusFilter, assignmentFilter, data.vendorNames);
   const totalFilteredOrders = filteredOrders.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredOrders / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -55,6 +55,7 @@ export default async function LogisticAdminPedidosPage({
         page={safePage}
         totalPages={totalPages}
         totalFilteredOrders={totalFilteredOrders}
+        vendorNames={data.vendorNames}
       />
     </div>
   );

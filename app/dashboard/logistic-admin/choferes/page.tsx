@@ -13,7 +13,7 @@ export default async function LogisticAdminChoferesPage({
   const query = await searchParams;
   const { searchQuery, searchBy, statusFilter, requestedPage } = parseChoferesFilters(query);
 
-  const filteredChoferes = filterChoferes(data.choferes, searchQuery, searchBy, statusFilter);
+  const filteredChoferes = filterChoferes(data.choferes, searchQuery, searchBy, statusFilter, data.vendorNames);
   const totalFilteredChoferes = filteredChoferes.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredChoferes / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -44,6 +44,7 @@ export default async function LogisticAdminChoferesPage({
       activeCount={activeCount}
       withZoneCount={withZoneCount}
       withoutZoneCount={withoutZoneCount}
+      vendorNames={data.vendorNames}
     />
   );
 }

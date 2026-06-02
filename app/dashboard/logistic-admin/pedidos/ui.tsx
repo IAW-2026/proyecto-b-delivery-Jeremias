@@ -14,6 +14,7 @@ type Chofer = {
   idVehiculo: number | null;
   estado: string;
   zona: { nombre: string } | null;
+  idVendedor: number;
 };
 
 type Props = {
@@ -28,6 +29,7 @@ type Props = {
   totalPages: number;
   totalFilteredOrders: number;
   basePath?: string;
+  vendorNames: Record<number, string>;
 };
 
 function statusBadgeClass(status: OrderStatus) {
@@ -50,6 +52,7 @@ function searchOptionMeta(value: SearchBy) {
   if (value === "cliente") return { label: "Cliente", placeholder: "Buscar por cliente" };
   if (value === "calle") return { label: "Calle", placeholder: "Buscar por calle" };
   if (value === "chofer") return { label: "Chofer", placeholder: "Buscar por chofer" };
+  if (value === "empresa") return { label: "Empresa", placeholder: "Buscar por empresa" };
   return { label: "Zona", placeholder: "Buscar por zona" };
 }
 
@@ -65,6 +68,7 @@ export default function LogisticAdminPedidosUi({
   totalPages,
   totalFilteredOrders,
   basePath = "/dashboard/logistic-admin",
+  vendorNames,
 }: Props) {
   const router = useRouter();
   const controller = usePedidosController({
@@ -264,10 +268,11 @@ export default function LogisticAdminPedidosUi({
                   <th className="w-[80px] px-3 py-3">Pedido</th>
                   <th className="w-[110px] px-3 py-3">Fecha</th>
                   <th className="w-[80px] px-3 py-3">Hora</th>
-                  <th className="w-[220px] px-3 py-3">Cliente</th>
-                  <th className="w-[120px] px-3 py-3">Zona</th>
-                  <th className="w-[90px] px-3 py-3">Bidones</th>
-                  <th className="w-[180px] px-3 py-3">Chofer</th>
+                  <th className="w-[160px] px-3 py-3">Cliente</th>
+                  <th className="w-[100px] px-3 py-3">Zona</th>
+                  <th className="w-[80px] px-3 py-3">Bidones</th>
+                  <th className="w-[150px] px-3 py-3">Empresa</th>
+                  <th className="w-[160px] px-3 py-3">Chofer</th>
                   <th className="w-[140px] px-3 py-3">Estado</th>
                   <th className="w-[220px] px-3 py-3">Motivo</th>
                   <th className="sticky right-0 bg-slate-50 z-10 w-[200px] px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]"></th>
@@ -275,7 +280,7 @@ export default function LogisticAdminPedidosUi({
               </thead>
               <tbody>
                 {orders.map((order) => {
-                  const assignableChoferes = getAssignablesForZone(order.zona);
+                  const assignableChoferes = getAssignablesForZone(order.zona, order.idVendedor);
                   const currentChofer = choferes.find((chofer) => String(chofer.idChofer) === String(order.assignedToChoferId));
                   const currentChoferIsAssignable = currentChofer ? assignableChoferes.some((chofer) => chofer.idChofer === currentChofer.idChofer) : false;
 
@@ -306,13 +311,14 @@ export default function LogisticAdminPedidosUi({
                           : "—"}
                       </td>
 
-                      <td className="w-[220px] px-3 py-3">
+                      <td className="w-[160px] px-3 py-3">
                         <p className="truncate font-medium text-slate-900">{order.cliente}</p>
                         <p className="text-xs text-slate-500">{order.direccion}</p>
                       </td>
-                      <td className="w-[120px] px-3 py-3 truncate">{order.zona}</td>
-                      <td className="w-[90px] px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
-                      <td className="w-[180px] px-3 py-3 align-middle">
+                      <td className="w-[100px] px-3 py-3 truncate">{order.zona}</td>
+                      <td className="w-[80px] px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
+                      <td className="w-[150px] px-3 py-3 text-slate-600">{order.idVendedor ? vendorNames[order.idVendedor] ?? `Empresa #${order.idVendedor}` : "-"}</td>
+                      <td className="w-[160px] px-3 py-3 align-middle">
                         {editingOrderId === order.idPedido ? (
                           <select
                             value={choferSelection[order.idPedido] ?? ""}

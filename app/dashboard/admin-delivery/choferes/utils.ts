@@ -2,7 +2,7 @@ import type { LogisticAdminViewData } from "../../logistic-admin/data";
 import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions = ["activo", "inactivo", "pendiente", "rechazado"] as const;
-export const searchOptions = ["nombre", "telefono"] as const;
+export const searchOptions = ["nombre", "telefono", "empresa"] as const;
 
 export type Chofer = LogisticAdminViewData["choferes"][number];
 export type ChoferStatus = (typeof statusOptions)[number];
@@ -44,7 +44,13 @@ export function parseChoferesFilters(query: SearchParamsInput): ChoferesFilterSt
   };
 }
 
-export function filterChoferes(choferes: Chofer[], searchQuery: string, searchBy: SearchBy, statusFilter: "todos" | ChoferStatus) {
+export function filterChoferes(
+  choferes: Chofer[],
+  searchQuery: string,
+  searchBy: SearchBy,
+  statusFilter: "todos" | ChoferStatus,
+  vendorNames?: Record<number, string>
+) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
   return choferes.filter((chofer) => {
@@ -56,7 +62,11 @@ export function filterChoferes(choferes: Chofer[], searchQuery: string, searchBy
       return true;
     }
 
-    const haystack = normalizeSearchValue(searchBy === "telefono" ? chofer.telefono ?? "" : chofer.nombre);
+    const haystack = normalizeSearchValue(
+      searchBy === "telefono" ? chofer.telefono ?? "" :
+      searchBy === "empresa" ? vendorNames?.[chofer.idVendedor] ?? "" :
+      chofer.nombre
+    );
     return haystack.includes(normalizedQuery);
   });
 }

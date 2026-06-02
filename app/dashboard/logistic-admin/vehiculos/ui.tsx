@@ -18,6 +18,7 @@ type Props = {
   activosCount: number;
   pausadosCount: number;
   basePath?: string;
+  vendorNames: Record<number, string>;
 };
 
 export default function VehiculosManager({
@@ -32,6 +33,7 @@ export default function VehiculosManager({
   activosCount,
   pausadosCount,
   basePath = "/dashboard/logistic-admin",
+  vendorNames,
 }: Props) {
   const controller = useVehiculosController({
     vehiculos,
@@ -277,10 +279,11 @@ export default function VehiculosManager({
                 <th className="w-[130px] px-3 py-3">Patente</th>
                 <th className="w-[140px] px-3 py-3">Tipo</th>
                 <th className="w-[110px] px-3 py-3">Estado</th>
-                <th className="w-[170px] px-3 py-3">Chofer</th>
-                <th className="w-[120px] px-3 py-3">Capacidad</th>
-                <th className="w-[150px] px-3 py-3">Pausa</th>
-                <th className="w-[240px] px-3 py-3 text-center"></th>
+                <th className="w-[120px] px-3 py-3">Empresa</th>
+                <th className="w-[150px] px-3 py-3">Chofer</th>
+                <th className="w-[100px] px-3 py-3">Capacidad</th>
+                <th className="w-[130px] px-3 py-3">Pausa</th>
+                <th className="w-[200px] px-3 py-3 text-center"></th>
               </tr>
             </thead>
             <tbody>
@@ -323,6 +326,9 @@ export default function VehiculosManager({
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${vehiculo.estado === "pausado" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
                         {vehiculo.estado === "pausado" ? "Pausado" : "Activo"}
                       </span>
+                    </td>
+                    <td className="px-3 py-4 text-slate-600">
+                      {vendorNames[vehiculo.idVendedor] ?? `Empresa #${vehiculo.idVendedor}`}
                     </td>
                     <td className="px-3 py-4">
                       <p className="truncate font-medium text-slate-900">{vehiculo.assignedToChoferName ?? "Sin asignar"}</p>

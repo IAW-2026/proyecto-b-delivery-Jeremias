@@ -15,6 +15,7 @@ type Props = {
   activosCount: number;
   pausadosCount: number;
   basePath?: string;
+  vendorNames: Record<number, string>;
 };
 
 export default function AdminDeliveryVehiculosUi(props: Props) {

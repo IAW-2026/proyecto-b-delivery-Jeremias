@@ -35,6 +35,7 @@ type ChoferRecord = {
     idZona: number;
     nombre: string;
   } | null;
+  idVendedor: number;
 };
 
 type ZonaResumen = {
@@ -85,6 +86,7 @@ type PedidoDbRecord = {
   updatedAt: Date | null;
   motivoRevision: string | null;
   choferAsignado?: { nombre: string | null } | null;
+  idVendedor: number;
 };
 
 export type LogisticAdminViewData = {
@@ -98,6 +100,7 @@ export type LogisticAdminViewData = {
   zonasFueraCatalogo: ZonaFueraCatalogo[];
   zonasCatalogo: ZonaSelectorRecord[];
   companyName: string | null;
+  vendorNames: Record<number, string>;
   databaseUnavailable: boolean;
   dbError?: string;
 };
@@ -159,6 +162,7 @@ function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
     motivoRevision: pedido.motivoRevision ?? null,
     assignedToChoferId: pedido.idChoferAsignado,
     assignedToChoferName: pedido.choferAsignado?.nombre ?? null,
+    idVendedor: pedido.idVendedor,
     status,
     updatedAt: (pedido.updatedAt ?? pedido.assignedAt ?? new Date()).toISOString(),
   };
@@ -444,6 +448,27 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   }));
   const zonasResumen = buildZonasResumen(orders, zonasCatalogo, visibleChoferes);
 
+  const distinctVendorIds = new Set<number>();
+  for (const c of visibleChoferes) if (c.idVendedor) distinctVendorIds.add(c.idVendedor);
+  for (const v of vehiculosWithAssignment) if (v.idVendedor) distinctVendorIds.add(v.idVendedor);
+  for (const o of ordersWithArchivedFlag) if (o.idVendedor) distinctVendorIds.add(o.idVendedor);
+
+  const vendorProfiles = await safePrismaQuery<
+    { idVendedor: number | null; nombreEmpresa: string | null }[]
+  >(
+    () =>
+      prisma.userProfile.findMany({
+        where: { idVendedor: { in: Array.from(distinctVendorIds) } },
+        select: { idVendedor: true, nombreEmpresa: true },
+      }),
+    [],
+    "userProfile.findMany(vendorNames)"
+  );
+  const vendorNames: Record<number, string> = {};
+  for (const vp of vendorProfiles) {
+    if (vp.idVendedor) vendorNames[vp.idVendedor] = vp.nombreEmpresa ?? `Empresa #${vp.idVendedor}`;
+  }
+
   return {
     userName,
     companyId: userProfile?.idVendedor ?? inferredVendorId ?? null,
@@ -460,6 +485,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     zonas: zonasResumen.zonas,
     zonasFueraCatalogo: zonasResumen.zonasFueraCatalogo,
     zonasCatalogo: zonasCatalogo.map((zona) => ({ idZona: zona.idZona, nombre: zona.nombre })),
+    vendorNames,
     databaseUnavailable,
     dbError,
   };

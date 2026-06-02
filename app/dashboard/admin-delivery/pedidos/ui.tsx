@@ -10,6 +10,7 @@ type Chofer = {
   idVehiculo: number | null;
   estado: string;
   zona: { nombre: string } | null;
+  idVendedor: number;
 };
 
 type Props = {
@@ -24,6 +25,7 @@ type Props = {
   totalPages: number;
   totalFilteredOrders: number;
   basePath?: string;
+  vendorNames: Record<number, string>;
 };
 
 export default function AdminDeliveryPedidosUi(props: Props) {

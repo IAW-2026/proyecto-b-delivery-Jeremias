@@ -15,7 +15,7 @@ export default async function AdminDeliveryVehiculosPage({
   const query = await searchParams;
   const { searchQuery, searchBy, statusFilter, requestedPage } = parseVehiculosFilters(query);
 
-  const filteredVehiculos = filterVehiculos(data.vehiculos, searchQuery, searchBy, statusFilter);
+  const filteredVehiculos = filterVehiculos(data.vehiculos, searchQuery, searchBy, statusFilter, data.vendorNames);
   const totalFilteredVehiculos = filteredVehiculos.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredVehiculos / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -67,6 +67,7 @@ export default async function AdminDeliveryVehiculosPage({
       activosCount={activosCount}
       pausadosCount={pausadosCount}
       basePath={basePath}
+      vendorNames={data.vendorNames}
     />
   );
 }

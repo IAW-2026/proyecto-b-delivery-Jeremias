@@ -15,7 +15,7 @@ export default async function AdminDeliveryPedidosPage({
   const query = await searchParams;
   const { searchQuery, searchBy, statusFilter, assignmentFilter, requestedPage } = parsePedidosFilters(query);
 
-  const filteredOrders = filterOrders(data.orders, searchQuery, searchBy, statusFilter, assignmentFilter);
+  const filteredOrders = filterOrders(data.orders, searchQuery, searchBy, statusFilter, assignmentFilter, data.vendorNames);
   const totalFilteredOrders = filteredOrders.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredOrders / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -57,19 +57,20 @@ export default async function AdminDeliveryPedidosPage({
   ].join("|");
 
   return (
-      <AdminDeliveryPedidosUi
-        key={ordersKey}
-        orders={paginatedOrders}
-        allFilteredOrders={filteredOrders}
-        choferes={data.choferes}
-        searchQuery={searchQuery}
-        searchBy={searchBy}
-        assignmentFilter={assignmentFilter}
-        statusFilter={statusFilter}
-        page={safePage}
-        totalPages={totalPages}
-        totalFilteredOrders={totalFilteredOrders}
-        basePath={basePath}
-      />
+    <AdminDeliveryPedidosUi
+      key={ordersKey}
+      orders={paginatedOrders}
+      allFilteredOrders={filteredOrders}
+      choferes={data.choferes}
+      searchQuery={searchQuery}
+      searchBy={searchBy}
+      assignmentFilter={assignmentFilter}
+      statusFilter={statusFilter}
+      page={safePage}
+      totalPages={totalPages}
+      totalFilteredOrders={totalFilteredOrders}
+      basePath={basePath}
+      vendorNames={data.vendorNames}
+    />
   );
 }

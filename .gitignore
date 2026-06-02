@@ -25,10 +25,10 @@
 *.pem
 
 #Carpetas
-/PlanesIA
-/Tareas a hacer
-/OpenCode
-/Entregables
+/PlanesIA/
+/Tareas a hacer/
+/OpenCode/
+/Entregables/
 
 # debug
 npm-debug.log*

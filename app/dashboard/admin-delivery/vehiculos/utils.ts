@@ -2,7 +2,7 @@ import type { LogisticAdminViewData } from "../../logistic-admin/data";
 import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions = ["activo", "pausado"] as const;
-export const searchOptions = ["patente", "tipo"] as const;
+export const searchOptions = ["patente", "tipo", "empresa"] as const;
 
 export type Vehiculo = LogisticAdminViewData["vehiculos"][number];
 export type VehiculoStatus = (typeof statusOptions)[number];
@@ -43,7 +43,13 @@ export function parseVehiculosFilters(query: SearchParamsInput): VehiculosFilter
   };
 }
 
-export function filterVehiculos(vehiculos: Vehiculo[], searchQuery: string, searchBy: SearchBy, statusFilter: "todos" | VehiculoStatus) {
+export function filterVehiculos(
+  vehiculos: Vehiculo[],
+  searchQuery: string,
+  searchBy: SearchBy,
+  statusFilter: "todos" | VehiculoStatus,
+  vendorNames?: Record<number, string>
+) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
   return vehiculos.filter((vehiculo) => {
@@ -55,7 +61,11 @@ export function filterVehiculos(vehiculos: Vehiculo[], searchQuery: string, sear
       return true;
     }
 
-    const haystack = normalizeSearchValue(searchBy === "tipo" ? vehiculo.tipo : vehiculo.patente);
+    const haystack = normalizeSearchValue(
+      searchBy === "tipo" ? vehiculo.tipo :
+      searchBy === "empresa" ? vendorNames?.[vehiculo.idVendedor] ?? "" :
+      vehiculo.patente
+    );
     return haystack.includes(normalizedQuery);
   });
 }

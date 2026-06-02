@@ -1,11 +1,9 @@
-const CLERK_API_BASE = "https://api.clerk.com";
-
 export const DEFAULT_ROLE = "delivery";
 export const ADMIN_DELIVERY_ROLE = "admin_delivery";
 export const LOGISTIC_ADMIN_ROLE = "logistic_admin";
-export const SELLER_ROLE = "seller";
+const SELLER_ROLE = "seller";
 export const ALLOWED_LOCAL_ROLES = [DEFAULT_ROLE, LOGISTIC_ADMIN_ROLE] as const;
-export const MANAGED_ROLES = [DEFAULT_ROLE, LOGISTIC_ADMIN_ROLE, ADMIN_DELIVERY_ROLE] as const;
+const MANAGED_ROLES = [DEFAULT_ROLE, LOGISTIC_ADMIN_ROLE, ADMIN_DELIVERY_ROLE] as const;
 
 export function normalizeRoles(rawRole: unknown): string[] {
   if (Array.isArray(rawRole)) {
@@ -44,19 +42,6 @@ export function getEffectiveRoles(rawRoles: string[]): string[] {
   return roles.filter((role) => role !== SELLER_ROLE);
 }
 
-export function resolveRolesFromSources({
-  dbRoles,
-  clerkRoles = [],
-  hasAdminDelivery = false,
-}: {
-  dbRoles: string[];
-  clerkRoles?: string[];
-  hasAdminDelivery?: boolean;
-}): string[] {
-  const sourceRoles = dbRoles.length > 0 ? dbRoles : clerkRoles;
-  return getEffectiveRoles([...(hasAdminDelivery ? [ADMIN_DELIVERY_ROLE] : []), ...sourceRoles]);
-}
-
 export function resolveRolesFromClaims(sessionClaims: unknown): string[] {
   if (!sessionClaims || typeof sessionClaims !== "object") {
     return [];
@@ -83,35 +68,6 @@ export function resolveRolesFromClaims(sessionClaims: unknown): string[] {
   ];
 
   return getEffectiveRoles(claimRoles);
-}
-
-export async function fetchClerkRoles(userId: string): Promise<string[]> {
-  const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
-
-  if (!secretKey) {
-    return [];
-  }
-
-  try {
-    const response = await fetch(`${CLERK_API_BASE}/v1/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const user = await response.json();
-    const metadata = user.public_metadata ?? user.publicMetadata ?? {};
-    // `role` canónico + `roles` legacy (tolerado en transición)
-    return [...new Set([...normalizeRoles(metadata.role), ...normalizeRoles(metadata.roles)])];
-  } catch {
-    return [];
-  }
 }
 
 export async function syncClerkRoleMetadata(userId: string, role: string): Promise<boolean> {

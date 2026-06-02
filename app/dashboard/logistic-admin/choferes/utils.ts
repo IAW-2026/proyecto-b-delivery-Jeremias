@@ -11,6 +11,7 @@ export const statusOptions = [
 export const searchOptions = [
   { value: "nombre", label: "Nombre", placeholder: "Buscar por nombre" },
   { value: "telefono", label: "Teléfono", placeholder: "Buscar por teléfono" },
+  { value: "empresa", label: "Empresa", placeholder: "Buscar por empresa" },
 ] as const;
 
 export type ChoferStatus = (typeof statusOptions)[number]["value"];
@@ -53,7 +54,13 @@ export function parseChoferesFilters(query: SearchParamsInput): ChoferesFilterSt
   };
 }
 
-export function filterChoferes(choferes: Chofer[], searchQuery: string, searchBy: SearchBy, statusFilter: "todos" | ChoferStatus) {
+export function filterChoferes(
+  choferes: Chofer[],
+  searchQuery: string,
+  searchBy: SearchBy,
+  statusFilter: "todos" | ChoferStatus,
+  vendorNames?: Record<number, string>
+) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
   return choferes.filter((chofer) => {
@@ -65,7 +72,11 @@ export function filterChoferes(choferes: Chofer[], searchQuery: string, searchBy
       return true;
     }
 
-    const haystack = normalizeSearchValue(searchBy === "telefono" ? chofer.telefono ?? "" : chofer.nombre);
+    const haystack = normalizeSearchValue(
+      searchBy === "telefono" ? chofer.telefono ?? "" :
+      searchBy === "empresa" ? vendorNames?.[chofer.idVendedor] ?? "" :
+      chofer.nombre
+    );
     return haystack.includes(normalizedQuery);
   });
 }

@@ -1,4 +1,4 @@
-export type PedidoEntrante = {
+type PedidoEntrante = {
   idPedido: number;
   estado: string;
   direccion: string;
@@ -19,6 +19,7 @@ export type LogisticOrder = PedidoEntrante & {
   assignedChoferArchived?: boolean;
   status: OrderStatus;
   updatedAt: string;
+  idVendedor: number | null;
 };
 
 type ChoferWithZona = {
@@ -92,14 +93,6 @@ export function getOrders() {
   return store.orders.map(cloneOrder);
 }
 
-export function getOrdersForChofer(choferId: number) {
-  return store.orders.filter((order) => order.assignedToChoferId === choferId).map(cloneOrder);
-}
-
-export function syncAutomaticZoneAssignments(choferes: ChoferWithZona[]) {
-  return applyAutomaticZoneAssignments(choferes);
-}
-
 export function upsertReadyOrders(pedidos: PedidoEntrante[], choferes: ChoferWithZona[] = []) {
   for (const pedido of pedidos) {
     const index = store.orders.findIndex((item) => item.idPedido === pedido.idPedido);
@@ -120,6 +113,7 @@ export function upsertReadyOrders(pedidos: PedidoEntrante[], choferes: ChoferWit
           assignedToChoferName: null,
           status: "ready",
           updatedAt: nowIso(),
+          idVendedor: null,
         };
 
     if (index >= 0) {

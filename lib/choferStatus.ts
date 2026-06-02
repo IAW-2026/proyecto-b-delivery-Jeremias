@@ -19,8 +19,6 @@ type ChoferVehiculo = {
   idVendedor: number;
 };
 
-export type { ChoferPedido };
-
 export type ChoferStatus = {
   chofer: {
     idChofer: number;

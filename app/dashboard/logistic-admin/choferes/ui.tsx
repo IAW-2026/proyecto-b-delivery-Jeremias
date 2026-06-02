@@ -26,6 +26,7 @@ type Props = {
   withZoneCount: number;
   withoutZoneCount: number;
   basePath?: string;
+  vendorNames: Record<number, string>;
 };
 
 function estadoClass(estado: string) {
@@ -58,6 +59,7 @@ export default function ChoferesManager({
   withZoneCount,
   withoutZoneCount,
   basePath = "/dashboard/logistic-admin",
+  vendorNames,
 }: Props) {
   const router = useRouter();
   const controller = useChoferesController({
@@ -274,8 +276,9 @@ export default function ChoferesManager({
               <tr>
                 <th className="w-[190px] px-3 py-3">Chofer</th>
                 <th className="w-[120px] px-3 py-3">Estado</th>
-                <th className="w-[150px] px-3 py-3">Zona</th>
-                <th className="w-[190px] px-3 py-3">Vehículo</th>
+                <th className="w-[130px] px-3 py-3">Empresa</th>
+                <th className="w-[140px] px-3 py-3">Zona</th>
+                <th className="w-[170px] px-3 py-3">Vehículo</th>
                 <th className="w-[230px] px-3 py-3 text-center">Acciones</th>
               </tr>
             </thead>
@@ -290,6 +293,9 @@ export default function ChoferesManager({
                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
                       {formatEstado(chofer.estado)}
                     </span>
+                  </td>
+                  <td className="px-3 py-4 text-slate-600">
+                    {vendorNames[chofer.idVendedor] ?? `Empresa #${chofer.idVendedor}`}
                   </td>
                   <td className="px-3 py-4">
                     {editingChoferId === chofer.idChofer ? (

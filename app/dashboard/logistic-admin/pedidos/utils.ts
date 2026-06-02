@@ -5,7 +5,7 @@ export function statusNeedsChofer(status: OrderStatus) {
   return status === "en_camino" || status === "entregado";
 }
 
-export const searchOptions = ["cliente", "calle", "chofer", "zona"] as const;
+export const searchOptions = ["cliente", "calle", "chofer", "zona", "empresa"] as const;
 
 export type SearchBy = (typeof searchOptions)[number];
 
@@ -79,7 +79,8 @@ export function filterOrders(
   searchQuery: string,
   searchBy: SearchBy,
   statusFilter: "todos" | OrderStatus,
-  assignmentFilter: "todos" | "sin_asignar"
+  assignmentFilter: "todos" | "sin_asignar",
+  vendorNames?: Record<number, string>
 ) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
@@ -98,6 +99,7 @@ export function filterOrders(
         calle: order.direccion,
         chofer: order.assignedToChoferName ?? "",
         zona: order.zona,
+        empresa: order.idVendedor ? vendorNames?.[order.idVendedor] ?? "" : "",
       } as const;
 
       const haystack = normalizeSearchValue(haystackByField[searchBy]);

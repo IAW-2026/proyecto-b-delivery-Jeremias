@@ -23,6 +23,7 @@ type Props = {
   withZoneCount: number;
   withoutZoneCount: number;
   basePath?: string;
+  vendorNames: Record<number, string>;
 };
 
 export default function AdminDeliveryChoferesUi(props: Props) {

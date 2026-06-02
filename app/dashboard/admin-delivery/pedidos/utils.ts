@@ -2,7 +2,7 @@ import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
 import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions: OrderStatus[] = ["ready", "en_camino", "entregado", "cancelado", "revision"];
-export const searchOptions = ["cliente", "calle", "chofer", "zona"] as const;
+export const searchOptions = ["cliente", "calle", "chofer", "zona", "empresa"] as const;
 
 export type SearchBy = (typeof searchOptions)[number];
 
@@ -68,7 +68,8 @@ export function filterOrders(
   searchQuery: string,
   searchBy: SearchBy,
   statusFilter: "todos" | OrderStatus,
-  assignmentFilter: "todos" | "sin_asignar"
+  assignmentFilter: "todos" | "sin_asignar",
+  vendorNames?: Record<number, string>
 ) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
@@ -90,6 +91,7 @@ export function filterOrders(
       calle: order.direccion,
       chofer: order.assignedToChoferName ?? "",
       zona: order.zona,
+      empresa: order.idVendedor ? vendorNames?.[order.idVendedor] ?? "" : "",
     } as const;
 
     return normalizeSearchValue(haystackByField[searchBy]).includes(normalizedQuery);

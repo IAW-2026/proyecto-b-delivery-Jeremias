@@ -5,6 +5,7 @@ export const searchOptions = [
   { value: "nombre", label: "Nombre", placeholder: "Buscar por nombre" },
   { value: "email", label: "Correo", placeholder: "Buscar por correo" },
   { value: "clerkUserId", label: "ID de Clerk", placeholder: "Buscar por ID de Clerk" },
+  { value: "empresa", label: "Empresa", placeholder: "Buscar por empresa" },
 ] as const;
 
 export const editableRoles = ["delivery", "logistic_admin"] as const;
@@ -91,7 +92,9 @@ export function filterUsers(users: AdminDeliveryUserRow[], values: FilterValues)
         ? user.email
         : values.searchBy === "clerkUserId"
           ? user.clerkUserId
-          : user.fullName;
+          : values.searchBy === "empresa"
+            ? user.nombreEmpresa ?? ""
+            : user.fullName;
 
     const matchesQuery = normalizedQuery.length === 0 || normalizeSearchValue(searchCandidate).includes(normalizedQuery);
     const localRole = normalizeStoredRole(user.localRole);

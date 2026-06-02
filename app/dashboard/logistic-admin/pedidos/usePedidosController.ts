@@ -13,6 +13,7 @@ type Chofer = {
   idVehiculo: number | null;
   estado: string;
   zona: { nombre: string } | null;
+  idVendedor: number;
 };
 
 type UsePedidosControllerParams = {
@@ -49,11 +50,15 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
 
   const activeChoferes = useMemo(() => choferes.filter((chofer) => chofer.estado === "activo"), [choferes]);
 
-  function getAssignablesForZone(zoneName: string) {
+  function getAssignablesForZone(zoneName: string, vendorId?: number | null) {
     const normalizedZone = normalizeZonaName(zoneName);
 
     return activeChoferes.filter((chofer) => {
       if (chofer.idVehiculo === null || !chofer.zona?.nombre) {
+        return false;
+      }
+
+      if (vendorId !== undefined && vendorId !== null && chofer.idVendedor !== vendorId) {
         return false;
       }
 
@@ -76,7 +81,7 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
   const pageEnd = Math.min(totalFilteredOrders, page * pageSize);
 
   const editingOrder = editingOrderId !== null ? orders.find((order) => order.idPedido === editingOrderId) ?? null : null;
-  const editingOrderAssignables = editingOrder ? getAssignablesForZone(editingOrder.zona) : [];
+  const editingOrderAssignables = editingOrder ? getAssignablesForZone(editingOrder.zona, editingOrder.idVendedor) : [];
   const editingOrderCurrentChofer = editingOrder
     ? choferes.find((chofer) => String(chofer.idChofer) === String(editingOrder.assignedToChoferId)) ?? null
     : null;
@@ -128,7 +133,7 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
   async function saveEdit(order: LogisticOrder) {
     const nextChoferId = choferSelection[order.idPedido] ?? "";
     const nextStatus = selectedStatuses[order.idPedido] ?? order.status;
-    const assignableChoferes = getAssignablesForZone(order.zona);
+    const assignableChoferes = getAssignablesForZone(order.zona, order.idVendedor);
     const currentChoferId = order.assignedToChoferId !== null ? String(order.assignedToChoferId) : "";
     const selectedChofer = nextChoferId ? assignableChoferes.find((chofer) => String(chofer.idChofer) === nextChoferId) : null;
 
