@@ -6,9 +6,6 @@ export default async function LogisticAdminPage() {
 
   return (
     <>
-      <div style={{ background: "#fee", padding: 12, margin: 12, borderRadius: 8, fontSize: 13, fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
-        <strong>DEBUG:</strong> {JSON.stringify(data._debug, null, 2)}
-      </div>
       <LogisticAdminBoard
         userName={data.userName}
         companyId={data.companyId}

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import {
   ADMIN_DELIVERY_ROLE,
@@ -34,15 +34,11 @@ export async function setLocalRole(
   }
 
   if (role === "delivery" && idVendedor > 0) {
-    const client = await clerkClient();
-    let nombre = "Chofer";
-    try {
-      const clerkUser = await client.users.getUser(targetUserId);
-      const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ").trim();
-      if (fullName) nombre = fullName;
-    } catch {
-      // fallback
-    }
+    const nameProfile = await prisma.userProfile.findUnique({
+      where: { clerkUserId: targetUserId },
+      select: { nombre: true },
+    });
+    let nombre = nameProfile?.nombre?.trim() || "Chofer";
 
     await prisma.chofer.upsert({
       where: { clerkUserId: targetUserId },
@@ -61,7 +57,7 @@ export async function setLocalRole(
   await syncClerkRoleMetadata(targetUserId, role);
   await revokeAllClerkSessions(targetUserId).catch(() => false);
 
-  await prisma.userRole.upsert({
+  await prisma.userProfile.upsert({
     where: { clerkUserId: targetUserId },
     create: { clerkUserId: targetUserId, role, idVendedor, nombreEmpresa },
     update: { role, idVendedor, nombreEmpresa },
@@ -73,14 +69,17 @@ export async function setLocalRole(
 export async function promoteAdminDelivery(targetUserId: string, nombre: string, telefono: string) {
   await assertAdminDeliveryAccess();
 
-  await prisma.adminDelivery.upsert({
+  await prisma.userProfile.upsert({
     where: { clerkUserId: targetUserId },
     create: {
       clerkUserId: targetUserId,
+      role: "admin_delivery",
+      idVendedor: 0,
       nombre: nombre || targetUserId,
       telefono: telefono || null,
     },
     update: {
+      role: "admin_delivery",
       nombre: nombre || targetUserId,
       telefono: telefono || null,
     },
@@ -93,7 +92,10 @@ export async function revokeAdminDelivery(targetUserId: string) {
   const { userId } = await assertAdminDeliveryAccess();
   if (targetUserId === userId) throw new Error("No podés revocar tu propio acceso global");
 
-  await prisma.adminDelivery.deleteMany({ where: { clerkUserId: targetUserId } });
+  await prisma.userProfile.updateMany({
+    where: { clerkUserId: targetUserId, role: "admin_delivery" },
+    data: { role: "delivery", nombre: null, telefono: null },
+  });
 
   revalidatePath("/dashboard/admin-delivery/usuarios");
 }

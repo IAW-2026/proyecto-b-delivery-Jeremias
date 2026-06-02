@@ -55,7 +55,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ re
       },
     });
 
-    await prisma.userRole.upsert({
+    await prisma.userProfile.upsert({
       where: { clerkUserId: pendingRequest.clerkUserId },
       update: {
         role: "delivery",

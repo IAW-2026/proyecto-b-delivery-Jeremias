@@ -1,4 +1,4 @@
-import { getAuth, clerkClient } from "@clerk/nextjs/server";
+import { getAuth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
@@ -77,10 +77,12 @@ export async function PATCH(request: NextRequest) {
       const nombre = typeof body.nombre === "string" ? body.nombre.trim() : "";
       const telefono = typeof body.telefono === "string" ? body.telefono.trim() : "";
 
-      const adminDelivery = await prisma.adminDelivery.upsert({
+      const adminDeliveryProfile = await prisma.userProfile.upsert({
         where: { clerkUserId: targetUserId },
         create: {
           clerkUserId: targetUserId,
+          role: "admin_delivery",
+          idVendedor: 0,
           nombre: nombre || targetUserId,
           telefono: telefono.length > 0 ? telefono : null,
         },
@@ -90,7 +92,7 @@ export async function PATCH(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ ok: true, adminDelivery }, { status: 200 });
+      return NextResponse.json({ ok: true, adminDelivery: adminDeliveryProfile }, { status: 200 });
     }
 
     if (action === "revoke_admin_delivery") {
@@ -98,7 +100,10 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: "Cannot revoke your own global access" }, { status: 400 });
       }
 
-      await prisma.adminDelivery.deleteMany({ where: { clerkUserId: targetUserId } });
+      await prisma.userProfile.updateMany({
+        where: { clerkUserId: targetUserId, role: "admin_delivery" },
+        data: { role: "delivery", idVendedor: 0, nombre: null, telefono: null, nombreEmpresa: null },
+      });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
@@ -109,7 +114,7 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: "Invalid role" }, { status: 400 });
       }
 
-      const existingRole = await prisma.userRole.findUnique({
+      const existingProfile = await prisma.userProfile.findUnique({
         where: { clerkUserId: targetUserId },
         select: { idVendedor: true, nombreEmpresa: true },
       });
@@ -117,25 +122,21 @@ export async function PATCH(request: NextRequest) {
       let idVendedor: number;
       if (body.idVendedor !== null && body.idVendedor !== undefined && body.idVendedor !== "") {
         const parsed = Number(body.idVendedor);
-        idVendedor = Number.isFinite(parsed) && parsed >= 0 ? parsed : (existingRole?.idVendedor ?? 0);
+        idVendedor = Number.isFinite(parsed) && parsed >= 0 ? parsed : (existingProfile?.idVendedor ?? 0);
       } else {
-        idVendedor = existingRole?.idVendedor ?? 0;
+        idVendedor = existingProfile?.idVendedor ?? 0;
       }
 
       const nombreEmpresa = typeof body.nombreEmpresa === "string"
         ? body.nombreEmpresa.trim() || null
-        : (existingRole?.nombreEmpresa ?? null);
+        : (existingProfile?.nombreEmpresa ?? null);
 
       if (role === "delivery" && idVendedor > 0) {
-        const client = await clerkClient();
-        let nombre = "Chofer";
-        try {
-          const clerkUser = await client.users.getUser(targetUserId);
-          const fullName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ").trim();
-          if (fullName) nombre = fullName;
-        } catch {
-          // fallback to default
-        }
+        const nameProfile = await prisma.userProfile.findUnique({
+          where: { clerkUserId: targetUserId },
+          select: { nombre: true },
+        });
+        let nombre = nameProfile?.nombre?.trim() || "Chofer";
 
         await prisma.chofer.upsert({
           where: { clerkUserId: targetUserId },
@@ -161,7 +162,7 @@ export async function PATCH(request: NextRequest) {
       const revoked = await revokeAllClerkSessions(targetUserId).catch(() => false);
       console.debug("revokeAllClerkSessions result", targetUserId, revoked);
 
-      const userRole = await prisma.userRole.upsert({
+      const userProfile = await prisma.userProfile.upsert({
         where: { clerkUserId: targetUserId },
         create: {
           clerkUserId: targetUserId,
@@ -176,7 +177,7 @@ export async function PATCH(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ ok: true, userRole }, { status: 200 });
+      return NextResponse.json({ ok: true, userRole: userProfile }, { status: 200 });
     }
 
     if (action === "block_user" || action === "unblock_user") {

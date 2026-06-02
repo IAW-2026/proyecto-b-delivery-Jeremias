@@ -54,24 +54,21 @@ function getChoferZona(pedidos: ChoferPedido[]) {
   return pedidos[0]?.zona ?? "Sin zona asignada";
 }
 
-async function getClerkDisplayName(clerkUserId: string) {
+async function getDBDisplayName(clerkUserId: string) {
   try {
-    const secretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_API_KEY || process.env.CLERK_SECRET;
-    if (!secretKey) return "Chofer nuevo";
-
-    const response = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
+    const profile = await prisma.userProfile.findUnique({
+      where: { clerkUserId },
+      select: { nombre: true },
     });
+    if (profile?.nombre?.trim()) return profile.nombre.trim();
 
-    if (!response.ok) return "Chofer nuevo";
+    const chofer = await prisma.chofer.findUnique({
+      where: { clerkUserId },
+      select: { nombre: true },
+    });
+    if (chofer?.nombre?.trim()) return chofer.nombre.trim();
 
-    const user = await response.json();
-    const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
-    return fullName || user.username || "Chofer nuevo";
+    return "Chofer nuevo";
   } catch {
     return "Chofer nuevo";
   }
@@ -85,7 +82,7 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
       }).catch(() => null)
     : null;
 
-  const displayName = clerkUserId ? await getClerkDisplayName(clerkUserId) : "Chofer nuevo";
+  const displayName = clerkUserId ? await getDBDisplayName(clerkUserId) : "Chofer nuevo";
   const choferId = dbChofer?.idChofer ?? 0;
   const [pendingOrders, allAssignedOrders]: [any[], any[]] = await Promise.all([
     prisma.pedido.findMany({

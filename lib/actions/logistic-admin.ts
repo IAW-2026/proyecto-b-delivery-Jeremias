@@ -9,7 +9,7 @@ async function getCompanyContext() {
   const { userId } = await auth();
   if (!userId) throw new Error("No autorizado");
 
-  const userRole = await prisma.userRole.findUnique({
+  const userRole = await prisma.userProfile.findUnique({
     where: { clerkUserId: userId },
     select: { idVendedor: true },
   });
@@ -351,7 +351,7 @@ export async function approveChoferRequest(requestId: number) {
     },
   });
 
-  await prisma.userRole.upsert({
+  await prisma.userProfile.upsert({
     where: { clerkUserId: pendingRequest.clerkUserId },
     update: { role: "delivery", idVendedor: pendingRequest.idVendedor, nombreEmpresa: pendingRequest.vendorName },
     create: { clerkUserId: pendingRequest.clerkUserId, role: "delivery", idVendedor: pendingRequest.idVendedor, nombreEmpresa: pendingRequest.vendorName },
@@ -387,10 +387,10 @@ export async function rejectChoferRequest(requestId: number, reason?: string) {
 export async function linkVendor(vendorId: number) {
   const { userId } = await getCompanyContext();
 
-  const existing = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
+  const existing = await prisma.userProfile.findUnique({ where: { clerkUserId: userId } });
   if (existing) throw new Error("El usuario ya tiene una empresa asociada");
 
-  await prisma.userRole.create({
+  await prisma.userProfile.create({
     data: {
       clerkUserId: userId,
       idVendedor: vendorId,

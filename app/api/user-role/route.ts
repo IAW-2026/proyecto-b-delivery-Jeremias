@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const revoked = await revokeAllClerkSessions(userId).catch(() => false);
     console.debug("revokeAllClerkSessions result", userId, revoked);
 
-    await prisma.userRole.upsert({
+    await prisma.userProfile.upsert({
       where: { clerkUserId: userId },
       update: { idVendedor, role },
       create: { clerkUserId: userId, idVendedor, role },

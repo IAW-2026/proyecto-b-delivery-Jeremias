@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getOrders, type LogisticOrder, type OrderStatus } from "@/lib/logisticAdminStore";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims, syncClerkRoleMetadata, revokeAllClerkSessions } from "@/lib/roles";
@@ -72,11 +72,6 @@ function isArchivedChofer(chofer: ChoferRecord) {
   return chofer.estado === "inactivo" && chofer.disponible === false && chofer.idVehiculo === null && chofer.idZona === null;
 }
 
-type UserRoleRecord = {
-  idVendedor: number;
-  nombreEmpresa: string | null;
-};
-
 type PedidoDbRecord = {
   idPedido: number;
   estado: string;
@@ -105,15 +100,6 @@ export type LogisticAdminViewData = {
   companyName: string | null;
   databaseUnavailable: boolean;
   dbError?: string;
-  _debug?: {
-    idVendedorToQuery: number | null | undefined;
-    userRole: { idVendedor: number } | null;
-    isGlobalAdmin: boolean;
-    inferredVendorId: number | null;
-    ordersCount: number;
-    databaseUnavailable: boolean;
-    clerkUserId: string | null;
-  };
 };
 
 function isPrismaTimeoutError(error: unknown) {
@@ -176,15 +162,6 @@ function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
     status,
     updatedAt: (pedido.updatedAt ?? pedido.assignedAt ?? new Date()).toISOString(),
   };
-}
-
-async function safeCurrentUser() {
-  try {
-    return await currentUser();
-  } catch (error) {
-    console.error("Clerk currentUser failed in logistic admin data:", error);
-    return null;
-  }
 }
 
 function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoRecord[], choferes: ChoferRecord[]) {
@@ -305,36 +282,30 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     }
   }
 
-  const userRole = await safePrismaQuery<UserRoleRecord | null>(
+  const userProfile = await safePrismaQuery<{ idVendedor: number; nombreEmpresa: string | null } | null>(
     () =>
-      prisma.userRole.findUnique({
+      prisma.userProfile.findUnique({
         where: { clerkUserId: userId },
         select: { idVendedor: true, nombreEmpresa: true },
       }),
     null,
-    "userRole.findUnique"
+    "userProfile.findUnique"
   );
 
-  const user = await safeCurrentUser();
   const adminProfile = await safePrismaQuery<{ nombre: string } | null>(
-    async () => {
-      const logisticAdminProfile = await prisma.logisticAdmin.findUnique({ where: { clerkUserId: userId }, select: { nombre: true } });
-      if (logisticAdminProfile) {
-        return logisticAdminProfile;
-      }
-
-      return prisma.adminDelivery.findUnique({ where: { clerkUserId: userId }, select: { nombre: true } });
-    },
+    () =>
+      prisma.userProfile.findUnique({
+        where: { clerkUserId: userId },
+        select: { nombre: true },
+      }),
     null,
-    "logisticAdmin.findUnique"
+    "userProfile.findUnique"
   );
   const roles = resolveRolesFromClaims(sessionClaims);
   const canAccess = roles.includes(ADMIN_DELIVERY_ROLE) || roles.includes("logistic_admin");
-  // Prefer local DB name (logisticAdmin.nombre) when available; fall back to Clerk name
+  // Prefer local DB name (userProfile.nombre) when available; fall back to Clerk name
   const localName = adminProfile?.nombre?.trim();
-  const userName = (localName && localName.length > 0
-    ? localName
-    : `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()) || "Usuario";
+  const userName = (localName && localName.length > 0 ? localName : "Usuario") || "Usuario";
 
   if (!canAccess) {
     redirect("/dashboard");
@@ -345,7 +316,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
 
   const isGlobalAdmin = roles.includes(ADMIN_DELIVERY_ROLE);
 
-  if (!userRole && userId && !isGlobalAdmin) {
+  if (!userProfile && userId && !isGlobalAdmin) {
     try {
       const base = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
       const resp = await fetch(`${base}/api/vendors?userId=${userId}`, { cache: "no-store" });
@@ -368,7 +339,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
       const revoked = await revokeAllClerkSessions(userId).catch(() => false);
       console.debug("revokeAllClerkSessions inferred result", userId, revoked);
 
-      await prisma.userRole.create({
+      await prisma.userProfile.create({
         data: {
           clerkUserId: userId,
           idVendedor: inferredVendorId,
@@ -380,7 +351,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     }
   }
 
-  const idVendedorToQuery = isGlobalAdmin ? null : userRole?.idVendedor ?? inferredVendorId;
+  const idVendedorToQuery = isGlobalAdmin ? null : userProfile?.idVendedor ?? inferredVendorId;
 
   const zonasCatalogo = await safePrismaQuery<ZonaCatalogoRecord[]>(
     () =>
@@ -475,10 +446,10 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
 
   return {
     userName,
-    companyId: userRole?.idVendedor ?? inferredVendorId ?? null,
-    companyName: userRole?.nombreEmpresa ?? inferredVendorName ?? null,
+    companyId: userProfile?.idVendedor ?? inferredVendorId ?? null,
+    companyName: userProfile?.nombreEmpresa ?? inferredVendorName ?? null,
     inferredVendor:
-      userRole?.idVendedor || inferredVendorId
+      userProfile?.idVendedor || inferredVendorId
         ? undefined
         : inferredVendorId
         ? { id: inferredVendorId, nombre: inferredVendorName ?? undefined }
@@ -491,14 +462,5 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     zonasCatalogo: zonasCatalogo.map((zona) => ({ idZona: zona.idZona, nombre: zona.nombre })),
     databaseUnavailable,
     dbError,
-    _debug: {
-      idVendedorToQuery: idVendedorToQuery ?? undefined,
-      userRole: userRole ? { idVendedor: userRole.idVendedor } : null,
-      isGlobalAdmin,
-      inferredVendorId,
-      ordersCount: orders.length,
-      databaseUnavailable,
-      clerkUserId: userId,
-    },
   };
 }

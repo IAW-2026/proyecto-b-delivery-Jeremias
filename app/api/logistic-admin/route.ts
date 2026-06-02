@@ -43,7 +43,7 @@ async function getCompanyContext(request: NextRequest) {
   const { userId, sessionClaims } = getAuth(request);
   if (!userId) return null;
 
-  const userRole = await prisma.userRole.findUnique({
+  const userRole = await prisma.userProfile.findUnique({
     where: { clerkUserId: userId },
     select: { idVendedor: true },
   });

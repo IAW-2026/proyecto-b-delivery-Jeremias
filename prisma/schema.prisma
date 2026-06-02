@@ -40,14 +40,18 @@ model Chofer {
   @@map("chofer")
 }
 
-model UserRole {
-  id              Int     @id @default(autoincrement())
-  clerkUserId     String  @unique @map("clerk_user_id")
+model UserProfile {
+  id              Int      @id @default(autoincrement())
+  clerkUserId     String   @unique @map("clerk_user_id")
   role            String
-  idVendedor      Int     @map("id_vendedor")
-  nombreEmpresa   String? @map("nombre_empresa")
+  idVendedor      Int      @default(0) @map("id_vendedor")
+  nombreEmpresa   String?  @map("nombre_empresa")
+  nombre          String?
+  telefono        String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  @@map("user_role")
+  @@map("user_profile")
 }
 
 model ChoferRequest {
@@ -65,24 +69,6 @@ model ChoferRequest {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("chofer_request")
-}
-
-model AdminDelivery {
-  idAdmin     Int    @id @default(autoincrement()) @map("id_admin")
-  clerkUserId String @unique @map("clerk_user_id")
-  nombre      String
-  telefono    String? @map("telefono")
-
-  @@map("admin_delivery")
-}
-
-model LogisticAdmin {
-  idLogisticAdmin Int     @id @default(autoincrement()) @map("id_logistic_admin")
-  clerkUserId     String  @unique @map("clerk_user_id")
-  nombre          String
-  telefono        String? @map("telefono")
-
-  @@map("logistic_admin")
 }
 
 model UserAccessControl {

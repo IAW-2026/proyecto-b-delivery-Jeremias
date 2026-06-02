@@ -16,12 +16,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Invalid vendor id" }, { status: 400 });
     }
 
-    const existing = await prisma.userRole.findUnique({ where: { clerkUserId: userId } });
+    const existing = await prisma.userProfile.findUnique({ where: { clerkUserId: userId } });
     if (existing) {
       return NextResponse.json({ error: "User already has a vendor association" }, { status: 409 });
     }
 
-    await prisma.userRole.create({
+    await prisma.userProfile.create({
       data: {
         clerkUserId: userId,
         idVendedor,
