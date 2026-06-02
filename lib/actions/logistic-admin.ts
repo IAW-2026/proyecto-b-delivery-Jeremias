@@ -23,17 +23,20 @@ async function getCompanyContext() {
 // ─── Zonas ─────────────────────────────────────────────
 
 export async function createZone(nombre: string) {
-  await getCompanyContext();
+  const { idVendedor } = await getCompanyContext();
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
-  const zona = await prisma.zona.create({ data: { nombre: nombre.trim() } });
+  const zona = await prisma.zona.create({ data: { nombre: nombre.trim(), idVendedor } });
   revalidatePath("/dashboard/logistic-admin/zonas");
   return zona;
 }
 
 export async function updateZone(idZona: number, nombre: string) {
-  await getCompanyContext();
+  const { idVendedor } = await getCompanyContext();
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
+
+  const existing = await prisma.zona.findFirst({ where: { idZona, idVendedor } });
+  if (!existing) throw new Error("Zona no encontrada");
 
   const zona = await prisma.zona.update({
     where: { idZona },
@@ -44,8 +47,8 @@ export async function updateZone(idZona: number, nombre: string) {
 }
 
 export async function deleteZone(idZona: number) {
-  await getCompanyContext();
-  const zona = await prisma.zona.findUnique({ where: { idZona } });
+  const { idVendedor } = await getCompanyContext();
+  const zona = await prisma.zona.findFirst({ where: { idZona, idVendedor } });
   if (!zona) throw new Error("Zona no encontrada");
 
   await prisma.zona.delete({ where: { idZona } });
@@ -57,7 +60,7 @@ export async function deleteZone(idZona: number) {
 export async function assignDriverZone(idChofer: number, idZona: number) {
   const { idVendedor } = await getCompanyContext();
 
-  const zona = await prisma.zona.findUnique({ where: { idZona } });
+  const zona = await prisma.zona.findFirst({ where: { idZona, idVendedor } });
   if (!zona) throw new Error("Zona no encontrada");
 
   const result = await prisma.chofer.updateMany({

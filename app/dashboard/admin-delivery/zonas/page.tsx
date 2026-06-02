@@ -16,7 +16,7 @@ export default async function AdminDeliveryZonasPage({
   const query = await searchParams;
   const { searchQuery, requestedPage } = parseZonasFilters(query);
 
-  const filteredZonas = filterZonas(data.zonas, searchQuery);
+  const filteredZonas = filterZonas(data.zonas, searchQuery, data.vendorNames);
   const totalFilteredZonas = filteredZonas.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredZonas / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -54,6 +54,7 @@ export default async function AdminDeliveryZonasPage({
       zonasConPedidos={zonasConPedidos}
       zonasSinPedidos={data.zonas.length - zonasConPedidos}
       totalPedidos={totalPedidos}
+      vendorNames={data.vendorNames}
       basePath={basePath}
     />
   );

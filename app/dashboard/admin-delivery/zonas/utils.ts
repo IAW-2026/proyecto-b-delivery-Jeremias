@@ -22,12 +22,19 @@ export function parseZonasFilters(query: SearchParamsInput): ZonasFilterState {
   };
 }
 
-export function filterZonas(zonas: Zona[], searchQuery: string) {
+export function filterZonas(zonas: Zona[], searchQuery: string, vendorNames?: Record<number, string>) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
   if (!normalizedQuery) {
     return zonas;
   }
 
-  return zonas.filter((zona) => normalizeSearchValue(zona.zona).includes(normalizedQuery));
+  return zonas.filter((zona) => {
+    if (normalizeSearchValue(zona.zona).includes(normalizedQuery)) return true;
+    if (vendorNames) {
+      const empresa = normalizeSearchValue(vendorNames[zona.idVendedor] ?? "");
+      if (empresa.includes(normalizedQuery)) return true;
+    }
+    return false;
+  });
 }

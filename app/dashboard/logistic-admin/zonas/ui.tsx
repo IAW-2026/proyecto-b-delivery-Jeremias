@@ -17,6 +17,7 @@ type Props = {
   zonasConPedidos: number;
   zonasSinPedidos: number;
   totalPedidos: number;
+  vendorNames?: Record<number, string>;
   basePath?: string;
 };
 
@@ -31,6 +32,7 @@ export default function ZonasManager({
   zonasConPedidos,
   zonasSinPedidos,
   totalPedidos,
+  vendorNames,
   basePath = "/dashboard/logistic-admin",
 }: Props) {
   const controller = useZonasController({
@@ -161,6 +163,7 @@ export default function ZonasManager({
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="w-[200px] px-4 py-3">Barrio</th>
+                {vendorNames ? <th className="w-[150px] px-4 py-3">Empresa</th> : null}
                 <th className="w-[120px] px-4 py-3">Pedidos</th>
                 <th className="w-[150px] px-4 py-3">Bidones solicitados</th>
                 <th className="w-[150px] px-4 py-3">Choferes asignados</th>
@@ -186,6 +189,11 @@ export default function ZonasManager({
                         </div>
                       )}
                     </td>
+                    {vendorNames ? (
+                      <td className="px-4 py-4">
+                        <p className="text-sm text-slate-700">{vendorNames[zona.idVendedor] ?? `Empresa #${zona.idVendedor}`}</p>
+                      </td>
+                    ) : null}
                     <td className="px-4 py-4">
                       <p className="font-medium text-slate-900">{zona.pedidosTotales}</p>
                     </td>
@@ -227,7 +235,7 @@ export default function ZonasManager({
                   </tr>
                   {editingZonaId === zona.idZona ? (
                     <tr className="border-t border-slate-100 bg-slate-50/60">
-                      <td colSpan={5} className="px-4 py-4">
+                      <td colSpan={vendorNames ? 6 : 5} className="px-4 py-4">
                         <p className="text-xs text-slate-500">Renombrá el barrio y guardá los cambios desde la misma fila.</p>
                       </td>
                     </tr>

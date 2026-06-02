@@ -41,6 +41,7 @@ type ChoferRecord = {
 type ZonaResumen = {
   idZona: number;
   zona: string;
+  idVendedor: number;
   pedidosTotales: number;
   pedidosAsignados: number;
   pedidosReady: number;
@@ -62,6 +63,7 @@ type ZonaFueraCatalogo = {
 type ZonaCatalogoRecord = {
   idZona: number;
   nombre: string;
+  idVendedor: number;
 };
 
 type ZonaSelectorRecord = {
@@ -233,6 +235,7 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
     const resumen: ZonaResumen = {
       idZona: zona.idZona,
       zona: zona.nombre,
+      idVendedor: zona.idVendedor,
       pedidosTotales: stats?.pedidosTotales ?? 0,
       pedidosAsignados: stats?.pedidosAsignados ?? 0,
       pedidosReady: stats?.pedidosReady ?? 0,
@@ -360,6 +363,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   const zonasCatalogo = await safePrismaQuery<ZonaCatalogoRecord[]>(
     () =>
       prisma.zona.findMany({
+        where: idVendedorToQuery ? { idVendedor: idVendedorToQuery } : {},
         orderBy: { nombre: "asc" },
       }),
     [],
@@ -452,6 +456,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   for (const c of visibleChoferes) if (c.idVendedor) distinctVendorIds.add(c.idVendedor);
   for (const v of vehiculosWithAssignment) if (v.idVendedor) distinctVendorIds.add(v.idVendedor);
   for (const o of ordersWithArchivedFlag) if (o.idVendedor) distinctVendorIds.add(o.idVendedor);
+  for (const z of zonasCatalogo) if (z.idVendedor) distinctVendorIds.add(z.idVendedor);
 
   const vendorProfiles = await safePrismaQuery<
     { idVendedor: number | null; nombreEmpresa: string | null }[]

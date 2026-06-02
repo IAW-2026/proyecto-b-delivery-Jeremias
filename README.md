@@ -35,7 +35,7 @@
    ```bash
    pnpm install
    ```
-4. Ejecutar migraciones de Prisma y sembrar datos:
+4. Ejecutar migraciones de Prisma y sembrar datos(Ya fueron hechos las siembras, si se quiere probar borrar los pedidos de la BD e intentar):
    ```bash
    pnpm prisma db push
    pnpm seed

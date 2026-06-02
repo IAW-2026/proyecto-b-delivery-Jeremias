@@ -109,7 +109,11 @@ model Pedido {
 }
 
 model zona {
-  idZona Int    @id @default(autoincrement())
-  nombre String @unique
-  choferes Chofer[]
+  idZona     Int      @id @default(autoincrement())
+  nombre     String
+  idVendedor Int      @map("id_vendedor")
+  choferes   Chofer[]
+
+  @@unique([nombre, idVendedor])
+  @@index([idVendedor])
 }

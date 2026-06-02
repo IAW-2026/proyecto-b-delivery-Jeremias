@@ -17,6 +17,7 @@ type Props = {
   zonasConPedidos: number;
   zonasSinPedidos: number;
   totalPedidos: number;
+  vendorNames: Record<number, string>;
   basePath?: string;
 };
 
