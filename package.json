@@ -8,7 +8,8 @@
     "build": "next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node scripts/seed-orders.mjs"
   },
   "dependencies": {
     "@clerk/backend": "^3.4.14",

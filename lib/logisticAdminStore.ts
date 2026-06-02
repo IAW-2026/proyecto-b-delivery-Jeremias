@@ -9,7 +9,6 @@ export type PedidoEntrante = {
   motivoRevision?: string | null;
 };
 
-import { getMockPedidos } from "@/lib/mocks/ARCHIVED/pedidos";
 import { normalizeOrderStatus, normalizeZonaName, nowIso } from "@/lib/shared/utils";
 
 export type OrderStatus = "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
@@ -38,27 +37,8 @@ const globalForLogisticAdmin = globalThis as unknown as {
   logisticAdminStore?: LogisticAdminStore;
 };
 
-function mapMockPedidoToLogisticOrder(pedido: ReturnType<typeof getMockPedidos>[number]): LogisticOrder {
-  const normalizedStatus = normalizeOrderStatus(pedido.estado);
-
-  return {
-    idPedido: pedido.idPedido,
-    estado: normalizedStatus,
-    direccion: pedido.direccion,
-    cliente: pedido.cliente,
-    telefono: pedido.telefono,
-    cantBidones: pedido.cantBidones,
-    zona: pedido.zona,
-    motivoRevision: null,
-    assignedToChoferId: null,
-    assignedToChoferName: null,
-    status: normalizedStatus,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
 const store: LogisticAdminStore = globalForLogisticAdmin.logisticAdminStore ?? {
-  orders: getMockPedidos().map(mapMockPedidoToLogisticOrder),
+  orders: [],
 };
 
 if (process.env.NODE_ENV !== "production") {

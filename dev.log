@@ -1,0 +1,21 @@
+Already up to date
+Done in 456ms using pnpm v11.0.8
+$ next dev
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.4:3000
+- Environments: .env.local, .env
+✓ Ready in 817ms
+
+(node:16464) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ GET /dashboard/admin-delivery/usuarios 200 in 7.3s (next.js: 427ms, proxy.ts: 3.7s, application-code: 3.1s)
+ GET /api/user-role 200 in 514ms (next.js: 273ms, proxy.ts: 193ms, application-code: 48ms)
+[ELIFECYCLE] Command failed with exit code 1.

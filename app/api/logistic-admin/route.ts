@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { getOrders } from "@/lib/logisticAdminStore";
-import { getReadyOrders } from "@/lib/readyOrdersStore";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 
 type PedidoConChofer = Prisma.PedidoGetPayload<{
@@ -39,37 +37,6 @@ function mapPedidoToLogisticOrder(pedido: PedidoConChofer) {
     status: normalizedStatus,
     updatedAt: pedido.updatedAt ? new Date(pedido.updatedAt).toISOString() : new Date().toISOString(),
   };
-}
-
-async function seedPedidosFromStoreIfEmpty() {
-  const count = await prisma.pedido.count();
-  if (count > 0) return;
-
-  const storeOrders = getOrders();
-  if (storeOrders.length === 0) return;
-
-  const readyOrders = getReadyOrders();
-  const vendorMap = new Map(readyOrders.map(order => [order.idPedido, order.idVendedor]));
-
-  await prisma.pedido.createMany({
-    data: storeOrders.map((order) => {
-      const idVendedor = vendorMap.get(order.idPedido) ?? 0;
-      return {
-        idPedido: order.idPedido,
-        estado: order.status,
-        direccion: order.direccion,
-        cliente: order.cliente,
-        telefono: order.telefono ?? null,
-        cantBidones: order.cantBidones,
-        zona: order.zona,
-        idVendedor: idVendedor,
-        idChoferAsignado: order.assignedToChoferId,
-        assignedAt: order.assignedToChoferId ? new Date(order.updatedAt) : null,
-        updatedAt: new Date(order.updatedAt),
-      };
-    }),
-    skipDuplicates: true,
-  });
 }
 
 async function getCompanyContext(request: NextRequest) {
@@ -148,8 +115,6 @@ export async function POST(request: NextRequest) {
     if (!context) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    await seedPedidosFromStoreIfEmpty();
 
     const body = (await request.json()) as {
       action?: string;

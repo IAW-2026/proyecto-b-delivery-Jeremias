@@ -105,6 +105,15 @@ export type LogisticAdminViewData = {
   companyName: string | null;
   databaseUnavailable: boolean;
   dbError?: string;
+  _debug?: {
+    idVendedorToQuery: number | null | undefined;
+    userRole: { idVendedor: number } | null;
+    isGlobalAdmin: boolean;
+    inferredVendorId: number | null;
+    ordersCount: number;
+    databaseUnavailable: boolean;
+    clerkUserId: string | null;
+  };
 };
 
 function isPrismaTimeoutError(error: unknown) {
@@ -167,31 +176,6 @@ function mapDbPedidoToLogisticOrder(pedido: PedidoDbRecord): LogisticOrder {
     status,
     updatedAt: (pedido.updatedAt ?? pedido.assignedAt ?? new Date()).toISOString(),
   };
-}
-
-async function seedPedidosFromStoreIfEmpty() {
-  const count = await prisma.pedido.count();
-  if (count > 0) return;
-
-  const storeOrders = getOrders();
-  if (storeOrders.length === 0) return;
-
-  await prisma.pedido.createMany({
-    data: storeOrders.map((order) => ({
-      idPedido: order.idPedido,
-      estado: order.status,
-      direccion: order.direccion,
-      cliente: order.cliente,
-      telefono: order.telefono ?? null,
-      cantBidones: order.cantBidones,
-      zona: order.zona,
-          motivoRevision: order.motivoRevision ?? null,
-      idChoferAsignado: order.assignedToChoferId,
-      assignedAt: order.assignedToChoferId ? new Date(order.updatedAt) : null,
-      updatedAt: new Date(order.updatedAt),
-    })),
-    skipDuplicates: true,
-  });
 }
 
 async function safeCurrentUser() {
@@ -472,11 +456,10 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     };
   });
 
-  await safePrismaQuery(() => seedPedidosFromStoreIfEmpty(), undefined, "pedido.seedFromStoreIfEmpty");
-
   const orders = await safePrismaQuery(
     () =>
       prisma.pedido.findMany({
+        where: idVendedorToQuery ? { idVendedor: idVendedorToQuery } : {},
         include: { choferAsignado: true },
         orderBy: { idPedido: "asc" },
       }).then((pedidos: PedidoDbRecord[]) => pedidos.map(mapDbPedidoToLogisticOrder)),
@@ -508,5 +491,14 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     zonasCatalogo: zonasCatalogo.map((zona) => ({ idZona: zona.idZona, nombre: zona.nombre })),
     databaseUnavailable,
     dbError,
+    _debug: {
+      idVendedorToQuery: idVendedorToQuery ?? undefined,
+      userRole: userRole ? { idVendedor: userRole.idVendedor } : null,
+      isGlobalAdmin,
+      inferredVendorId,
+      ordersCount: orders.length,
+      databaseUnavailable,
+      clerkUserId: userId,
+    },
   };
 }
