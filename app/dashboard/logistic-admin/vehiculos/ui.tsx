@@ -18,6 +18,7 @@ type Props = {
   pausadosCount: number;
   basePath?: string;
   vendorNames: Record<number, string>;
+  vendorOptions?: Record<number, string>;
 };
 
 export default function VehiculosManager({
@@ -30,19 +31,24 @@ export default function VehiculosManager({
   totalVehiculos,
   activosCount,
   pausadosCount,
-  basePath = "/dashboard/logistic-admin"
+  basePath = "/dashboard/logistic-admin",
+  vendorOptions,
 }: Props) {
-  const controller = useVehiculosController({
+  const   controller = useVehiculosController({
     vehiculos,
     searchParams: { query: searchQuery, status: statusFilter, page: String(page) },
     page,
     totalFilteredVehiculos,
     basePath,
+    vendorOptions,
   });
 
   
 
   const {
+    vendorOptions: hasVendorOptions,
+    selectedVendorId,
+    setSelectedVendorId,
     filterState,
     addForm,
     setAddForm,
@@ -189,7 +195,7 @@ export default function VehiculosManager({
       <section className={`${adminCardClass} bg-slate-50 p-5`}>
         <h2 className="text-lg font-semibold text-slate-900">Agregar vehículo</h2>
 
-        <form onSubmit={handleAddSubmit} className="mt-4 grid gap-3 md:grid-cols-4">
+        <form onSubmit={handleAddSubmit} className="mt-4 grid gap-3 md:grid-cols-5">
           <input
             value={addForm.patente}
             onChange={(event) => setAddForm((prev) => ({ ...prev, patente: event.target.value.toUpperCase() }))}
@@ -219,6 +225,18 @@ export default function VehiculosManager({
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
             disabled={isSaving}
           />
+          {vendorOptions ? (
+            <select
+              value={selectedVendorId}
+              onChange={(event) => setSelectedVendorId(Number(event.target.value))}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              disabled={isSaving}
+            >
+              {Object.entries(vendorOptions).map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          ) : null}
           <div className="flex gap-2">
             <button type="submit" disabled={isSaving} className={adminButtonClass("edit")}>
               Agregar
@@ -342,7 +360,7 @@ export default function VehiculosManager({
                             <button type="button" onClick={() => startEdit(vehiculo)} disabled={isSaving} className={adminButtonClass("edit", "sm")}>
                               Editar
                             </button>
-                            <button type="button" onClick={() => void handleDelete(vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("danger", "sm")}>
+                            <button type="button" onClick={() => void handleDelete(vehiculo)} disabled={isSaving} className={adminButtonClass("danger", "sm")}>
                               Eliminar
                             </button>
                             <button type="button" onClick={() => void handleTogglePause(vehiculo)} disabled={isSaving} className={adminButtonClass("warning", "sm")}>

@@ -18,6 +18,7 @@ type UseVehiculosControllerParams = {
   page: number;
   totalFilteredVehiculos: number;
   basePath?: string;
+  vendorOptions?: Record<number, string>;
 };
 
 const emptyForm: FormState = {
@@ -26,7 +27,7 @@ const emptyForm: FormState = {
   capacidadBidones: "",
 };
 
-export function useVehiculosController({ vehiculos, searchParams, page, totalFilteredVehiculos, basePath = "/dashboard/logistic-admin" }: UseVehiculosControllerParams) {
+export function useVehiculosController({ vehiculos, searchParams, page, totalFilteredVehiculos, basePath = "/dashboard/logistic-admin", vendorOptions }: UseVehiculosControllerParams) {
   const router = useRouter();
   const filterState: VehiculosFilterState = parseVehiculosFilters(searchParams);
   const [addForm, setAddForm] = useState<FormState>(emptyForm);
@@ -37,6 +38,8 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
   const [detailsVehicleId, setDetailsVehicleId] = useState<number | null>(null);
   const [pauseReasons, setPauseReasons] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const vendorIds = vendorOptions ? Object.keys(vendorOptions).map(Number).sort() : [];
+  const [selectedVendorId, setSelectedVendorId] = useState<number>(vendorIds[0] ?? 0);
 
   const pageStart = vehiculos.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredVehiculos, page * pageSize);
@@ -80,7 +83,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
 
     setIsSaving(true);
     try {
-      await actions.createVehicle(patente, tipo, capacidadBidones);
+      await actions.createVehicle(patente, tipo, capacidadBidones, selectedVendorId);
       setAddForm(emptyForm);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
@@ -113,7 +116,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     setIsSaving(true);
 
     try {
-      await actions.updateVehicle(vehiculoId, { patente, tipo, capacidadBidones });
+      await actions.updateVehicle(vehiculoId, { patente, tipo, capacidadBidones }, original.idVendedor);
     } catch (e) {
       // Revert: reopen editor with original values
       setEditingId(vehiculoId);
@@ -128,7 +131,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     }
   }
 
-  async function handleDelete(vehiculoId: number) {
+  async function handleDelete(vehiculo: Vehiculo) {
     const ok = window.confirm("¿Eliminar este vehículo?");
     if (!ok) return;
 
@@ -136,8 +139,8 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     setError(null);
 
     try {
-      await actions.deleteVehicle(vehiculoId);
-      if (editingId === vehiculoId) {
+      await actions.deleteVehicle(vehiculo.idVehiculo, vehiculo.idVendedor);
+      if (editingId === vehiculo.idVehiculo) {
         cancelEdit();
       }
     } catch (e) {
@@ -162,7 +165,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     setError(null);
 
     try {
-      await actions.setVehicleState(vehiculo.idVehiculo, "activo");
+      await actions.setVehicleState(vehiculo.idVehiculo, "activo", undefined, vehiculo.idVendedor);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cambiar el estado del vehículo");
     } finally {
@@ -181,7 +184,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
     setError(null);
 
     try {
-      await actions.setVehicleState(vehiculo.idVehiculo, "pausado", motivo);
+      await actions.setVehicleState(vehiculo.idVehiculo, "pausado", motivo, vehiculo.idVendedor);
       setPausingVehicleId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo pausar el vehículo");
@@ -213,6 +216,9 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
   }
 
   return {
+    vendorOptions: vendorOptions ?? null,
+    selectedVendorId,
+    setSelectedVendorId,
     filterState,
     addForm,
     setAddForm,

@@ -18,6 +18,7 @@ type Props = {
   zonasSinPedidos: number;
   totalPedidos: number;
   vendorNames?: Record<number, string>;
+  vendorOptions?: Record<number, string>;
   basePath?: string;
 };
 
@@ -34,6 +35,7 @@ export default function ZonasManager({
   totalPedidos,
   vendorNames,
   basePath = "/dashboard/logistic-admin",
+  vendorOptions,
 }: Props) {
   const controller = useZonasController({
     zonas,
@@ -41,9 +43,10 @@ export default function ZonasManager({
     page,
     totalFilteredZonas,
     basePath,
+    vendorOptions,
   });
 
-  const { filterState, form, setForm, editForm, setEditForm, isSaving, editingZonaId, error, pageStart, pageEnd, handlers } = controller;
+  const { vendorOptions: hasVendorOptions, selectedVendorId, setSelectedVendorId, filterState, form, setForm, editForm, setEditForm, isSaving, editingZonaId, error, pageStart, pageEnd, handlers } = controller;
   const { handleSubmit, startEdit, cancelEdit, handleUpdateZone, handleDelete, submitSearch } = handlers;
 
   return (
@@ -86,6 +89,18 @@ export default function ZonasManager({
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm md:max-w-md"
             disabled={isSaving}
           />
+          {vendorOptions ? (
+            <select
+              value={selectedVendorId}
+              onChange={(event) => setSelectedVendorId(Number(event.target.value))}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              disabled={isSaving}
+            >
+              {Object.entries(vendorOptions).map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          ) : null}
           <div className="flex gap-2">
             <button type="submit" disabled={isSaving} className={adminButtonClass("edit")}>
               Agregar

@@ -18,5 +18,5 @@ type Props = {
 };
 
 export default function AdminDeliveryVehiculosUi(props: Props) {
-  return <LogisticAdminVehiculosUi {...props} basePath={props.basePath ?? "/dashboard/admin-delivery"} />;
+  return <LogisticAdminVehiculosUi {...props} vendorOptions={props.vendorNames} basePath={props.basePath ?? "/dashboard/admin-delivery"} />;
 }

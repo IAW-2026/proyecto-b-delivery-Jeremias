@@ -244,10 +244,10 @@ export default function LogisticAdminPedidosUi({
 
                   return (
                     <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
-                      <td className="px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
+                      <td className="px-3 py-3 text-center font-medium whitespace-nowrap">#{order.idPedido}</td>
 
-                      <td className="px-3 py-3 whitespace-nowrap">{order.zona}</td>
-                      <td className="px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
+                      <td className="px-3 py-3 text-center whitespace-nowrap">{order.zona}</td>
+                      <td className="px-3 py-3 text-center whitespace-nowrap">{order.cantBidones}</td>
                       <td className="px-3 py-3 align-middle">
                         {editingOrderId === order.idPedido ? (
                           <select
@@ -282,7 +282,7 @@ export default function LogisticAdminPedidosUi({
                           </p>
                         )}
                       </td>
-                      <td className="px-3 py-3 align-middle">
+                      <td className="px-3 py-3 text-center align-middle whitespace-nowrap">
                         {editingOrderId === order.idPedido ? (
                           <select
                             value={selectedStatuses[order.idPedido] ?? order.status}
@@ -302,7 +302,7 @@ export default function LogisticAdminPedidosUi({
                             ))}
                           </select>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(order.status)}">
+                          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
                             {order.status === "revision" && (
                               <span className="h-2 w-2 rounded-full bg-red-500" />
                             )}
@@ -323,7 +323,7 @@ export default function LogisticAdminPedidosUi({
                           </svg>
                         </button>
                       </td>
-                      <td className="sticky right-0 bg-white z-10 px-3 py-3 align-middle shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                      <td className="sticky right-0 bg-white z-10 px-3 py-3 text-center align-middle whitespace-nowrap shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
                         {editingOrderId === order.idPedido ? (
                           <div className="flex flex-nowrap gap-2 whitespace-nowrap">
                             <button type="button" onClick={() => saveEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("save", "sm")}>

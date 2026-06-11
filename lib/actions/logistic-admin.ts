@@ -5,9 +5,13 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
-async function getCompanyContext() {
+async function getCompanyContext(vendedorId?: number) {
   const { userId } = await auth();
   if (!userId) throw new Error("No autorizado");
+
+  if (vendedorId !== undefined) {
+    return { userId, idVendedor: vendedorId };
+  }
 
   const userRole = await prisma.userProfile.findUnique({
     where: { clerkUserId: userId },
@@ -22,13 +26,14 @@ async function getCompanyContext() {
 
 // ─── Zonas ─────────────────────────────────────────────
 
-export async function createZone(nombre: string) {
-  const { idVendedor } = await getCompanyContext();
+export async function createZone(nombre: string, vendedorId?: number) {
+  const { idVendedor } = await getCompanyContext(vendedorId);
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
   try {
     const zona = await prisma.zona.create({ data: { nombre: nombre.trim(), idVendedor } });
     revalidatePath("/dashboard/logistic-admin/zonas");
+    revalidatePath("/dashboard/admin-delivery/zonas");
     return zona;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -38,11 +43,13 @@ export async function createZone(nombre: string) {
   }
 }
 
-export async function updateZone(idZona: number, nombre: string) {
-  const { idVendedor } = await getCompanyContext();
+export async function updateZone(idZona: number, nombre: string, vendedorId?: number) {
+  const { idVendedor } = await getCompanyContext(vendedorId);
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
-  const existing = await prisma.zona.findFirst({ where: { idZona, idVendedor } });
+  const existing = vendedorId !== undefined
+    ? await prisma.zona.findUnique({ where: { idZona } })
+    : await prisma.zona.findFirst({ where: { idZona, idVendedor } });
   if (!existing) throw new Error("Zona no encontrada");
 
   try {
@@ -51,6 +58,7 @@ export async function updateZone(idZona: number, nombre: string) {
       data: { nombre: nombre.trim() },
     });
     revalidatePath("/dashboard/logistic-admin/zonas");
+    revalidatePath("/dashboard/admin-delivery/zonas");
     return zona;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -60,13 +68,17 @@ export async function updateZone(idZona: number, nombre: string) {
   }
 }
 
-export async function deleteZone(idZona: number) {
-  const { idVendedor } = await getCompanyContext();
-  const zona = await prisma.zona.findFirst({ where: { idZona, idVendedor } });
+export async function deleteZone(idZona: number, vendedorId?: number) {
+  const { idVendedor } = await getCompanyContext(vendedorId);
+
+  const zona = vendedorId !== undefined
+    ? await prisma.zona.findUnique({ where: { idZona } })
+    : await prisma.zona.findFirst({ where: { idZona, idVendedor } });
   if (!zona) throw new Error("Zona no encontrada");
 
   await prisma.zona.delete({ where: { idZona } });
   revalidatePath("/dashboard/logistic-admin/zonas");
+  revalidatePath("/dashboard/admin-delivery/zonas");
 }
 
 // ─── Choferes ───────────────────────────────────────────
@@ -421,8 +433,8 @@ export async function linkVendor(vendorId: number) {
   revalidatePath("/dashboard/logistic-admin");
 }
 
-export async function createVehicle(patente: string, tipo: string, capacidadBidones: number) {
-  const { idVendedor } = await getCompanyContext();
+export async function createVehicle(patente: string, tipo: string, capacidadBidones: number, vendedorId?: number) {
+  const { idVendedor } = await getCompanyContext(vendedorId);
 
   if (!patente.trim() || !tipo.trim() || !Number.isFinite(capacidadBidones) || capacidadBidones <= 0) {
     throw new Error("Datos de vehículo inválidos");
@@ -441,6 +453,7 @@ export async function createVehicle(patente: string, tipo: string, capacidadBido
     });
 
     revalidatePath("/dashboard/logistic-admin/vehiculos");
+    revalidatePath("/dashboard/admin-delivery/vehiculos");
     return vehiculo;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -452,11 +465,14 @@ export async function createVehicle(patente: string, tipo: string, capacidadBido
 
 export async function updateVehicle(
   idVehiculo: number,
-  data: { patente?: string; tipo?: string; capacidadBidones?: number }
+  data: { patente?: string; tipo?: string; capacidadBidones?: number },
+  vendedorId?: number
 ) {
-  const { idVendedor } = await getCompanyContext();
+  const { idVendedor } = await getCompanyContext(vendedorId);
 
-  const vehiculo = await prisma.vehiculo.findFirst({ where: { idVehiculo, idVendedor } });
+  const vehiculo = vendedorId !== undefined
+    ? await prisma.vehiculo.findUnique({ where: { idVehiculo } })
+    : await prisma.vehiculo.findFirst({ where: { idVehiculo, idVendedor } });
   if (!vehiculo) throw new Error("Vehículo no encontrado");
 
   const patente = data.patente?.trim().toUpperCase() ?? vehiculo.patente;
@@ -474,6 +490,7 @@ export async function updateVehicle(
     });
 
     revalidatePath("/dashboard/logistic-admin/vehiculos");
+    revalidatePath("/dashboard/admin-delivery/vehiculos");
     return updated;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -483,10 +500,12 @@ export async function updateVehicle(
   }
 }
 
-export async function deleteVehicle(idVehiculo: number) {
-  const { idVendedor } = await getCompanyContext();
+export async function deleteVehicle(idVehiculo: number, vendedorId?: number) {
+  const { idVendedor } = await getCompanyContext(vendedorId);
 
-  const vehiculo = await prisma.vehiculo.findFirst({ where: { idVehiculo, idVendedor } });
+  const vehiculo = vendedorId !== undefined
+    ? await prisma.vehiculo.findUnique({ where: { idVehiculo } })
+    : await prisma.vehiculo.findFirst({ where: { idVehiculo, idVendedor } });
   if (!vehiculo) throw new Error("Vehículo no encontrado");
 
   await prisma.$transaction([
@@ -498,19 +517,23 @@ export async function deleteVehicle(idVehiculo: number) {
   ]);
 
   revalidatePath("/dashboard/logistic-admin/vehiculos");
+  revalidatePath("/dashboard/admin-delivery/vehiculos");
 }
 
 export async function setVehicleState(
   idVehiculo: number,
   estado: string,
-  motivoPausa?: string | null
+  motivoPausa?: string | null,
+  vendedorId?: number
 ) {
-  const { idVendedor } = await getCompanyContext();
+  const { idVendedor } = await getCompanyContext(vendedorId);
 
   const allowedStates = ["activo", "pausado"];
   if (!allowedStates.includes(estado)) throw new Error("Estado de vehículo inválido");
 
-  const vehiculo = await prisma.vehiculo.findFirst({ where: { idVehiculo, idVendedor } });
+  const vehiculo = vendedorId !== undefined
+    ? await prisma.vehiculo.findUnique({ where: { idVehiculo } })
+    : await prisma.vehiculo.findFirst({ where: { idVehiculo, idVendedor } });
   if (!vehiculo) throw new Error("Vehículo no encontrado");
 
   const reason = estado === "pausado" ? (motivoPausa ?? "").trim() : null;
@@ -532,4 +555,5 @@ export async function setVehicleState(
 
   revalidatePath("/dashboard/logistic-admin/vehiculos");
   revalidatePath("/dashboard/logistic-admin/choferes");
+  revalidatePath("/dashboard/admin-delivery/vehiculos");
 }

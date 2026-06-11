@@ -16,13 +16,14 @@ type UseZonasControllerParams = {
   page: number;
   totalFilteredZonas: number;
   basePath?: string;
+  vendorOptions?: Record<number, string>;
 };
 
 const emptyForm: FormState = {
   nombre: "",
 };
 
-export function useZonasController({ zonas, searchParams, page, totalFilteredZonas, basePath = "/dashboard/logistic-admin" }: UseZonasControllerParams) {
+export function useZonasController({ zonas, searchParams, page, totalFilteredZonas, basePath = "/dashboard/logistic-admin", vendorOptions }: UseZonasControllerParams) {
   const router = useRouter();
   const filterState: ZonasFilterState = parseZonasFilters(searchParams);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -30,6 +31,8 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
   const [isSaving, setIsSaving] = useState(false);
   const [editingZonaId, setEditingZonaId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const vendorIds = vendorOptions ? Object.keys(vendorOptions).map(Number).sort() : [];
+  const [selectedVendorId, setSelectedVendorId] = useState<number>(vendorIds[0] ?? 0);
 
   const pageStart = zonas.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredZonas, page * pageSize);
@@ -44,7 +47,10 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
       return;
     }
 
-    const duplicate = zonas.find((z) => z.zona.toLowerCase() === nombre.toLowerCase());
+    const duplicate = zonas.find((z) =>
+      z.zona.toLowerCase() === nombre.toLowerCase() &&
+      (!vendorOptions || z.idVendedor === selectedVendorId)
+    );
     if (duplicate) {
       setError(`Ya existe una zona con el nombre "${nombre}"`);
       return;
@@ -52,7 +58,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
 
     setIsSaving(true);
     try {
-      await actions.createZone(nombre);
+      await actions.createZone(nombre, selectedVendorId);
       setForm(emptyForm);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
@@ -73,16 +79,25 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
     setError(null);
   }
 
+  function getZona(idZona: number) {
+    return zonas.find((z) => z.idZona === idZona);
+  }
+
   async function handleUpdateZone(idZona: number) {
     setError(null);
 
     const nombre = editForm.nombre.trim();
-    if (!nombre) {
+    const currentZona = getZona(idZona);
+    if (!nombre || !currentZona) {
       setError("Escribí el nombre del barrio.");
       return;
     }
 
-    const duplicate = zonas.find((z) => z.idZona !== idZona && z.zona.toLowerCase() === nombre.toLowerCase());
+    const duplicate = zonas.find((z) =>
+      z.idZona !== idZona &&
+      z.zona.toLowerCase() === nombre.toLowerCase() &&
+      (!vendorOptions || z.idVendedor === currentZona.idVendedor)
+    );
     if (duplicate) {
       setError(`Ya existe una zona con el nombre "${nombre}"`);
       return;
@@ -90,7 +105,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
 
     setIsSaving(true);
     try {
-      await actions.updateZone(idZona, nombre);
+      await actions.updateZone(idZona, nombre, currentZona.idVendedor);
       cancelEdit();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
@@ -106,7 +121,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
     setIsSaving(true);
     setError(null);
     try {
-      await actions.deleteZone(zona.idZona);
+      await actions.deleteZone(zona.idZona, zona.idVendedor);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar la zona");
     } finally {
@@ -119,6 +134,9 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
   }
 
   return {
+    vendorOptions: vendorOptions ?? null,
+    selectedVendorId,
+    setSelectedVendorId,
     filterState,
     form,
     setForm,
