@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 async function getCompanyContext() {
   const { userId } = await auth();
@@ -26,9 +26,16 @@ export async function createZone(nombre: string) {
   const { idVendedor } = await getCompanyContext();
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
-  const zona = await prisma.zona.create({ data: { nombre: nombre.trim(), idVendedor } });
-  revalidatePath("/dashboard/logistic-admin/zonas");
-  return zona;
+  try {
+    const zona = await prisma.zona.create({ data: { nombre: nombre.trim(), idVendedor } });
+    revalidatePath("/dashboard/logistic-admin/zonas");
+    return zona;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}" para esta empresa`);
+    }
+    throw new Error("No se pudo crear la zona");
+  }
 }
 
 export async function updateZone(idZona: number, nombre: string) {
@@ -38,12 +45,19 @@ export async function updateZone(idZona: number, nombre: string) {
   const existing = await prisma.zona.findFirst({ where: { idZona, idVendedor } });
   if (!existing) throw new Error("Zona no encontrada");
 
-  const zona = await prisma.zona.update({
-    where: { idZona },
-    data: { nombre: nombre.trim() },
-  });
-  revalidatePath("/dashboard/logistic-admin/zonas");
-  return zona;
+  try {
+    const zona = await prisma.zona.update({
+      where: { idZona },
+      data: { nombre: nombre.trim() },
+    });
+    revalidatePath("/dashboard/logistic-admin/zonas");
+    return zona;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}" para esta empresa`);
+    }
+    throw new Error("No se pudo actualizar la zona");
+  }
 }
 
 export async function deleteZone(idZona: number) {
@@ -414,19 +428,26 @@ export async function createVehicle(patente: string, tipo: string, capacidadBido
     throw new Error("Datos de vehículo inválidos");
   }
 
-  const vehiculo = await prisma.vehiculo.create({
-    data: {
-      patente: patente.trim().toUpperCase(),
-      tipo: tipo.trim(),
-      capacidadBidones,
-      idVendedor,
-      estado: "activo",
-      motivoPausa: null,
-    },
-  });
+  try {
+    const vehiculo = await prisma.vehiculo.create({
+      data: {
+        patente: patente.trim().toUpperCase(),
+        tipo: tipo.trim(),
+        capacidadBidones,
+        idVendedor,
+        estado: "activo",
+        motivoPausa: null,
+      },
+    });
 
-  revalidatePath("/dashboard/logistic-admin/vehiculos");
-  return vehiculo;
+    revalidatePath("/dashboard/logistic-admin/vehiculos");
+    return vehiculo;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error(`Ya existe un vehículo con la patente "${patente.trim().toUpperCase()}"`);
+    }
+    throw new Error("No se pudo crear el vehículo");
+  }
 }
 
 export async function updateVehicle(
@@ -446,13 +467,20 @@ export async function updateVehicle(
     throw new Error("Datos de vehículo inválidos");
   }
 
-  const updated = await prisma.vehiculo.update({
-    where: { idVehiculo },
-    data: { patente, tipo, capacidadBidones },
-  });
+  try {
+    const updated = await prisma.vehiculo.update({
+      where: { idVehiculo },
+      data: { patente, tipo, capacidadBidones },
+    });
 
-  revalidatePath("/dashboard/logistic-admin/vehiculos");
-  return updated;
+    revalidatePath("/dashboard/logistic-admin/vehiculos");
+    return updated;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error(`Ya existe un vehículo con la patente "${patente}"`);
+    }
+    throw new Error("No se pudo actualizar el vehículo");
+  }
 }
 
 export async function deleteVehicle(idVehiculo: number) {

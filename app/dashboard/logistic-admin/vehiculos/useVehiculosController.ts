@@ -70,6 +70,14 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
       return;
     }
 
+    const duplicate = vehiculos.find(
+      (v) => v.patente.toUpperCase() === patente
+    );
+    if (duplicate) {
+      setError(`Ya existe un vehículo con la patente "${patente}"`);
+      return;
+    }
+
     setIsSaving(true);
     try {
       await actions.createVehicle(patente, tipo, capacidadBidones);
@@ -88,6 +96,14 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
 
     if (!patente || !tipo || !Number.isFinite(capacidadBidones) || capacidadBidones <= 0) {
       setError("Completá patente, tipo y capacidad válida (> 0).");
+      return;
+    }
+
+    const duplicate = vehiculos.find(
+      (v) => v.idVehiculo !== vehiculoId && v.patente.toUpperCase() === patente
+    );
+    if (duplicate) {
+      setError(`Ya existe un vehículo con la patente "${patente}"`);
       return;
     }
 

@@ -44,6 +44,12 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
       return;
     }
 
+    const duplicate = zonas.find((z) => z.zona.toLowerCase() === nombre.toLowerCase());
+    if (duplicate) {
+      setError(`Ya existe una zona con el nombre "${nombre}"`);
+      return;
+    }
+
     setIsSaving(true);
     try {
       await actions.createZone(nombre);
@@ -73,6 +79,12 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
     const nombre = editForm.nombre.trim();
     if (!nombre) {
       setError("Escribí el nombre del barrio.");
+      return;
+    }
+
+    const duplicate = zonas.find((z) => z.idZona !== idZona && z.zona.toLowerCase() === nombre.toLowerCase());
+    if (duplicate) {
+      setError(`Ya existe una zona con el nombre "${nombre}"`);
       return;
     }
 
