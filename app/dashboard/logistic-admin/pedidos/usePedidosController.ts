@@ -31,6 +31,7 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
   const [busyId, setBusyId] = useState<number | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [motivoOrderId, setMotivoOrderId] = useState<number | null>(null);
+  const [detailsOrderId, setDetailsOrderId] = useState<number | null>(null);
   const [choferSelection, setChoferSelection] = useState<Record<number, string>>(() => {
     const initial: Record<number, string> = {};
     for (const order of orders) {
@@ -129,6 +130,14 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
     setMotivoOrderId(null);
   }
 
+  function openDetails(orderId: number) {
+    setDetailsOrderId(orderId);
+  }
+
+  function closeDetails() {
+    setDetailsOrderId(null);
+  }
+
   async function saveEdit(order: LogisticOrder) {
     const nextChoferId = choferSelection[order.idPedido] ?? "";
     const nextStatus = selectedStatuses[order.idPedido] ?? order.status;
@@ -207,6 +216,7 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
     busyId,
     editingOrderId,
     motivoOrderId,
+    detailsOrderId,
     error,
     pageStart,
     pageEnd,
@@ -227,6 +237,8 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
       cancelEdit,
       openMotivo,
       closeMotivo,
+      openDetails,
+      closeDetails,
       saveEdit,
       handleDelete,
       setChoferSelection,

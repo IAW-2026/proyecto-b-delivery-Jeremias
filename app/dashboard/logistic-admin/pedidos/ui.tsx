@@ -31,13 +31,6 @@ type Props = {
   vendorNames: Record<number, string>;
 };
 
-function statusBadgeClass(status: OrderStatus) {
-  if (status === "ready") return "bg-blue-100 text-blue-700";
-  if (status === "en_camino") return "bg-amber-100 text-amber-700";
-  if (status === "entregado") return "bg-emerald-100 text-emerald-700";
-  if (status === "cancelado") return "bg-red-100 text-red-700";
-  return "bg-violet-100 text-violet-700";
-}
 
 function formatStatus(status: OrderStatus) {
   if (status === "ready") return "Listo para salir";
@@ -76,6 +69,7 @@ export default function LogisticAdminPedidosUi({
     busyId,
     editingOrderId,
     motivoOrderId,
+    detailsOrderId,
     error,
     pageStart,
     pageEnd,
@@ -87,14 +81,21 @@ export default function LogisticAdminPedidosUi({
   } = controller;
 
   const { choferSelection, selectedStatuses } = editState;
-  const { getAssignablesForZone, startEdit, cancelEdit, openMotivo, closeMotivo, saveEdit, handleDelete, setChoferSelection, setSelectedStatuses } = handlers;
+  const { getAssignablesForZone, startEdit, cancelEdit, closeMotivo, openDetails, closeDetails, saveEdit, handleDelete, setChoferSelection, setSelectedStatuses } = handlers;
   const motivoDialogRef = useRef<HTMLDivElement>(null);
+  const detailsDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (motivoOrderId !== null) {
       motivoDialogRef.current?.focus();
     }
   }, [motivoOrderId]);
+
+  useEffect(() => {
+    if (detailsOrderId !== null) {
+      detailsDialogRef.current?.focus();
+    }
+  }, [detailsOrderId]);
 
   return (
     <div className="space-y-6">
@@ -227,15 +228,11 @@ export default function LogisticAdminPedidosUi({
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="w-[80px] px-3 py-3">Pedido</th>
-                  <th className="w-[110px] px-3 py-3">Fecha</th>
-                  <th className="w-[80px] px-3 py-3">Hora</th>
-                  <th className="w-[160px] px-3 py-3">Cliente</th>
                   <th className="w-[100px] px-3 py-3">Zona</th>
                   <th className="w-[80px] px-3 py-3">Bidones</th>
-                  <th className="w-[150px] px-3 py-3">Empresa</th>
                   <th className="w-[160px] px-3 py-3">Chofer</th>
-                  <th className="w-[140px] px-3 py-3">Estado</th>
-                  <th className="w-[220px] px-3 py-3">Motivo</th>
+                  <th className="w-[160px] px-3 py-3">Estado</th>
+                  <th className="w-[80px] px-3 py-3 text-center">Detalles</th>
                   <th className="sticky right-0 bg-slate-50 z-10 w-[200px] px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]"></th>
                 </tr>
               </thead>
@@ -249,36 +246,8 @@ export default function LogisticAdminPedidosUi({
                     <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
                       <td className="w-[80px] px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
 
-                      {/* Renderizamos solo la fecha con configuración robusta SSR */}
-                      <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700  ">
-                        {order.updatedAt 
-                          ? new Date(order.updatedAt).toLocaleDateString("es-AR", { 
-                              timeZone: "America/Argentina/Buenos_Aires", 
-                              day: "2-digit", 
-                              month: "2-digit", 
-                              year: "numeric" 
-                            }) 
-                          : "—"}
-                      </td>
-
-                      <td suppressHydrationWarning className="border-t border-slate-100 text-sm text-slate-700">
-                        {order.updatedAt 
-                          ? new Date(order.updatedAt).toLocaleTimeString("es-AR", { 
-                              timeZone: "America/Argentina/Buenos_Aires", 
-                              hour: "2-digit", 
-                              minute: "2-digit", 
-                              hour12: false 
-                            }) 
-                          : "—"}
-                      </td>
-
-                      <td className="w-[160px] px-3 py-3">
-                        <p className="truncate font-medium text-slate-900">{order.cliente}</p>
-                        <p className="text-xs text-slate-500">{order.direccion}</p>
-                      </td>
                       <td className="w-[100px] px-3 py-3 truncate">{order.zona}</td>
                       <td className="w-[80px] px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
-                      <td className="w-[150px] px-3 py-3 text-slate-600">{order.idVendedor ? vendorNames[order.idVendedor] ?? `Empresa #${order.idVendedor}` : "-"}</td>
                       <td className="w-[160px] px-3 py-3 align-middle">
                         {editingOrderId === order.idPedido ? (
                           <select
@@ -313,7 +282,7 @@ export default function LogisticAdminPedidosUi({
                           </p>
                         )}
                       </td>
-                      <td className="w-[140px] px-3 py-3 align-middle">
+                      <td className="w-[160px] px-3 py-3 align-middle">
                         {editingOrderId === order.idPedido ? (
                           <select
                             value={selectedStatuses[order.idPedido] ?? order.status}
@@ -333,17 +302,26 @@ export default function LogisticAdminPedidosUi({
                             ))}
                           </select>
                         ) : (
-                          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(order.status)}`}>{formatStatus(order.status)}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(order.status)}">
+                            {order.status === "revision" && (
+                              <span className="h-2 w-2 rounded-full bg-red-500" />
+                            )}
+                            {formatStatus(order.status)}
+                          </span>
                         )}
                       </td>
-                      <td className="w-[220px] px-3 py-3 align-middle">
-                        {order.status === "revision" && order.motivoRevision ? (
-                          <button type="button" onClick={() => openMotivo(order.idPedido)} className="text-sm font-medium text-blue-600 transition-colors hover:underline">
-                            Ver motivo
-                          </button>
-                        ) : (
-                          <span className="text-sm text-slate-400">—</span>
-                        )}
+                      <td className="w-[80px] px-3 py-3 text-center align-middle">
+                        <button
+                          type="button"
+                          onClick={() => openDetails(order.idPedido)}
+                          className="inline-flex items-center justify-center rounded-lg px-2 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                          title="Ver detalles"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                            <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
                       </td>
                       <td className="sticky right-0 bg-white z-10 w-[200px] px-3 py-3 align-middle shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
                         {editingOrderId === order.idPedido ? (
@@ -410,6 +388,82 @@ export default function LogisticAdminPedidosUi({
 
                 <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
                   <p className="whitespace-pre-wrap leading-6">{order.motivoRevision ?? "Sin motivo registrado."}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })()
+      ) : null}
+
+      {detailsOrderId !== null ? (
+        (() => {
+          const order = orders.find((item) => item.idPedido === detailsOrderId);
+          if (!order) return null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeDetails}>
+              <div ref={detailsDialogRef} role="dialog" aria-modal="true" aria-labelledby={`detalles-pedido-${order.idPedido}`} tabIndex={-1} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 id={`detalles-pedido-${order.idPedido}`} className="text-xl font-semibold text-slate-900">
+                      Detalles del pedido #{order.idPedido}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {order.cliente}
+                    </p>
+                  </div>
+                  <button type="button" onClick={closeDetails} className={adminButtonClass("cancel", "sm")}>
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 text-sm">
+                    <span className="font-medium text-slate-500">Fecha</span>
+                    <span className="text-slate-900">
+                      {order.updatedAt
+                        ? new Date(order.updatedAt).toLocaleDateString("es-AR", {
+                            timeZone: "America/Argentina/Buenos_Aires",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </span>
+
+                    <span className="font-medium text-slate-500">Hora</span>
+                    <span className="text-slate-900">
+                      {order.updatedAt
+                        ? new Date(order.updatedAt).toLocaleTimeString("es-AR", {
+                            timeZone: "America/Argentina/Buenos_Aires",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
+                        : "—"}
+                    </span>
+
+                    <span className="font-medium text-slate-500">Cliente</span>
+                    <span className="text-slate-900">{order.cliente}</span>
+
+                    <span className="font-medium text-slate-500">Dirección</span>
+                    <span className="text-slate-900">{order.direccion}</span>
+
+                    <span className="font-medium text-slate-500">Teléfono</span>
+                    <span className="text-slate-900">{order.telefono ?? "—"}</span>
+
+                    <span className="font-medium text-slate-500">Empresa</span>
+                    <span className="text-slate-900">{order.idVendedor ? vendorNames[order.idVendedor] ?? `Empresa #${order.idVendedor}` : "—"}</span>
+
+                    {order.status === "revision" && order.motivoRevision ? (
+                      <>
+                        <span className="font-medium text-slate-500">Motivo revisión</span>
+                        <span className="rounded-lg bg-violet-50 p-2 text-sm text-violet-900">
+                          {order.motivoRevision}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>
