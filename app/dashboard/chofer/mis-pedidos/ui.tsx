@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { pageSize } from "@/lib/shared/utils";
 import { buildQueryHref, type PedidoStatus } from "./utils";
 import * as actions from "@/lib/actions/chofer";
 
@@ -34,13 +35,23 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
   const [motivoPedidoId, setMotivoPedidoId] = useState<number | null>(null);
   const [revisionPendingId, setRevisionPendingId] = useState<number | null>(null);
   const [revisionReasons, setRevisionReasons] = useState<Record<number, string>>({});
+  const [detailsPedidoId, setDetailsPedidoId] = useState<number | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const detailsDialogRef = useRef<HTMLDivElement>(null);
+  const pageStart = pedidos.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const pageEnd = Math.min(totalFiltered, page * pageSize);
 
   useEffect(() => {
     if (motivoPedidoId !== null) {
       dialogRef.current?.focus();
     }
   }, [motivoPedidoId]);
+
+  useEffect(() => {
+    if (detailsPedidoId !== null) {
+      detailsDialogRef.current?.focus();
+    }
+  }, [detailsPedidoId]);
 
   async function handleCambiarEstado(idPedido: number, nuevoEstado: Pedido["estado"], motivoRevision?: string) {
     setError(null);
@@ -80,6 +91,14 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
 
   function closeMotivo() {
     setMotivoPedidoId(null);
+  }
+
+  function openDetails(pedidoId: number) {
+    setDetailsPedidoId(pedidoId);
+  }
+
+  function closeDetails() {
+    setDetailsPedidoId(null);
   }
 
   async function saveMotivoRevision() {
@@ -197,46 +216,40 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
       {error ? <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
       {pedidos.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed">
-            <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="w-[56px] px-4 py-3 text-left font-semibold text-gray-700">#</th>
-                <th className="w-[180px] px-4 py-3 text-left font-semibold text-gray-700">Cliente</th>
-                <th className="w-[220px] px-4 py-3 text-left font-semibold text-gray-700">Dirección</th>
-                <th className="w-[130px] px-4 py-3 text-left font-semibold text-gray-700">Teléfono</th>
-                <th className="w-[100px] px-4 py-3 text-center font-semibold text-gray-700">Zona</th>
-                <th className="w-[100px] px-4 py-3 text-center font-semibold text-gray-700">Bidones</th>
-                <th className="w-[120px] px-4 py-3 text-center font-semibold text-gray-700">Estado</th>
-                <th className="w-[130px] px-4 py-3 text-center font-semibold text-gray-700">Motivo</th>
-                <th className="w-[240px] px-4 py-3 text-center font-semibold text-gray-700">Acciones</th>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>Mostrando {pageStart}-{pageEnd} de {totalFiltered} pedidos</p>
+            <p>Página {page} de {totalPages}</p>
+          </div>
+          <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-3">Cliente / Dirección</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Zona</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Bidones</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Estado</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Detalles</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {pedidos.map((pedido, idx) => (
                 <Fragment key={pedido.idPedido}>
-                  <tr className="border-b border-gray-100 transition-colors hover:bg-gray-50">
-                  <td className="px-4 py-4 font-medium text-gray-900">{(page - 1) * 8 + idx + 1}</td>
-                  <td className="px-4 py-4 text-gray-900">
-                    <p className="truncate font-medium">{pedido.cliente}</p>
+                  <tr className="border-t border-slate-100 text-sm text-slate-700 hover:bg-slate-50/50">
+                  <td className="px-3 py-3.5">
+                    <p className="font-medium text-gray-900">{pedido.cliente}</p>
+                    <p className="mt-0.5 text-sm text-gray-500 line-clamp-2">{pedido.direccion}</p>
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    <p className="line-clamp-2">{pedido.direccion}</p>
-                  </td>
-                  <td className="px-4 py-4 text-gray-600">
-                    <a href={`tel:${pedido.telefono}`} className="text-blue-600 hover:underline">
-                      {pedido.telefono}
-                    </a>
-                  </td>
-                  <td className="px-4 py-4 text-center text-sm text-gray-700">{pedido.zona}</td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="px-3 py-3.5 text-center text-sm text-gray-700 whitespace-nowrap">{pedido.zona}</td>
+                  <td className="px-3 py-3.5 text-center whitespace-nowrap">
                     <span className="inline-block rounded-full bg-orange-100 px-3 py-1 text-sm font-medium text-orange-800">
                       {pedido.cantBidones}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="px-3 py-3.5 text-center whitespace-nowrap">
                     <span
-                      className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
                         pedido.estado === "ready"
                           ? "bg-blue-100 text-blue-800"
                           : pedido.estado === "en_camino"
@@ -248,6 +261,9 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                           : "bg-red-100 text-red-800"
                       }`}
                     >
+                      {pedido.estado === "revision" && (
+                        <span className="h-2 w-2 rounded-full bg-red-500" />
+                      )}
                       {pedido.estado === "ready"
                         ? "Listo"
                         : pedido.estado === "en_camino"
@@ -259,20 +275,17 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                         : pedido.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-center align-middle">
-                    {pedido.estado === "revision" && pedido.motivoRevision ? (
-                      <button
-                        type="button"
-                        onClick={() => openMotivo(pedido.idPedido)}
-                        className="text-sm font-medium text-blue-600 transition-colors hover:underline"
-                      >
-                        Ver motivo
-                      </button>
-                    ) : (
-                      <span className="text-sm text-slate-400">—</span>
-                    )}
+                  <td className="px-3 py-3.5 text-center align-middle whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => openDetails(pedido.idPedido)}
+                      className="inline-flex items-center justify-center rounded-lg px-2 py-1.5 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                      title="Ver detalles"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
                   </td>
-                  <td className="px-4 py-4 text-center align-middle">
+                  <td className="px-3 py-3.5 text-center align-middle whitespace-nowrap">
                     {pedido.estado === "ready" && (
                       <button
                         type="button"
@@ -318,8 +331,8 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                   </td>
                   </tr>
                 {revisionPendingId === pedido.idPedido ? (
-                  <tr className="border-b border-gray-100 bg-violet-50/40">
-                    <td colSpan={9} className="px-4 py-4">
+                  <tr className="border-t border-slate-100 bg-violet-50/40">
+                    <td colSpan={6} className="px-3 py-3.5">
                       <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                         <label className="space-y-2">
                                 <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
@@ -365,10 +378,22 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
               ))}
             </tbody>
           </table>
+          </div>
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-500">Resultados filtrados: {totalFiltered}</p>
+            <div className="flex items-center gap-2">
+              <Link href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, statusFilter, page)} aria-disabled={page <= 1} className={`${page <= 1 ? "pointer-events-none opacity-60" : ""} rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50`}>
+                Anterior
+              </Link>
+              <Link href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, statusFilter, page)} aria-disabled={page >= totalPages} className={`${page >= totalPages ? "pointer-events-none opacity-60" : ""} rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50`}>
+                Siguiente
+              </Link>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="rounded-lg bg-gray-50 py-12 text-center">
-          <p className="text-lg text-gray-600">Todavía no tenés pedidos para mostrar</p>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
+          <p className="text-center">Todavía no tenés pedidos para mostrar</p>
         </div>
       )}
 
@@ -443,31 +468,63 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
         })()
       ) : null}
 
-      <div className="mt-6 flex items-center justify-between gap-4">
-        <p className="text-sm text-gray-600">
-          Página {page} de {totalPages}
-        </p>
-        <div className="flex gap-2">
-          <Link
-            href={buildQueryHref({ page: Math.max(1, page - 1) }, searchQuery, statusFilter, page)}
-            aria-disabled={page <= 1}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-              page <= 1 ? "pointer-events-none border-slate-200 bg-slate-100 text-slate-400" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            Anterior
-          </Link>
-          <Link
-            href={buildQueryHref({ page: Math.min(totalPages, page + 1) }, searchQuery, statusFilter, page)}
-            aria-disabled={page >= totalPages}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-              page >= totalPages ? "pointer-events-none border-slate-200 bg-slate-100 text-slate-400" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            Siguiente
-          </Link>
-        </div>
-      </div>
+      {detailsPedidoId !== null ? (
+        (() => {
+          const pedido = pedidos.find((item) => item.idPedido === detailsPedidoId);
+          if (!pedido) return null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeDetails}>
+              <div ref={detailsDialogRef} role="dialog" aria-modal="true" aria-labelledby={`detalles-pedido-${pedido.idPedido}`} tabIndex={-1} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 id={`detalles-pedido-${pedido.idPedido}`} className="text-xl font-semibold text-slate-900">
+                      Detalles del pedido #{pedido.idPedido}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {pedido.cliente}
+                    </p>
+                  </div>
+                  <button type="button" onClick={closeDetails} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200">
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 text-sm">
+                    <span className="font-medium text-slate-500">Dirección</span>
+                    <span className="text-slate-900">{pedido.direccion}</span>
+
+                    <span className="font-medium text-slate-500">Teléfono</span>
+                    <span className="text-slate-900">
+                      {pedido.telefono}
+                    </span>
+
+                    <span className="font-medium text-slate-500">Zona</span>
+                    <span className="text-slate-900">{pedido.zona}</span>
+
+                    <span className="font-medium text-slate-500">Bidones</span>
+                    <span className="text-slate-900">{pedido.cantBidones}</span>
+
+                    <span className="font-medium text-slate-500">Estado</span>
+                    <span className="text-slate-900 capitalize">{pedido.estado === "ready" ? "Listo" : pedido.estado === "en_camino" ? "En camino" : pedido.estado === "revision" ? "Revisión" : pedido.estado === "cancelado" ? "Cancelado" : pedido.estado}</span>
+
+                    {pedido.estado === "revision" && pedido.motivoRevision ? (
+                      <>
+                        <span className="font-medium text-slate-500">Motivo revisión</span>
+                        <span className="rounded-lg bg-violet-50 p-2 text-sm text-violet-900">
+                          {pedido.motivoRevision}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()
+      ) : null}
+
     </div>
   );
 }

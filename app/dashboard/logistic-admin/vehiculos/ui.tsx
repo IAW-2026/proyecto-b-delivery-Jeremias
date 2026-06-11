@@ -243,23 +243,24 @@ export default function VehiculosManager({
               Página {page} de {totalPages}
             </p>
           </div>
-          <table className="w-full table-fixed">
+          <div className="overflow-x-auto">
+          <table className="w-full">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="w-[130px] px-3 py-3">Patente</th>
-                <th className="w-[140px] px-3 py-3">Tipo</th>
-                <th className="w-[110px] px-3 py-3">Estado</th>
-                <th className="w-[150px] px-3 py-3">Chofer</th>
-                <th className="w-[100px] px-3 py-3">Capacidad</th>
-                <th className="w-[130px] px-3 py-3">Pausa</th>
-                <th className="w-[200px] px-3 py-3 text-center"></th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Patente</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Tipo</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Estado</th>
+                <th className="px-3 py-3">Chofer</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Capacidad</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Pausa</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap"></th>
               </tr>
             </thead>
             <tbody>
               {vehiculos.map((vehiculo) => (
                 <Fragment key={vehiculo.idVehiculo}>
                   <tr className="border-t border-slate-100 align-top text-sm text-slate-700">
-                    <td className="px-3 py-4">
+                    <td className="px-3 py-4 text-center">
                       {editingId === vehiculo.idVehiculo ? (
                         <input
                           value={editForm.patente}
@@ -272,7 +273,7 @@ export default function VehiculosManager({
                         <p className="font-medium text-slate-900">{vehiculo.patente}</p>
                       )}
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="px-3 py-4 text-center">
                       {editingId === vehiculo.idVehiculo ? (
                         <select
                           value={editForm.tipo}
@@ -291,7 +292,7 @@ export default function VehiculosManager({
                         <p className="font-medium text-slate-900">{vehiculo.tipo}</p>
                       )}
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="px-3 py-4 text-center">
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${vehiculo.estado === "pausado" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
                         {vehiculo.estado === "pausado" ? "Pausado" : "Activo"}
                       </span>
@@ -299,7 +300,7 @@ export default function VehiculosManager({
                     <td className="px-3 py-4">
                       <p className="truncate font-medium text-slate-900">{vehiculo.assignedToChoferName ?? "Sin asignar"}</p>
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="px-3 py-4 text-center">
                       {editingId === vehiculo.idVehiculo ? (
                         <input
                           type="number"
@@ -314,7 +315,7 @@ export default function VehiculosManager({
                         <p className="font-medium text-slate-900">{vehiculo.capacidadBidones} bidones</p>
                       )}
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="px-3 py-4 text-center">
                       {vehiculo.estado === "pausado" ? (
                         <div className="space-y-2">
                           <button type="button" onClick={() => openDetails(vehiculo)} className="text-left text-xs font-medium text-sky-600 hover:text-sky-700">
@@ -388,6 +389,7 @@ export default function VehiculosManager({
               ))}
             </tbody>
           </table>
+          </div>
 
           {detailsVehicleId !== null ? (
             (() => {

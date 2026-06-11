@@ -159,23 +159,24 @@ export default function ZonasManager({
               Página {page} de {totalPages}
             </p>
           </div>
-          <table className="w-full table-fixed">
+          <div className="overflow-x-auto">
+          <table className="w-full">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="w-[200px] px-4 py-3">Barrio</th>
-                {vendorNames ? <th className="w-[150px] px-4 py-3">Empresa</th> : null}
-                <th className="w-[120px] px-4 py-3">Pedidos</th>
-                <th className="w-[150px] px-4 py-3">Bidones solicitados</th>
-                <th className="w-[150px] px-4 py-3">Choferes asignados</th>
-                <th className="w-[240px] px-4 py-3 text-center">Acciones</th>
+                <th className="px-3 py-3">Barrio</th>
+                {vendorNames ? <th className="px-3 py-3">Empresa</th> : null}
+                <th className="px-3 py-3 text-center whitespace-nowrap">Pedidos</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Bidones</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Choferes</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {zonas.map((zona) => (
                 <Fragment key={zona.idZona}>
-                  <tr className="border-t border-slate-100 align-top text-sm text-slate-700">
-                    <td className="px-4 py-4">
-                      {editingZonaId === zona.idZona ? (
+                    <tr className="border-t border-slate-100 align-top text-sm text-slate-700">
+                      <td className="px-3 py-3.5">
+                        {editingZonaId === zona.idZona ? (
                         <input
                           value={editForm.nombre}
                           onChange={(event) => setEditForm({ nombre: event.target.value })}
@@ -190,20 +191,20 @@ export default function ZonasManager({
                       )}
                     </td>
                     {vendorNames ? (
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-3.5">
                         <p className="text-sm text-slate-700">{vendorNames[zona.idVendedor] ?? `Empresa #${zona.idVendedor}`}</p>
                       </td>
                     ) : null}
-                    <td className="px-4 py-4">
-                      <p className="font-medium text-slate-900">{zona.pedidosTotales}</p>
+                    <td className="px-3 py-3.5 text-center">
+                      <p className="font-medium text-slate-900 whitespace-nowrap">{zona.pedidosTotales}</p>
                     </td>
-                    <td className="px-4 py-4">
-                      <p className="font-medium text-slate-900">{zona.bidonesTotales}</p>
+                    <td className="px-3 py-3.5 text-center">
+                      <p className="font-medium text-slate-900 whitespace-nowrap">{zona.bidonesTotales}</p>
                     </td>
-                    <td className="px-4 py-4">
-                      <p className="font-medium text-slate-900">{zona.choferesAsignados}</p>
+                    <td className="px-3 py-3.5 text-center">
+                      <p className="font-medium text-slate-900 whitespace-nowrap">{zona.choferesAsignados}</p>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-3.5 text-center">
                       <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
                         {editingZonaId === zona.idZona ? (
                           <>
@@ -235,7 +236,7 @@ export default function ZonasManager({
                   </tr>
                   {editingZonaId === zona.idZona ? (
                     <tr className="border-t border-slate-100 bg-slate-50/60">
-                      <td colSpan={vendorNames ? 6 : 5} className="px-4 py-4">
+                      <td colSpan={vendorNames ? 6 : 5} className="px-3 py-3.5">
                         <p className="text-xs text-slate-500">Renombrá el barrio y guardá los cambios desde la misma fila.</p>
                       </td>
                     </tr>
@@ -244,6 +245,7 @@ export default function ZonasManager({
               ))}
             </tbody>
           </table>
+          </div>
           <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredZonas}</p>
             <div className="flex items-center gap-2">

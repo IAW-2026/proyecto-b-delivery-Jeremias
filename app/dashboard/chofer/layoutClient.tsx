@@ -7,11 +7,13 @@ import { choferNavigationItems } from "./navigation";
 export default function ChoferLayoutClient({
   children,
   displayName,
+  choferEstado,
 }: {
   children: React.ReactNode;
   displayName: string | null;
+  choferEstado: string | null;
 }) {
-  const [canSeeOperationalPages, setCanSeeOperationalPages] = useState(false);
+  const [canSeeOperationalPages, setCanSeeOperationalPages] = useState(choferEstado === "activo");
 
   useEffect(() => {
     let cancelled = false;

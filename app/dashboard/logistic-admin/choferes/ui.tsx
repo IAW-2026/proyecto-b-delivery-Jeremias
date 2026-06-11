@@ -241,15 +241,16 @@ export default function ChoferesManager({
               Página {page} de {totalPages}
             </p>
           </div>
-          <table className="w-full table-fixed">
+          <div className="overflow-x-auto">
+          <table className="w-full">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="w-[190px] px-3 py-3">Chofer</th>
-                <th className="w-[120px] px-3 py-3">Estado</th>
-                <th className="w-[130px] px-3 py-3">Empresa</th>
-                <th className="w-[140px] px-3 py-3">Zona</th>
-                <th className="w-[170px] px-3 py-3">Vehículo</th>
-                <th className="w-[230px] px-3 py-3 text-center">Acciones</th>
+                <th className="px-3 py-3">Chofer</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Estado</th>
+                <th className="px-3 py-3">Empresa</th>
+                <th className="px-3 py-3">Zona</th>
+                <th className="px-3 py-3">Vehículo</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -259,7 +260,7 @@ export default function ChoferesManager({
                     <p className="truncate font-medium text-slate-900">{chofer.nombre}</p>
                     <p className="text-xs text-slate-500">Tel: {chofer.telefono ?? "Sin teléfono"}</p>
                   </td>
-                  <td className="px-3 py-4">
+                  <td className="px-3 py-4 text-center">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
                       {formatEstado(chofer.estado)}
                     </span>
@@ -310,7 +311,7 @@ export default function ChoferesManager({
                       </p>
                     )}
                   </td>
-                  <td className="px-3 py-4">
+                  <td className="px-3 py-4 text-center">
                     <div className="flex flex-wrap justify-center gap-2">
                       {editingChoferId === chofer.idChofer ? (
                         <>
@@ -349,6 +350,7 @@ export default function ChoferesManager({
               ))}
             </tbody>
           </table>
+          </div>
           <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredChoferes}</p>
             <div className="flex items-center gap-2">

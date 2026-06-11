@@ -98,17 +98,17 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                <th className="px-5 py-4 font-medium">Usuario</th>
-                <th className="px-5 py-4 font-medium">Rol</th>
-                <th className="px-5 py-4 font-medium">Empresa</th>
-                <th className="px-5 py-4 font-medium">Estado</th>
-                <th className="px-5 py-4 font-medium">Acciones</th>
+                <th className="px-3 py-3 font-medium">Usuario</th>
+                <th className="px-3 py-3 font-medium text-center whitespace-nowrap">Rol</th>
+                <th className="px-3 py-3 font-medium">Empresa</th>
+                <th className="px-3 py-3 font-medium text-center whitespace-nowrap">Estado</th>
+                <th className="px-3 py-3 font-medium text-center whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
               {filteredUsers.length === 0 ? (
                 <tr>
-                    <td className="px-5 py-10 text-center text-slate-500" colSpan={5}>
+                    <td className="px-3 py-10 text-center text-slate-500" colSpan={5}>
                     No encontramos usuarios con ese filtro.
                   </td>
                 </tr>
@@ -121,7 +121,7 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
 
                   return (
                     <tr key={user.clerkUserId} className="align-top transition-colors hover:bg-slate-50/50">
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-3.5">
                         <div className="flex flex-col gap-1">
                           <p className="font-semibold text-slate-900">
                             {showRegisteredName ? user.fullName : <span className="font-normal italic text-slate-400">Usuario sin registrar</span>}
@@ -131,7 +131,7 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
                           </p>
                         </div>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-3.5 text-center">
                         {isEditingRole ? (
                           <select
                             value={normalizeStoredRole(roleDrafts[user.clerkUserId] ?? "delivery")}
@@ -151,7 +151,7 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-3.5">
                         {isEditingRole ? (
                           <select
                             value={vendorDrafts[user.clerkUserId] ?? 0}
@@ -175,10 +175,10 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-2">
+                      <td className="px-3 py-3.5 text-center">
+                        <div className="flex flex-col items-center gap-2">
                           <span
-                            className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium ${
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
                               user.isBlocked ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"
                             }`}
                           >
@@ -187,8 +187,8 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
                           {user.isBlocked && user.blockedReason ? <span className="text-xs text-red-600">Motivo: {user.blockedReason}</span> : null}
                         </div>
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-2">
+                      <td className="px-3 py-3.5 text-center">
+                        <div className="flex flex-col items-center gap-2">
                           {isEditingRole ? (
                             <div className="flex flex-nowrap gap-2 whitespace-nowrap">
                               <button

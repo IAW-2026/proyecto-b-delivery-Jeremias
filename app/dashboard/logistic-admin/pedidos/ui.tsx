@@ -224,16 +224,16 @@ export default function LogisticAdminPedidosUi({
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
+            <table className="w-full">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="w-[80px] px-3 py-3">Pedido</th>
-                  <th className="w-[100px] px-3 py-3">Zona</th>
-                  <th className="w-[80px] px-3 py-3">Bidones</th>
-                  <th className="w-[160px] px-3 py-3">Chofer</th>
-                  <th className="w-[160px] px-3 py-3">Estado</th>
-                  <th className="w-[80px] px-3 py-3 text-center">Detalles</th>
-                  <th className="sticky right-0 bg-slate-50 z-10 w-[200px] px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]"></th>
+                  <th className="px-3 py-3 text-center whitespace-nowrap">Pedido</th>
+                  <th className="px-3 py-3 text-center whitespace-nowrap">Zona</th>
+                  <th className="px-3 py-3 text-center whitespace-nowrap">Bidones</th>
+                  <th className="px-3 py-3">Chofer</th>
+                  <th className="px-3 py-3 text-center whitespace-nowrap">Estado</th>
+                  <th className="px-3 py-3 text-center whitespace-nowrap">Detalles</th>
+                  <th className="sticky right-0 bg-slate-50 z-10 px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]"></th>
                 </tr>
               </thead>
               <tbody>
@@ -244,11 +244,11 @@ export default function LogisticAdminPedidosUi({
 
                   return (
                     <tr key={order.idPedido} className="border-t border-slate-100 text-sm text-slate-700">
-                      <td className="w-[80px] px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
+                      <td className="px-3 py-3 font-medium whitespace-nowrap">#{order.idPedido}</td>
 
-                      <td className="w-[100px] px-3 py-3 truncate">{order.zona}</td>
-                      <td className="w-[80px] px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
-                      <td className="w-[160px] px-3 py-3 align-middle">
+                      <td className="px-3 py-3 whitespace-nowrap">{order.zona}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">{order.cantBidones}</td>
+                      <td className="px-3 py-3 align-middle">
                         {editingOrderId === order.idPedido ? (
                           <select
                             value={choferSelection[order.idPedido] ?? ""}
@@ -282,7 +282,7 @@ export default function LogisticAdminPedidosUi({
                           </p>
                         )}
                       </td>
-                      <td className="w-[160px] px-3 py-3 align-middle">
+                      <td className="px-3 py-3 align-middle">
                         {editingOrderId === order.idPedido ? (
                           <select
                             value={selectedStatuses[order.idPedido] ?? order.status}
@@ -310,7 +310,7 @@ export default function LogisticAdminPedidosUi({
                           </span>
                         )}
                       </td>
-                      <td className="w-[80px] px-3 py-3 text-center align-middle">
+                      <td className="px-3 py-3 text-center align-middle whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openDetails(order.idPedido)}
@@ -323,7 +323,7 @@ export default function LogisticAdminPedidosUi({
                           </svg>
                         </button>
                       </td>
-                      <td className="sticky right-0 bg-white z-10 w-[200px] px-3 py-3 align-middle shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                      <td className="sticky right-0 bg-white z-10 px-3 py-3 align-middle shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
                         {editingOrderId === order.idPedido ? (
                           <div className="flex flex-nowrap gap-2 whitespace-nowrap">
                             <button type="button" onClick={() => saveEdit(order)} disabled={busyId === order.idPedido} className={adminButtonClass("save", "sm")}>

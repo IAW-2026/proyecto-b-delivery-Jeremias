@@ -1,148 +1,18 @@
-"use client";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { getChoferStatus } from "@/lib/choferStatus";
+import MiZonaUI from "./ui";
 
-import { useEffect, useState } from "react";
+export default async function MiZonaPage() {
+  const { userId } = await auth();
+  if (!userId) redirect("/signin");
 
-type ChoferStatusResponse = {
-  chofer: {
-    idZona: number;
-    zona: string;
-    estado: string;
-  };
-  cantidadPedidos: number;
-};
-
-export default function MiZonaPage() {
-  const [data, setData] = useState<ChoferStatusResponse | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadStatus() {
-      const response = await fetch("/api/chofer/status", { cache: "no-store" });
-      if (!response.ok) return;
-
-      const payload = (await response.json()) as ChoferStatusResponse;
-      if (!cancelled) setData(payload);
-    }
-
-    void loadStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const fechaFormato = new Date().toLocaleDateString("es-AR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  const data = await getChoferStatus(userId);
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2" style={{ color: "#00AEEF" }}>
-          <span aria-hidden="true">🗺️</span> Zona
-        </h1>
-        <p className="text-gray-600">Información de la zona asignada para hoy</p>
-      </div>
-
-      {/* Zona Principal Card */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-8 mb-6 border-l-4 border-purple-500">
-        <div className="text-center">
-          <p className="text-gray-600 text-sm font-medium mb-2">Zona Asignada</p>
-          <h2 className="text-5xl font-bold text-purple-600 mb-2">
-            {data?.chofer.zona ?? "Sin zona asignada"}
-          </h2>
-          <p className="text-gray-600">Zona para entrega hoy</p>
-        </div>
-      </div>
-
-      {/* Información de la Zona */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-
-        {/* Pedidos en Zona */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl" aria-hidden="true">📦</span>
-            <h3 className="font-semibold text-gray-900">Pedidos</h3>
-          </div>
-          <p className="text-2xl font-bold text-green-600">{data?.cantidadPedidos ?? 0}</p>
-          <p className="text-xs text-gray-600 mt-2">Pedidos pendientes</p>
-        </div>
-      </div>
-
-      {/* Estado */}
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Estado</h3>
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <p className="text-sm text-gray-600 mb-2">Estado</p>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <p className="text-lg font-semibold text-green-600 capitalize">
-                {data?.chofer.estado ?? "sin estado"}
-              </p>
-            </div>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm text-gray-600 mb-2">Fecha</p>
-            <p className="text-lg font-semibold">
-              <span suppressHydrationWarning>{fechaFormato}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Detalles de Localización */}
-      <div className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-500 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span>📍</span> Detalles de Localización
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Zona ID</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {data?.chofer.idZona ?? "-"}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Estado</p>
-            <p className="text-lg font-semibold text-gray-900 capitalize">
-              {data?.chofer.estado ?? "-"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Mapa (Placeholder) */}
-      <div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center border border-gray-300 mb-6">
-        <div className="text-center">
-          <p className="text-2xl mb-2" aria-hidden="true">🗺️</p>
-          <p className="text-gray-600 font-medium">Mapa de la zona</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Próxima actualización: integración con Google Maps
-          </p>
-        </div>
-      </div>
-
-      {/* Tips */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <p className="text-sm text-green-800">
-          <span className="font-semibold">💡 Consejo:</span> Verifica los
-          datos de tu zona antes de comenzar las entregas. Asegúrate de tener
-          suficientes bidones en el vehículo.
-        </p>
-      </div>
-
-      {/* Nota de mock data */}
-      <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p className="text-sm text-yellow-800">
-          <span className="font-semibold">ℹ️ Nota:</span> Los datos mostrados
-          ahora provienen del estado compartido de pedidos asignados.
-        </p>
-      </div>
-    </div>
+    <MiZonaUI
+      chofer={data.chofer}
+      cantidadPedidos={data.cantidadPedidos}
+    />
   );
 }

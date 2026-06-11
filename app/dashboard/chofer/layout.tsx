@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { getLocalDisplayName } from "@/lib/localDisplayName";
 import ChoferLayoutClient from "./layoutClient";
 
@@ -13,7 +14,15 @@ export default async function ChoferLayout({
     redirect("/signin");
   }
 
-  const displayName = await getLocalDisplayName(userId);
+  const [displayName, chofer] = await Promise.all([
+    getLocalDisplayName(userId),
+    prisma.chofer.findUnique({
+      where: { clerkUserId: userId },
+      select: { estado: true },
+    }),
+  ]);
 
-  return <ChoferLayoutClient displayName={displayName}>{children}</ChoferLayoutClient>;
+  const choferEstado = chofer?.estado ?? null;
+
+  return <ChoferLayoutClient displayName={displayName} choferEstado={choferEstado}>{children}</ChoferLayoutClient>;
 }
