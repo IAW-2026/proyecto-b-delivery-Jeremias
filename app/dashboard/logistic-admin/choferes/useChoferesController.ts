@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { LogisticAdminViewData } from "../data";
 import { pageSize } from "@/lib/shared/utils";
-import { type ChoferesFilterState, type SearchBy, type SearchParamsInput, parseChoferesFilters } from "./utils";
+import { type ChoferesFilterState, type SearchParamsInput, parseChoferesFilters } from "./utils";
 import * as actions from "@/lib/actions/logistic-admin";
 
 type Chofer = LogisticAdminViewData["choferes"][number];
@@ -31,7 +31,6 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
   const filterState: ChoferesFilterState = parseChoferesFilters(searchParams);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [editingChoferId, setEditingChoferId] = useState<number | null>(null);
-  const [selectedSearchBy, setSelectedSearchBy] = useState<SearchBy>(filterState.searchBy);
   const [requests, setRequests] = useState<ChoferRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
@@ -196,8 +195,6 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
   return {
     basePath,
     filterState,
-    selectedSearchBy,
-    setSelectedSearchBy,
     savingId,
     editingChoferId,
     requests,

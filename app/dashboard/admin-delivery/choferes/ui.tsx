@@ -2,7 +2,7 @@
 
 import LogisticAdminChoferesUi from "../../logistic-admin/choferes/ui";
 import type { LogisticAdminViewData } from "../../logistic-admin/data";
-import type { ChoferStatus, SearchBy } from "./utils";
+import type { ChoferStatus } from "./utils";
 
 type Zona = LogisticAdminViewData["zonasCatalogo"][number];
 type Vehiculo = LogisticAdminViewData["vehiculos"][number];
@@ -13,7 +13,6 @@ type Props = {
   zonas: Zona[];
   vehiculos: Vehiculo[];
   searchQuery: string;
-  searchBy: SearchBy;
   statusFilter: "todos" | ChoferStatus;
   page: number;
   totalPages: number;

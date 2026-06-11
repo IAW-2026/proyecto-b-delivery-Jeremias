@@ -3,13 +3,12 @@
 import { Fragment, useEffect, useRef } from "react";
 import Link from "next/link";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
-import { buildVehiculosQueryHref, searchOptions, statusOptions, type SearchBy, type Vehiculo, type VehiculoStatus } from "./utils";
+import { buildVehiculosQueryHref, statusOptions, type Vehiculo, type VehiculoStatus } from "./utils";
 import { useVehiculosController } from "./useVehiculosController";
 
 type Props = {
   vehiculos: Vehiculo[];
   searchQuery: string;
-  searchBy: SearchBy;
   statusFilter: "todos" | VehiculoStatus;
   page: number;
   totalPages: number;
@@ -24,7 +23,6 @@ type Props = {
 export default function VehiculosManager({
   vehiculos,
   searchQuery,
-  searchBy,
   statusFilter,
   page,
   totalPages,
@@ -32,12 +30,11 @@ export default function VehiculosManager({
   totalVehiculos,
   activosCount,
   pausadosCount,
-  basePath = "/dashboard/logistic-admin",
-  vendorNames,
+  basePath = "/dashboard/logistic-admin"
 }: Props) {
   const controller = useVehiculosController({
     vehiculos,
-    searchParams: { query: searchQuery, searchBy, status: statusFilter, page: String(page) },
+    searchParams: { query: searchQuery, status: statusFilter, page: String(page) },
     page,
     totalFilteredVehiculos,
     basePath,
@@ -47,8 +44,6 @@ export default function VehiculosManager({
 
   const {
     filterState,
-    selectedSearchBy,
-    setSelectedSearchBy,
     addForm,
     setAddForm,
     editForm,
@@ -88,8 +83,6 @@ export default function VehiculosManager({
     }
   }, [detailsVehicleId]);
 
-  const searchPlaceholder = searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar vehículos";
-
   return (
     <div className={`mx-auto max-w-7xl p-4 text-slate-800 md:p-6 ${adminPageShell}`}>
       <header className={adminHeaderClass}>
@@ -122,7 +115,7 @@ export default function VehiculosManager({
         <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-800">Buscar vehículos</p>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Elegí el criterio de búsqueda, escribí el valor y después aplicá un filtro rápido si hace falta.</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Buscá por patente, tipo o empresa. Después aplicá un filtro rápido si hace falta.</p>
           </div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Filtros rápidos</p>
         </div>
@@ -139,60 +132,37 @@ export default function VehiculosManager({
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <input type="hidden" name="page" value="1" />
-            <input type="hidden" name="searchBy" value={selectedSearchBy} />
             {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
             <label className="sr-only" htmlFor="vehiculos-search">
               Buscar vehículos
             </label>
 
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</p>
-                <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 sm:max-w-xs">
-                  {searchOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedSearchBy(option.value)}
-                      aria-pressed={selectedSearchBy === option.value}
-                      className={`rounded-xl px-3 py-2 text-center text-sm font-medium transition-all ${
-                        selectedSearchBy === option.value ? "bg-white text-blue-700 shadow-sm ring-1 ring-blue-200" : "text-slate-600 hover:bg-white hover:text-slate-900"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                <input
-                  id="vehiculos-search"
-                  name="query"
-                  defaultValue={searchQuery}
-                  placeholder={searchPlaceholder}
-                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                />
-                <button type="submit" className={adminButtonClass("edit", "sm")}>
-                  Buscar
-                </button>
-              </div>
-
-              {searchQuery ? (
-                <Link
-                  href={buildVehiculosQueryHref({ query: "", page: 1 }, filterState, basePath)}
-                  className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  Limpiar búsqueda
-                </Link>
-              ) : null}
+            <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+              <input
+                id="vehiculos-search"
+                name="query"
+                defaultValue={searchQuery}
+                placeholder="Buscar vehículos (patente, tipo, empresa)"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>
+                Buscar
+              </button>
             </div>
+
+            {searchQuery ? (
+              <Link
+                href={buildVehiculosQueryHref({ query: "", page: 1 }, filterState, basePath)}
+                className="mt-3 inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                Limpiar búsqueda
+              </Link>
+            ) : null}
           </form>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <form action={`${basePath}/vehiculos`} method="get" className="space-y-3">
               <input type="hidden" name="query" value={searchQuery} />
-              <input type="hidden" name="searchBy" value={selectedSearchBy} />
               <input type="hidden" name="page" value="1" />
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Filtrar por</span>
@@ -279,7 +249,6 @@ export default function VehiculosManager({
                 <th className="w-[130px] px-3 py-3">Patente</th>
                 <th className="w-[140px] px-3 py-3">Tipo</th>
                 <th className="w-[110px] px-3 py-3">Estado</th>
-                <th className="w-[120px] px-3 py-3">Empresa</th>
                 <th className="w-[150px] px-3 py-3">Chofer</th>
                 <th className="w-[100px] px-3 py-3">Capacidad</th>
                 <th className="w-[130px] px-3 py-3">Pausa</th>
@@ -326,9 +295,6 @@ export default function VehiculosManager({
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${vehiculo.estado === "pausado" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
                         {vehiculo.estado === "pausado" ? "Pausado" : "Activo"}
                       </span>
-                    </td>
-                    <td className="px-3 py-4 text-slate-600">
-                      {vendorNames[vehiculo.idVendedor] ?? `Empresa #${vehiculo.idVendedor}`}
                     </td>
                     <td className="px-3 py-4">
                       <p className="truncate font-medium text-slate-900">{vehiculo.assignedToChoferName ?? "Sin asignar"}</p>

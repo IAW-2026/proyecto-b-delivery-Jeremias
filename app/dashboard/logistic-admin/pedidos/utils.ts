@@ -5,10 +5,6 @@ export function statusNeedsChofer(status: OrderStatus) {
   return status === "en_camino" || status === "entregado";
 }
 
-export const searchOptions = ["cliente", "calle", "chofer", "zona", "empresa"] as const;
-
-export type SearchBy = (typeof searchOptions)[number];
-
 export const statusOptions: Array<{ value: OrderStatus; label: string }> = [
   { value: "ready", label: "Listo" },
   { value: "en_camino", label: "En camino" },
@@ -19,9 +15,7 @@ export const statusOptions: Array<{ value: OrderStatus; label: string }> = [
 
 export type SearchParamsInput = {
   query?: string | string[];
-  searchBy?: string | string[];
   quickFilter?: string | string[];
-  chofer?: string | string[];
   assign?: string | string[];
   status?: string | string[];
   page?: string | string[];
@@ -29,7 +23,6 @@ export type SearchParamsInput = {
 
 export type PedidosFilterState = {
   searchQuery: string;
-  searchBy: SearchBy;
   statusFilter: "todos" | OrderStatus;
   assignmentFilter: "todos" | "sin_asignar";
   requestedPage: number;
@@ -39,20 +32,12 @@ export function isOrderStatus(value: string | undefined): value is OrderStatus {
   return typeof value === "string" && statusOptions.some((option) => option.value === value);
 }
 
-export function isSearchBy(value: string | undefined): value is SearchBy {
-  return typeof value === "string" && searchOptions.includes(value as SearchBy);
-}
-
 export function parsePedidosFilters(query: SearchParamsInput): PedidosFilterState {
-  const searchValueFromQuery = Array.isArray(query.query) ? query.query[0] : query.query ?? "";
-  const legacyChoferValue = Array.isArray(query.chofer) ? query.chofer[0] : query.chofer ?? "";
-  const searchByValue = Array.isArray(query.searchBy) ? query.searchBy[0] : query.searchBy;
+  const searchValue = Array.isArray(query.query) ? query.query[0] : query.query ?? "";
   const quickFilterValue = Array.isArray(query.quickFilter) ? query.quickFilter[0] : query.quickFilter;
   const assignValue = Array.isArray(query.assign) ? query.assign[0] : query.assign;
   const statusValue = Array.isArray(query.status) ? query.status[0] : query.status;
 
-  const searchBy: SearchBy = isSearchBy(searchByValue) ? searchByValue : legacyChoferValue ? "chofer" : "cliente";
-  const searchQuery = searchValueFromQuery || (legacyChoferValue && searchBy === "chofer" ? legacyChoferValue : "");
   const statusFilter: "todos" | OrderStatus =
     quickFilterValue === "sin_asignar"
       ? "todos"
@@ -66,8 +51,7 @@ export function parsePedidosFilters(query: SearchParamsInput): PedidosFilterStat
   const assignmentFilter: "todos" | "sin_asignar" = quickFilterValue === "sin_asignar" || assignValue === "sin_asignar" ? "sin_asignar" : "todos";
 
   return {
-    searchQuery,
-    searchBy,
+    searchQuery: searchValue,
     statusFilter,
     assignmentFilter,
     requestedPage: parsePage(query.page),
@@ -77,7 +61,6 @@ export function parsePedidosFilters(query: SearchParamsInput): PedidosFilterStat
 export function filterOrders(
   orders: LogisticOrder[],
   searchQuery: string,
-  searchBy: SearchBy,
   statusFilter: "todos" | OrderStatus,
   assignmentFilter: "todos" | "sin_asignar",
   vendorNames?: Record<number, string>
@@ -94,16 +77,15 @@ export function filterOrders(
     }
 
     if (normalizedQuery) {
-      const haystackByField = {
-        cliente: order.cliente,
-        calle: order.direccion,
-        chofer: order.assignedToChoferName ?? "",
-        zona: order.zona,
-        empresa: order.idVendedor ? vendorNames?.[order.idVendedor] ?? "" : "",
-      } as const;
+      const haystacks = [
+        order.cliente,
+        order.direccion,
+        order.assignedToChoferName ?? "",
+        order.zona,
+        order.idVendedor ? vendorNames?.[order.idVendedor] ?? "" : "",
+      ].map((s) => normalizeSearchValue(s));
 
-      const haystack = normalizeSearchValue(haystackByField[searchBy]);
-      if (!haystack.includes(normalizedQuery)) {
+      if (!haystacks.some((h) => h.includes(normalizedQuery))) {
         return false;
       }
     }
@@ -113,23 +95,18 @@ export function filterOrders(
 }
 
 export function buildPedidosQueryHref(
-  nextValues: { query?: string; searchBy?: SearchBy; assign?: "todos" | "sin_asignar"; status?: "todos" | OrderStatus; page?: number },
+  nextValues: { query?: string; assign?: "todos" | "sin_asignar"; status?: "todos" | OrderStatus; page?: number },
   currentState: PedidosFilterState,
   basePath = "/dashboard/logistic-admin/pedidos"
 ) {
   const params = new URLSearchParams();
   const nextQuery = nextValues.query ?? currentState.searchQuery;
-  const nextSearchBy = nextValues.searchBy ?? currentState.searchBy;
   const nextAssign = nextValues.assign ?? currentState.assignmentFilter;
   const nextStatus = nextValues.status ?? currentState.statusFilter;
   const nextPage = nextValues.page ?? currentState.requestedPage;
 
   if (nextQuery.trim()) {
     params.set("query", nextQuery.trim());
-  }
-
-  if (nextSearchBy !== "cliente") {
-    params.set("searchBy", nextSearchBy);
   }
 
   if (nextAssign !== "todos") {

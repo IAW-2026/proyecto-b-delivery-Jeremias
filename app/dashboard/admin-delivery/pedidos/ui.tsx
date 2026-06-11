@@ -2,7 +2,6 @@
 
 import LogisticAdminPedidosUi from "../../logistic-admin/pedidos/ui";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
-import type { SearchBy } from "./utils";
 
 type Chofer = {
   idChofer: number;
@@ -18,7 +17,6 @@ type Props = {
   allFilteredOrders: LogisticOrder[];
   choferes: Chofer[];
   searchQuery: string;
-  searchBy: SearchBy;
   assignmentFilter: "todos" | "sin_asignar";
   statusFilter: "todos" | OrderStatus;
   page: number;

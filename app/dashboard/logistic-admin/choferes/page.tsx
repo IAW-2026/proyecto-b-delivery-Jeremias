@@ -11,9 +11,9 @@ export default async function LogisticAdminChoferesPage({
 }) {
   const data = await getLogisticAdminData();
   const query = await searchParams;
-  const { searchQuery, searchBy, statusFilter, requestedPage } = parseChoferesFilters(query);
+  const { searchQuery, statusFilter, requestedPage } = parseChoferesFilters(query);
 
-  const filteredChoferes = filterChoferes(data.choferes, searchQuery, searchBy, statusFilter, data.vendorNames);
+  const filteredChoferes = filterChoferes(data.choferes, searchQuery, statusFilter, data.vendorNames);
   const totalFilteredChoferes = filteredChoferes.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredChoferes / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -23,10 +23,10 @@ export default async function LogisticAdminChoferesPage({
   const withoutZoneCount = filteredChoferes.filter((chofer) => chofer.idZona === null).length;
 
   if (requestedPage !== safePage) {
-    redirect(buildChoferesQueryHref({ query: searchQuery, searchBy, status: statusFilter, page: safePage }, { searchQuery, searchBy, statusFilter, requestedPage }));
+    redirect(buildChoferesQueryHref({ query: searchQuery, status: statusFilter, page: safePage }, { searchQuery, statusFilter, requestedPage }));
   }
 
-  const choferesKey = `${paginatedChoferes.map((chofer) => `${chofer.idChofer}:${chofer.estado}:${chofer.idVehiculo ?? "none"}:${chofer.idZona ?? "none"}`).join("|")}:${searchBy}`;
+  const choferesKey = paginatedChoferes.map((chofer) => `${chofer.idChofer}:${chofer.estado}:${chofer.idVehiculo ?? "none"}:${chofer.idZona ?? "none"}`).join("|");
 
   return (
     <ChoferesManager
@@ -35,7 +35,6 @@ export default async function LogisticAdminChoferesPage({
       zonas={data.zonasCatalogo}
       vehiculos={data.vehiculos}
       searchQuery={searchQuery}
-      searchBy={searchBy}
       statusFilter={statusFilter}
       page={safePage}
       totalPages={totalPages}

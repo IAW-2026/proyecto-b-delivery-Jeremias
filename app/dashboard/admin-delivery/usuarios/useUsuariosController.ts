@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent } from "react";
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
-import { buildUsersQueryHref, editableRoles, filterUsers, getInitialRoleDraft, parseUsersFilters, roleLabel, type UserFilter, type UserSearchBy } from "./utils";
+import { buildUsersQueryHref, editableRoles, filterUsers, getInitialRoleDraft, parseUsersFilters, roleLabel, type UserFilter } from "./utils";
 import type { Vendor } from "@/lib/vendors";
 import * as actions from "@/lib/actions/admin-delivery";
 
@@ -14,10 +14,9 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
   const searchParams = useSearchParams();
 
   const appliedFilters = parseUsersFilters(searchParams);
-  const { query: appliedQuery, searchBy: appliedSearchBy, filter: appliedFilter } = appliedFilters;
+  const { query: appliedQuery, filter: appliedFilter } = appliedFilters;
 
   const [queryInput, setQueryInput] = useState(appliedQuery);
-  const [selectedSearchBy, setSelectedSearchBy] = useState<UserSearchBy>(appliedSearchBy);
   const [selectedFilter, setSelectedFilter] = useState<UserFilter>(appliedFilter);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -46,8 +45,8 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
   }, [users]);
 
   const filteredUsers = useMemo(
-    () => filterUsers(users, { query: appliedQuery, searchBy: appliedSearchBy, filter: appliedFilter }),
-    [users, appliedQuery, appliedSearchBy, appliedFilter]
+    () => filterUsers(users, { query: appliedQuery, filter: appliedFilter }),
+    [users, appliedQuery, appliedFilter]
   );
 
   const blockedUsersCount = useMemo(() => users.filter((user) => user.isBlocked).length, [users]);
@@ -72,7 +71,6 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     router.push(
       buildUsersQueryHref(pathname, {
         query: queryInput,
-        searchBy: selectedSearchBy,
         filter: selectedFilter,
       })
     );
@@ -83,7 +81,6 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     router.push(
       buildUsersQueryHref(pathname, {
         query: "",
-        searchBy: selectedSearchBy,
         filter: selectedFilter,
       })
     );
@@ -94,7 +91,6 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     router.push(
       buildUsersQueryHref(pathname, {
         query: appliedQuery,
-        searchBy: appliedSearchBy,
         filter: nextFilter,
       })
     );
@@ -182,10 +178,8 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     filteredUsers,
     blockedUsersCount,
     appliedQuery,
-    appliedSearchBy,
     appliedFilter,
     queryInput,
-    selectedSearchBy,
     selectedFilter,
     pendingUserId,
     editingUserId,
@@ -193,7 +187,6 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     roleDrafts,
     vendorDrafts,
     setQueryInput,
-    setSelectedSearchBy,
     handlers: {
       runSearch,
       clearSearch,

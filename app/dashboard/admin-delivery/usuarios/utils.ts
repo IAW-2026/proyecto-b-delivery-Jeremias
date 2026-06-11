@@ -1,27 +1,14 @@
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
 import { normalizeSearchValue } from "@/lib/shared/utils";
 
-export const searchOptions = [
-  { value: "nombre", label: "Nombre", placeholder: "Buscar por nombre" },
-  { value: "email", label: "Correo", placeholder: "Buscar por correo" },
-  { value: "clerkUserId", label: "ID de Clerk", placeholder: "Buscar por ID de Clerk" },
-  { value: "empresa", label: "Empresa", placeholder: "Buscar por empresa" },
-] as const;
-
 export const editableRoles = ["delivery", "logistic_admin"] as const;
 
-export type UserSearchBy = (typeof searchOptions)[number]["value"];
 export type UserFilter = "all" | "active" | "blocked" | "delivery" | "logistic_admin";
 
 type FilterValues = {
   query: string;
-  searchBy: UserSearchBy;
   filter: UserFilter;
 };
-
-export function isSearchBy(value: string | null): value is UserSearchBy {
-  return typeof value === "string" && searchOptions.some((option) => option.value === value);
-}
 
 export function isUserFilter(value: string | null): value is UserFilter {
   return value === "all" || value === "active" || value === "blocked" || value === "delivery" || value === "logistic_admin";
@@ -29,10 +16,9 @@ export function isUserFilter(value: string | null): value is UserFilter {
 
 export function parseUsersFilters(searchParams: { get: (name: string) => string | null }): FilterValues {
   const query = searchParams.get("query") ?? "";
-  const searchBy = isSearchBy(searchParams.get("searchBy")) ? (searchParams.get("searchBy") as UserSearchBy) : "nombre";
   const filter = isUserFilter(searchParams.get("filter")) ? (searchParams.get("filter") as UserFilter) : "all";
 
-  return { query, searchBy, filter };
+  return { query, filter };
 }
 
 export function buildUsersQueryHref(pathname: string, values: FilterValues) {
@@ -41,10 +27,6 @@ export function buildUsersQueryHref(pathname: string, values: FilterValues) {
 
   if (trimmedQuery) {
     params.set("query", trimmedQuery);
-  }
-
-  if (values.searchBy !== "nombre") {
-    params.set("searchBy", values.searchBy);
   }
 
   if (values.filter !== "all") {
@@ -87,16 +69,12 @@ export function filterUsers(users: AdminDeliveryUserRow[], values: FilterValues)
   const normalizedQuery = normalizeSearchValue(values.query.trim());
 
   return users.filter((user) => {
-    const searchCandidate =
-      values.searchBy === "email"
-        ? user.email
-        : values.searchBy === "clerkUserId"
-          ? user.clerkUserId
-          : values.searchBy === "empresa"
-            ? user.nombreEmpresa ?? ""
-            : user.fullName;
+    const matchesQuery =
+      normalizedQuery.length === 0 ||
+      [user.fullName, user.email, user.clerkUserId, user.nombreEmpresa ?? ""]
+        .map((s) => normalizeSearchValue(s))
+        .some((s) => s.includes(normalizedQuery));
 
-    const matchesQuery = normalizedQuery.length === 0 || normalizeSearchValue(searchCandidate).includes(normalizedQuery);
     const localRole = normalizeStoredRole(user.localRole);
 
     const matchesFilter =

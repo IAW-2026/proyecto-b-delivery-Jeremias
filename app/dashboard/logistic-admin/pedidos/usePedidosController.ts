@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
 import { normalizeZonaName } from "@/lib/shared/utils";
 import { pageSize } from "@/lib/shared/utils";
-import { parsePedidosFilters, statusNeedsChofer, type PedidosFilterState, type SearchBy, type SearchParamsInput } from "./utils";
+import { parsePedidosFilters, statusNeedsChofer, type PedidosFilterState, type SearchParamsInput } from "./utils";
 import * as actions from "@/lib/actions/logistic-admin";
 
 type Chofer = {
@@ -31,7 +31,6 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
   const [busyId, setBusyId] = useState<number | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [motivoOrderId, setMotivoOrderId] = useState<number | null>(null);
-  const [selectedSearchBy, setSelectedSearchBy] = useState<SearchBy>(filterState.searchBy);
   const [choferSelection, setChoferSelection] = useState<Record<number, string>>(() => {
     const initial: Record<number, string> = {};
     for (const order of orders) {
@@ -205,8 +204,6 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
 
   return {
     filterState,
-    selectedSearchBy,
-    setSelectedSearchBy,
     busyId,
     editingOrderId,
     motivoOrderId,

@@ -13,9 +13,9 @@ export default async function AdminDeliveryVehiculosPage({
 }) {
   const data = await getLogisticAdminData();
   const query = await searchParams;
-  const { searchQuery, searchBy, statusFilter, requestedPage } = parseVehiculosFilters(query);
+  const { searchQuery, statusFilter, requestedPage } = parseVehiculosFilters(query);
 
-  const filteredVehiculos = filterVehiculos(data.vehiculos, searchQuery, searchBy, statusFilter, data.vendorNames);
+  const filteredVehiculos = filterVehiculos(data.vehiculos, searchQuery, statusFilter, data.vendorNames);
   const totalFilteredVehiculos = filteredVehiculos.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredVehiculos / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -28,10 +28,6 @@ export default async function AdminDeliveryVehiculosPage({
 
     if (searchQuery.trim()) {
       params.set("query", searchQuery.trim());
-    }
-
-    if (searchBy !== "patente") {
-      params.set("searchBy", searchBy);
     }
 
     if (statusFilter !== "todos") {
@@ -49,7 +45,6 @@ export default async function AdminDeliveryVehiculosPage({
   const vehiculosKey = [
     paginatedVehiculos.map((vehiculo) => `${vehiculo.idVehiculo}:${vehiculo.estado ?? "activo"}:${vehiculo.assignedToChoferName ?? "none"}`).join("|"),
     searchQuery,
-    searchBy,
     statusFilter,
   ].join("|");
 
@@ -58,7 +53,6 @@ export default async function AdminDeliveryVehiculosPage({
       key={vehiculosKey}
       vehiculos={paginatedVehiculos}
       searchQuery={searchQuery}
-      searchBy={searchBy}
       statusFilter={statusFilter}
       page={safePage}
       totalPages={totalPages}

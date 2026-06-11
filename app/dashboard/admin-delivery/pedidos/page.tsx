@@ -13,9 +13,9 @@ export default async function AdminDeliveryPedidosPage({
 }) {
   const data = await getLogisticAdminData();
   const query = await searchParams;
-  const { searchQuery, searchBy, statusFilter, assignmentFilter, requestedPage } = parsePedidosFilters(query);
+  const { searchQuery, statusFilter, assignmentFilter, requestedPage } = parsePedidosFilters(query);
 
-  const filteredOrders = filterOrders(data.orders, searchQuery, searchBy, statusFilter, assignmentFilter, data.vendorNames);
+  const filteredOrders = filterOrders(data.orders, searchQuery, statusFilter, assignmentFilter, data.vendorNames);
   const totalFilteredOrders = filteredOrders.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredOrders / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -26,10 +26,6 @@ export default async function AdminDeliveryPedidosPage({
 
     if (searchQuery.trim()) {
       params.set("query", searchQuery.trim());
-    }
-
-    if (searchBy !== "cliente") {
-      params.set("searchBy", searchBy);
     }
 
     if (assignmentFilter !== "todos") {
@@ -51,7 +47,6 @@ export default async function AdminDeliveryPedidosPage({
   const ordersKey = [
     paginatedOrders.map((order) => `${order.idPedido}:${order.status}:${order.assignedToChoferId ?? "none"}`).join("|"),
     searchQuery,
-    searchBy,
     assignmentFilter,
     statusFilter,
   ].join("|");
@@ -63,7 +58,6 @@ export default async function AdminDeliveryPedidosPage({
       allFilteredOrders={filteredOrders}
       choferes={data.choferes}
       searchQuery={searchQuery}
-      searchBy={searchBy}
       assignmentFilter={assignmentFilter}
       statusFilter={statusFilter}
       page={safePage}

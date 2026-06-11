@@ -1,12 +1,11 @@
 "use client";
 
 import LogisticAdminVehiculosUi from "../../logistic-admin/vehiculos/ui";
-import type { VehiculoStatus, SearchBy, Vehiculo } from "./utils";
+import type { VehiculoStatus, Vehiculo } from "./utils";
 
 type Props = {
   vehiculos: Vehiculo[];
   searchQuery: string;
-  searchBy: SearchBy;
   statusFilter: "todos" | VehiculoStatus;
   page: number;
   totalPages: number;

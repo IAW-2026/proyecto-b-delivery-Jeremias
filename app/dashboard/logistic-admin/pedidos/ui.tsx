@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
 import { adminButtonClass } from "../styles";
 import { usePedidosController } from "./usePedidosController";
-import { buildPedidosQueryHref, searchOptions, statusOptions, statusNeedsChofer, type SearchBy } from "./utils";
+import { buildPedidosQueryHref, statusOptions, statusNeedsChofer } from "./utils";
 
 type Chofer = {
   idChofer: number;
@@ -22,7 +22,6 @@ type Props = {
   allFilteredOrders: LogisticOrder[];
   choferes: Chofer[];
   searchQuery: string;
-  searchBy: SearchBy;
   assignmentFilter: "todos" | "sin_asignar";
   statusFilter: "todos" | OrderStatus;
   page: number;
@@ -48,20 +47,11 @@ function formatStatus(status: OrderStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function searchOptionMeta(value: SearchBy) {
-  if (value === "cliente") return { label: "Cliente", placeholder: "Buscar por cliente" };
-  if (value === "calle") return { label: "Calle", placeholder: "Buscar por calle" };
-  if (value === "chofer") return { label: "Chofer", placeholder: "Buscar por chofer" };
-  if (value === "empresa") return { label: "Empresa", placeholder: "Buscar por empresa" };
-  return { label: "Zona", placeholder: "Buscar por zona" };
-}
-
 export default function LogisticAdminPedidosUi({
   orders,
   allFilteredOrders,
   choferes,
   searchQuery,
-  searchBy,
   assignmentFilter,
   statusFilter,
   page,
@@ -75,7 +65,7 @@ export default function LogisticAdminPedidosUi({
     orders,
     allFilteredOrders,
     choferes,
-    searchParams: { query: searchQuery, searchBy, assign: assignmentFilter, status: statusFilter, page: String(page) },
+    searchParams: { query: searchQuery, assign: assignmentFilter, status: statusFilter, page: String(page) },
     page,
     totalFilteredOrders,
     basePath,
@@ -83,8 +73,6 @@ export default function LogisticAdminPedidosUi({
 
   const {
     filterState,
-    selectedSearchBy,
-    setSelectedSearchBy,
     busyId,
     editingOrderId,
     motivoOrderId,
@@ -108,8 +96,6 @@ export default function LogisticAdminPedidosUi({
     }
   }, [motivoOrderId]);
 
-  const searchOptionLabels = searchOptions.map((value) => ({ value, ...searchOptionMeta(value) }));
-
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-3">
@@ -131,7 +117,7 @@ export default function LogisticAdminPedidosUi({
         <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-800">Buscar pedidos</p>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Elegí el criterio de búsqueda, escribí el valor y después aplicá un filtro rápido si hace falta.</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Buscá por cliente, calle, chofer, zona o empresa. Después aplicá un filtro rápido si hace falta.</p>
           </div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Filtros rápidos</p>
         </div>
@@ -144,57 +130,32 @@ export default function LogisticAdminPedidosUi({
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
               const queryValue = String(formData.get("query") ?? "");
-              router.push(buildPedidosQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/pedidos`));
+              router.push(buildPedidosQueryHref({ query: queryValue, page: 1 }, filterState, `${basePath}/pedidos`));
             }}
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <input type="hidden" name="page" value="1" />
-            <input type="hidden" name="searchBy" value={selectedSearchBy} />
             {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
             {assignmentFilter !== "todos" ? <input type="hidden" name="assign" value={assignmentFilter} /> : null}
             <label className="sr-only" htmlFor="pedidos-search">
               Buscar pedidos
             </label>
 
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</p>
-                <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 sm:grid-cols-4">
-                  {searchOptionLabels.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedSearchBy(option.value)}
-                      aria-pressed={selectedSearchBy === option.value}
-                      className={`rounded-xl px-3 py-2 text-center text-sm font-medium transition-all ${
-                        selectedSearchBy === option.value
-                          ? "bg-white text-blue-700 shadow-sm ring-1 ring-blue-200"
-                          : "text-slate-600 hover:bg-white hover:text-slate-900"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                <input
-                  id="pedidos-search"
-                  name="query"
-                  defaultValue={searchQuery}
-                  placeholder={searchOptionLabels.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar pedidos"}
-                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                />
-                <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
-              </div>
+            <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+              <input
+                id="pedidos-search"
+                name="query"
+                defaultValue={searchQuery}
+                placeholder="Buscar pedidos (cliente, calle, chofer, zona, empresa)"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
             </div>
           </form>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <form action={`${basePath}/pedidos`} method="get" className="space-y-3">
               <input type="hidden" name="query" value={searchQuery} />
-              <input type="hidden" name="searchBy" value={selectedSearchBy} />
               <input type="hidden" name="page" value="1" />
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Filtrar por</span>
@@ -204,11 +165,11 @@ export default function LogisticAdminPedidosUi({
                   onChange={(event) => {
                     const nextValue = event.currentTarget.value as "todos" | OrderStatus | "sin_asignar";
                     if (nextValue === "sin_asignar") {
-                      router.push(buildPedidosQueryHref({ assign: "sin_asignar", status: "todos", page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/pedidos`));
+                      router.push(buildPedidosQueryHref({ assign: "sin_asignar", status: "todos", page: 1 }, filterState, `${basePath}/pedidos`));
                       return;
                     }
 
-                    router.push(buildPedidosQueryHref({ assign: "todos", status: nextValue as "todos" | OrderStatus, page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/pedidos`));
+                    router.push(buildPedidosQueryHref({ assign: "todos", status: nextValue as "todos" | OrderStatus, page: 1 }, filterState, `${basePath}/pedidos`));
                   }}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 >
@@ -229,7 +190,7 @@ export default function LogisticAdminPedidosUi({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {searchQuery ? (
             <Link
-              href={buildPedidosQueryHref({ query: "", page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/pedidos`)}
+              href={buildPedidosQueryHref({ query: "", page: 1 }, filterState, `${basePath}/pedidos`)}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               Limpiar búsqueda
@@ -414,10 +375,10 @@ export default function LogisticAdminPedidosUi({
           <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredOrders}</p>
             <div className="flex items-center gap-2">
-              <Link href={buildPedidosQueryHref({ page: Math.max(1, page - 1) }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/pedidos`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
+              <Link href={buildPedidosQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/pedidos`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
                 Anterior
               </Link>
-              <Link href={buildPedidosQueryHref({ page: Math.min(totalPages, page + 1) }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/pedidos`)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
+              <Link href={buildPedidosQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/pedidos`)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
                 Siguiente
               </Link>
             </div>

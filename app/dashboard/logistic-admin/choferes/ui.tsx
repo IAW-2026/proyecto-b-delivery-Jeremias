@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LogisticAdminViewData } from "../data";
 import { adminButtonClass, adminCardClass, adminHeaderClass, adminPageShell, adminStatCardClass } from "../styles";
-import { buildChoferesQueryHref, searchOptions, statusOptions, type ChoferStatus, type SearchBy } from "./utils";
+import { buildChoferesQueryHref, statusOptions, type ChoferStatus } from "./utils";
 import { useChoferesController } from "./useChoferesController";
 
 type Zona = LogisticAdminViewData["zonasCatalogo"][number];
@@ -16,7 +16,6 @@ type Props = {
   zonas: Zona[];
   vehiculos: Vehiculo[];
   searchQuery: string;
-  searchBy: SearchBy;
   statusFilter: "todos" | ChoferStatus;
   page: number;
   totalPages: number;
@@ -49,7 +48,6 @@ export default function ChoferesManager({
   zonas,
   vehiculos,
   searchQuery,
-  searchBy,
   statusFilter,
   page,
   totalPages,
@@ -64,7 +62,7 @@ export default function ChoferesManager({
   const router = useRouter();
   const controller = useChoferesController({
     choferes,
-    searchParams: { query: searchQuery, searchBy, status: statusFilter, page: String(page) },
+    searchParams: { query: searchQuery, status: statusFilter, page: String(page) },
     page,
     totalFilteredChoferes,
     basePath,
@@ -72,8 +70,6 @@ export default function ChoferesManager({
 
   const {
     filterState,
-    selectedSearchBy,
-    setSelectedSearchBy,
     savingId,
     editingChoferId,
     requests,
@@ -160,7 +156,7 @@ export default function ChoferesManager({
         <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-800">Buscar choferes</p>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Elegí el criterio de búsqueda, escribí el valor y después aplicá un filtro rápido si hace falta.</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Buscá por nombre, teléfono o empresa. Después aplicá un filtro rápido si hace falta.</p>
           </div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Filtros rápidos</p>
         </div>
@@ -173,63 +169,37 @@ export default function ChoferesManager({
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
               const queryValue = String(formData.get("query") ?? "");
-              router.push(buildChoferesQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`));
+              router.push(buildChoferesQueryHref({ query: queryValue, page: 1 }, filterState, `${basePath}/choferes`));
             }}
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <input type="hidden" name="page" value="1" />
-            <input type="hidden" name="searchBy" value={selectedSearchBy} />
             {statusFilter !== "todos" ? <input type="hidden" name="status" value={statusFilter} /> : null}
             <label className="sr-only" htmlFor="choferes-search">
               Buscar choferes
             </label>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</p>
-                <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 sm:max-w-xs">
-                  {searchOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedSearchBy(option.value)}
-                      aria-pressed={selectedSearchBy === option.value}
-                      className={`rounded-xl px-3 py-2 text-center text-sm font-medium transition-all ${
-                        selectedSearchBy === option.value
-                          ? "bg-white text-blue-700 shadow-sm ring-1 ring-blue-200"
-                          : "text-slate-600 hover:bg-white hover:text-slate-900"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                <input
-                  id="choferes-search"
-                  name="query"
-                  defaultValue={searchQuery}
-                  placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar choferes"}
-                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                />
-                <button type="submit" className={adminButtonClass("edit", "sm")}>
-                  Buscar
-                </button>
-              </div>
-              {searchQuery ? (
-                <div>
-                  <Link href={buildChoferesQueryHref({ query: "", page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`)} className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
-                    Limpiar búsqueda
-                  </Link>
-                </div>
-              ) : null}
+            <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+              <input
+                id="choferes-search"
+                name="query"
+                defaultValue={searchQuery}
+                placeholder="Buscar choferes (nombre, teléfono, empresa)"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>
+                Buscar
+              </button>
             </div>
+            {searchQuery ? (
+              <Link href={buildChoferesQueryHref({ query: "", page: 1 }, filterState, `${basePath}/choferes`)} className="mt-3 inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                Limpiar búsqueda
+              </Link>
+            ) : null}
           </form>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <form action={`${basePath}/choferes`} method="get" className="space-y-3">
               <input type="hidden" name="query" value={searchQuery} />
-              <input type="hidden" name="searchBy" value={selectedSearchBy} />
               <input type="hidden" name="page" value="1" />
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Filtrar por</span>
@@ -237,7 +207,7 @@ export default function ChoferesManager({
                   name="status"
                   value={statusFilter}
                   onChange={(event) => {
-                    router.push(buildChoferesQueryHref({ status: event.currentTarget.value as ChoferStatus, page: 1 }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`));
+                    router.push(buildChoferesQueryHref({ status: event.currentTarget.value as ChoferStatus, page: 1 }, filterState, `${basePath}/choferes`));
                   }}
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                 >
@@ -383,14 +353,14 @@ export default function ChoferesManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredChoferes}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildChoferesQueryHref({ page: Math.max(1, page - 1) }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`)}
+                href={buildChoferesQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/choferes`)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildChoferesQueryHref({ page: Math.min(totalPages, page + 1) }, { ...filterState, searchBy: selectedSearchBy }, `${basePath}/choferes`)}
+                href={buildChoferesQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/choferes`)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >

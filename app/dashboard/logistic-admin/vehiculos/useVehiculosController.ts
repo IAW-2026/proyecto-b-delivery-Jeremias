@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { pageSize } from "@/lib/shared/utils";
-import { buildVehiculosQueryHref, parseVehiculosFilters, type SearchBy, type SearchParamsInput, type Vehiculo, type VehiculosFilterState, type VehiculoStatus } from "./utils";
+import { buildVehiculosQueryHref, parseVehiculosFilters, type SearchParamsInput, type Vehiculo, type VehiculosFilterState, type VehiculoStatus } from "./utils";
 import * as actions from "@/lib/actions/logistic-admin";
 
 type FormState = {
@@ -33,7 +33,6 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
   const [editForm, setEditForm] = useState<FormState>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedSearchBy, setSelectedSearchBy] = useState<SearchBy>(filterState.searchBy);
   const [pausingVehicleId, setPausingVehicleId] = useState<number | null>(null);
   const [detailsVehicleId, setDetailsVehicleId] = useState<number | null>(null);
   const [pauseReasons, setPauseReasons] = useState<Record<number, string>>({});
@@ -190,7 +189,7 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
   }
 
   function submitSearch(queryValue: string) {
-    router.push(buildVehiculosQueryHref({ query: queryValue, searchBy: selectedSearchBy, page: 1 }, filterState, `${basePath}/vehiculos`));
+    router.push(buildVehiculosQueryHref({ query: queryValue, page: 1 }, filterState, `${basePath}/vehiculos`));
   }
 
   function changeStatusFilter(status: "todos" | VehiculoStatus) {
@@ -199,8 +198,6 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
 
   return {
     filterState,
-    selectedSearchBy,
-    setSelectedSearchBy,
     addForm,
     setAddForm,
     editForm,

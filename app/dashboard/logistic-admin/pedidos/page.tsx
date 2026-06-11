@@ -12,9 +12,9 @@ export default async function LogisticAdminPedidosPage({
   const data = await getLogisticAdminData();
   const query = await searchParams;
   const ordersKey = data.orders.map((order) => `${order.idPedido}:${order.status}:${order.assignedToChoferId ?? "none"}`).join("|");
-  const { searchQuery, searchBy, statusFilter, assignmentFilter, requestedPage } = parsePedidosFilters(query);
+  const { searchQuery, statusFilter, assignmentFilter, requestedPage } = parsePedidosFilters(query);
 
-  const filteredOrders = filterOrders(data.orders, searchQuery, searchBy, statusFilter, assignmentFilter, data.vendorNames);
+  const filteredOrders = filterOrders(data.orders, searchQuery, statusFilter, assignmentFilter, data.vendorNames);
   const totalFilteredOrders = filteredOrders.length;
   const totalPages = Math.max(1, Math.ceil(totalFilteredOrders / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
@@ -23,7 +23,6 @@ export default async function LogisticAdminPedidosPage({
   if (requestedPage !== safePage) {
     const nextQuery = new URLSearchParams();
     if (searchQuery.trim()) nextQuery.set("query", searchQuery.trim());
-    if (searchBy !== "cliente") nextQuery.set("searchBy", searchBy);
     if (assignmentFilter !== "todos") nextQuery.set("assign", assignmentFilter);
     if (statusFilter !== "todos") nextQuery.set("status", statusFilter);
     if (safePage > 1) nextQuery.set("page", String(safePage));
@@ -49,7 +48,6 @@ export default async function LogisticAdminPedidosPage({
         allFilteredOrders={filteredOrders}
         choferes={data.choferes}
         searchQuery={searchQuery}
-        searchBy={searchBy}
         assignmentFilter={assignmentFilter}
         statusFilter={statusFilter}
         page={safePage}

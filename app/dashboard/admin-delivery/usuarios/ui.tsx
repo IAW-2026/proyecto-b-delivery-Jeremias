@@ -3,7 +3,7 @@
 import { adminButtonClass, adminCardClass, adminStatCardClass } from "../../logistic-admin/styles";
 import type { AdminDeliveryUserRow } from "@/lib/adminDeliveryUsers";
 import type { Vendor } from "@/lib/vendors";
-import { editableRoles, getDisplayRole, normalizeStoredRole, roleLabel, searchOptions, type UserFilter, type UserSearchBy } from "./utils";
+import { editableRoles, getDisplayRole, normalizeStoredRole, roleLabel, type UserFilter } from "./utils";
 import { useUsuariosController } from "./useUsuariosController";
 
 type Props = {
@@ -18,7 +18,6 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
     blockedUsersCount,
     appliedQuery,
     queryInput,
-    selectedSearchBy,
     selectedFilter,
     pendingUserId,
     editingUserId,
@@ -26,7 +25,6 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
     roleDrafts,
     vendorDrafts,
     setQueryInput,
-    setSelectedSearchBy,
     handlers,
   } = controller;
 
@@ -48,32 +46,14 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
       <section className={`${adminCardClass} p-5`}>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <form onSubmit={runSearch} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="space-y-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Buscar por</span>
-                <select
-                  value={selectedSearchBy}
-                  onChange={(event) => setSelectedSearchBy(event.currentTarget.value as UserSearchBy)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                >
-                  {searchOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-                <input
-                  key={`admin-users-search-${selectedSearchBy}`}
-                  className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                  placeholder={searchOptions.find((option) => option.value === selectedSearchBy)?.placeholder ?? "Buscar usuarios"}
-                  value={queryInput}
-                  onChange={(event) => setQueryInput(event.currentTarget.value)}
-                />
-                <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
-              </div>
+            <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+              <input
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                placeholder="Buscar usuarios (nombre, email, ID, empresa)"
+                value={queryInput}
+                onChange={(event) => setQueryInput(event.currentTarget.value)}
+              />
+              <button type="submit" className={adminButtonClass("edit", "sm")}>Buscar</button>
             </div>
           </form>
 
