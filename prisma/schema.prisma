@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Vehiculo {
+  idVehiculo       Int      @id @default(autoincrement()) @map("id_vehiculo")
+  patente          String   @unique
+  tipo             String
+  capacidadBidones Int      @map("capacidad_bidones")
+  idVendedor       Int      @map("id_vendedor")
+  estado           String   @default("activo")
+  motivoPausa      String?  @map("motivo_pausa")
+  choferes         Chofer[]
+
+  @@map("vehiculo")
+}
+
+model Chofer {
+  idChofer    Int       @id @default(autoincrement()) @map("id_chofer")
+  telefono    String?
+  nombre      String    @default("Chofer")
+  estado      String    @default("pendiente")
+  idVehiculo  Int?      @map("id_vehiculo")
+  idZona      Int?      @map("id_zona")
+  alias       String?
+  cbuCvu      String?   @map("cbu_cvu")
+  clerkUserId String    @unique @map("clerk_user_id")
+  cuilCuit    String?   @map("cuil_cuit")
+  disponible  Boolean   @default(true)
+  idVendedor  Int       @map("id_vendedor")
+  nombreEmpresa String? @map("nombre_empresa")
+  vehiculo    Vehiculo? @relation(fields: [idVehiculo], references: [idVehiculo])
+  zona        zona?     @relation(fields: [idZona], references: [idZona])
+  pedidosAsignados Pedido[] @relation("ChoferPedidos")
+
+  @@map("chofer")
+}
+
+model UserProfile {
+  id              Int      @id @default(autoincrement())
+  clerkUserId     String   @unique @map("clerk_user_id")
+  role            String
+  idVendedor      Int      @default(0) @map("id_vendedor")
+  nombreEmpresa   String?  @map("nombre_empresa")
+  nombre          String?
+  telefono        String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("user_profile")
+}
+
+model ChoferRequest {
+  id           Int      @id @default(autoincrement())
+  clerkUserId  String   @unique @map("clerk_user_id")
+  nombre       String
+  telefono     String
+  idVendedor   Int      @map("id_vendedor")
+  vendorName   String   @map("vendor_name")
+  status       String   @default("pending")
+  reviewedBy   String?  @map("reviewed_by")
+  reviewedAt   DateTime? @map("reviewed_at")
+  reason       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("chofer_request")
+}
+
+model UserAccessControl {
+  id                   Int       @id @default(autoincrement())
+  clerkUserId          String    @unique @map("clerk_user_id")
+  isBlocked            Boolean   @default(false) @map("is_blocked")
+  blockedReason        String?   @map("blocked_reason")
+  blockedByClerkUserId String?   @map("blocked_by_clerk_user_id")
+  blockedAt            DateTime? @map("blocked_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("user_access_control")
+}
+
+model Pedido {
+  idPedido    Int           @id @default(autoincrement())
+  estado      String        @default("ready")
+  idChoferAsignado Int?     @map("id_chofer_asignado")
+  assignedAt  DateTime?     @map("assigned_at")
+  updatedAt   DateTime?     @map("updated_at")
+  motivoRevision String?    @map("motivo_revision")
+  direccion   String
+  cliente     String
+  telefono    String?
+  cantBidones Int
+  zona        String
+  // Empresa dueña del pedido (vendedor). Se usa para acotar la visibilidad por logistic_admin.
+  idVendedor  Int           @default(0) @map("id_vendedor")
+  // ID del pedido en el sistema externo que nos lo envía (referencia para upsert).
+  idPedidoExterno Int?       @map("id_pedido_externo")
+
+  choferAsignado Chofer? @relation("ChoferPedidos", fields: [idChoferAsignado], references: [idChofer])
+
+  // Un mismo id externo puede repetirse entre vendedores, pero es único dentro de cada uno.
+  @@unique([idVendedor, idPedidoExterno], name: "vendorExternalOrder", map: "pedido_vendor_external_unique")
+  @@index([idVendedor])
+  @@map("pedido")
+}
+
+model zona {
+  idZona     Int           @id @default(autoincrement())
+  nombre     String        @unique
+  choferes   Chofer[]
+  empresas   ZonaEmpresa[]
+
+  @@map("zona")
+}
+
+model ZonaEmpresa {
+  id         Int @id @default(autoincrement())
+  idZona     Int @map("id_zona")
+  idVendedor Int @map("id_vendedor")
+
+  zona zona @relation(fields: [idZona], references: [idZona], onDelete: Cascade)
+
+  @@unique([idZona, idVendedor])
+  @@map("zona_empresa")
+}

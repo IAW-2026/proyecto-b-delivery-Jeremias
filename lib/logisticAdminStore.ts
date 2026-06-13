@@ -1,0 +1,200 @@
+type PedidoEntrante = {
+  idPedido: number;
+  estado: string;
+  direccion: string;
+  cliente: string;
+  telefono?: string;
+  cantBidones: number;
+  zona: string;
+  motivoRevision?: string | null;
+};
+
+import { normalizeOrderStatus, normalizeZonaName, nowIso } from "@/lib/shared/utils";
+
+export type OrderStatus = "ready" | "en_camino" | "entregado" | "cancelado" | "revision";
+
+export type LogisticOrder = PedidoEntrante & {
+  assignedToChoferId: number | null;
+  assignedToChoferName: string | null;
+  assignedChoferArchived?: boolean;
+  status: OrderStatus;
+  updatedAt: string;
+  idVendedor: number | null;
+};
+
+type ChoferWithZona = {
+  idChofer: number;
+  nombre: string;
+  estado: string;
+  disponible: boolean;
+  zona: { nombre: string } | null;
+};
+
+type LogisticAdminStore = {
+  orders: LogisticOrder[];
+};
+
+const globalForLogisticAdmin = globalThis as unknown as {
+  logisticAdminStore?: LogisticAdminStore;
+};
+
+const store: LogisticAdminStore = globalForLogisticAdmin.logisticAdminStore ?? {
+  orders: [],
+};
+
+if (process.env.NODE_ENV !== "production") {
+  globalForLogisticAdmin.logisticAdminStore = store;
+}
+
+function cloneOrder(order: LogisticOrder): LogisticOrder {
+  return {
+    ...order,
+    estado: normalizeOrderStatus(order.status),
+    status: normalizeOrderStatus(order.status),
+  };
+}
+
+function applyAutomaticZoneAssignments(choferes: ChoferWithZona[]) {
+  const choferByZone = new Map<string, ChoferWithZona>();
+
+  for (const chofer of choferes.sort((a, b) => a.idChofer - b.idChofer)) {
+    if (chofer.estado !== "activo" || !chofer.disponible || !chofer.zona) {
+      continue;
+    }
+
+    const key = normalizeZonaName(chofer.zona.nombre);
+    if (!key || choferByZone.has(key)) {
+      continue;
+    }
+
+    choferByZone.set(key, chofer);
+  }
+
+  for (const order of store.orders) {
+    if (order.status !== "ready" || order.assignedToChoferId !== null) {
+      continue;
+    }
+
+    const chofer = choferByZone.get(normalizeZonaName(order.zona));
+    if (!chofer) {
+      continue;
+    }
+
+    order.assignedToChoferId = chofer.idChofer;
+    order.assignedToChoferName = chofer.nombre;
+    order.status = "ready";
+    order.updatedAt = nowIso();
+  }
+
+  return getOrders();
+}
+
+export function getOrders() {
+  return store.orders.map(cloneOrder);
+}
+
+export function upsertReadyOrders(pedidos: PedidoEntrante[], choferes: ChoferWithZona[] = []) {
+  for (const pedido of pedidos) {
+    const index = store.orders.findIndex((item) => item.idPedido === pedido.idPedido);
+    const currentOrder = index >= 0 ? store.orders[index] : null;
+
+    const nextOrder: LogisticOrder = currentOrder
+      ? {
+          ...currentOrder,
+          ...pedido,
+          estado: currentOrder.status,
+          status: currentOrder.status,
+          updatedAt: nowIso(),
+        }
+      : {
+          ...pedido,
+          estado: "ready",
+          assignedToChoferId: null,
+          assignedToChoferName: null,
+          status: "ready",
+          updatedAt: nowIso(),
+          idVendedor: null,
+        };
+
+    if (index >= 0) {
+      store.orders[index] = nextOrder;
+    } else {
+      store.orders.push(nextOrder);
+    }
+  }
+
+  return choferes.length > 0 ? applyAutomaticZoneAssignments(choferes) : getOrders();
+}
+
+export function assignOrder(
+  idPedido: number,
+  choferId: number,
+  choferName: string
+) {
+  const index = store.orders.findIndex((item) => item.idPedido === idPedido);
+  if (index < 0) return null;
+
+  const currentOrder = store.orders[index];
+  if (currentOrder.status === "cancelado") return currentOrder;
+
+  store.orders[index] = {
+    ...currentOrder,
+    estado: "ready",
+    assignedToChoferId: choferId,
+    assignedToChoferName: choferName,
+    status: "ready",
+    updatedAt: nowIso(),
+  };
+
+  return cloneOrder(store.orders[index]);
+}
+
+export function unassignOrder(idPedido: number) {
+  const index = store.orders.findIndex((item) => item.idPedido === idPedido);
+  if (index < 0) return null;
+
+  const currentOrder = store.orders[index];
+  store.orders[index] = {
+    ...currentOrder,
+    estado: "ready",
+    assignedToChoferId: null,
+    assignedToChoferName: null,
+    status: "ready",
+    updatedAt: nowIso(),
+  };
+
+  return cloneOrder(store.orders[index]);
+}
+
+export function cancelOrder(idPedido: number) {
+  const index = store.orders.findIndex((item) => item.idPedido === idPedido);
+  if (index < 0) return null;
+
+  const currentOrder = store.orders[index];
+  store.orders[index] = {
+    ...currentOrder,
+    estado: "cancelado",
+    status: "cancelado",
+    updatedAt: nowIso(),
+  };
+
+  return cloneOrder(store.orders[index]);
+}
+
+export function setOrderStatus(idPedido: number, status: OrderStatus) {
+  const index = store.orders.findIndex((item) => item.idPedido === idPedido);
+  if (index < 0) return null;
+
+  const currentOrder = store.orders[index];
+  const normalizedStatus = normalizeOrderStatus(status);
+
+  store.orders[index] = {
+    ...currentOrder,
+    estado: normalizedStatus,
+    status: normalizedStatus,
+    motivoRevision: normalizedStatus === "revision" ? currentOrder.motivoRevision ?? null : null,
+    updatedAt: nowIso(),
+  };
+
+  return cloneOrder(store.orders[index]);
+}
