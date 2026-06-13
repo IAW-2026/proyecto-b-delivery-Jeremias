@@ -31,9 +31,11 @@ export function filterZonas(zonas: Zona[], searchQuery: string, vendorNames?: Re
 
   return zonas.filter((zona) => {
     if (normalizeSearchValue(zona.zona).includes(normalizedQuery)) return true;
-    if (vendorNames) {
-      const empresa = normalizeSearchValue(vendorNames[zona.idVendedor] ?? "");
-      if (empresa.includes(normalizedQuery)) return true;
+    if (vendorNames && zona.empresas) {
+      for (const e of zona.empresas) {
+        const empresa = normalizeSearchValue(vendorNames[Number(e)] ?? "");
+        if (empresa.includes(normalizedQuery)) return true;
+      }
     }
     return false;
   });

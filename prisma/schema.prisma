@@ -109,11 +109,21 @@ model Pedido {
 }
 
 model zona {
-  idZona     Int      @id @default(autoincrement())
-  nombre     String
-  idVendedor Int      @map("id_vendedor")
+  idZona     Int           @id @default(autoincrement())
+  nombre     String        @unique
   choferes   Chofer[]
+  empresas   ZonaEmpresa[]
 
-  @@unique([nombre, idVendedor])
-  @@index([idVendedor])
+  @@map("zona")
+}
+
+model ZonaEmpresa {
+  id         Int @id @default(autoincrement())
+  idZona     Int @map("id_zona")
+  idVendedor Int @map("id_vendedor")
+
+  zona zona @relation(fields: [idZona], references: [idZona], onDelete: Cascade)
+
+  @@unique([idZona, idVendedor])
+  @@map("zona_empresa")
 }

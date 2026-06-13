@@ -1,7 +1,7 @@
 import type { LogisticAdminViewData } from "../data";
 import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
-export type Zona = LogisticAdminViewData["zonas"][number];
+export type Zona = LogisticAdminViewData["zonas"][number] & { idVendedor?: number };
 export type ZonaFueraCatalogo = LogisticAdminViewData["zonasFueraCatalogo"][number];
 
 export type SearchParamsInput = {

@@ -31,6 +31,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
   const [isSaving, setIsSaving] = useState(false);
   const [editingZonaId, setEditingZonaId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showEmpresasForZone, setShowEmpresasForZone] = useState<Zona | null>(null);
   const vendorIds = vendorOptions ? Object.keys(vendorOptions).map(Number).sort() : [];
   const [selectedVendorId, setSelectedVendorId] = useState<number>(vendorIds[0] ?? 0);
 
@@ -44,15 +45,6 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
     const nombre = form.nombre.trim();
     if (!nombre) {
       setError("Escribí el nombre del barrio.");
-      return;
-    }
-
-    const duplicate = zonas.find((z) =>
-      z.zona.toLowerCase() === nombre.toLowerCase() &&
-      (!vendorOptions || z.idVendedor === selectedVendorId)
-    );
-    if (duplicate) {
-      setError(`Ya existe una zona con el nombre "${nombre}"`);
       return;
     }
 
@@ -95,8 +87,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
 
     const duplicate = zonas.find((z) =>
       z.idZona !== idZona &&
-      z.zona.toLowerCase() === nombre.toLowerCase() &&
-      (!vendorOptions || z.idVendedor === currentZona.idVendedor)
+      z.zona.toLowerCase() === nombre.toLowerCase()
     );
     if (duplicate) {
       setError(`Ya existe una zona con el nombre "${nombre}"`);
@@ -105,7 +96,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
 
     setIsSaving(true);
     try {
-      await actions.updateZone(idZona, nombre, currentZona.idVendedor);
+      await actions.updateZone(idZona, nombre);
       cancelEdit();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la zona");
@@ -115,15 +106,43 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
   }
 
   async function handleDelete(zona: Zona) {
-    const ok = window.confirm(`¿Eliminar la zona ${zona.zona}?`);
-    if (!ok) return;
+    if (vendorOptions) {
+      const ok = window.confirm(`¿Eliminar la zona global "${zona.zona}"? Se desvinculará de todas las empresas y se borrará definitivamente.`);
+      if (!ok) return;
+      setIsSaving(true);
+      setError(null);
+      try {
+        await actions.globalDeleteZone(zona.idZona);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "No se pudo eliminar la zona");
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      const ok = window.confirm(`¿Desvincular la zona "${zona.zona}" de tu empresa?`);
+      if (!ok) return;
+      setIsSaving(true);
+      setError(null);
+      try {
+        await actions.deleteZone(zona.idZona);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "No se pudo desvincular la zona");
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  }
 
+  async function handleDisassociateVendor(idVendedor: number) {
+    if (!showEmpresasForZone) return;
     setIsSaving(true);
     setError(null);
     try {
-      await actions.deleteZone(zona.idZona, zona.idVendedor);
+      await actions.disassociateVendorFromZone(showEmpresasForZone.idZona, idVendedor);
+      setShowEmpresasForZone(null);
+      router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar la zona");
+      setError(e instanceof Error ? e.message : "No se pudo desvincular la empresa");
     } finally {
       setIsSaving(false);
     }
@@ -147,12 +166,15 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
     error,
     pageStart,
     pageEnd,
+    showEmpresasForZone,
+    setShowEmpresasForZone,
     handlers: {
       handleSubmit,
       startEdit,
       cancelEdit,
       handleUpdateZone,
       handleDelete,
+      handleDisassociateVendor,
       submitSearch,
     },
   };

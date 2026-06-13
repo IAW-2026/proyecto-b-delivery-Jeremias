@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 
 async function getCompanyContext(vendedorId?: number) {
   const { userId } = await auth();
@@ -30,14 +31,35 @@ export async function createZone(nombre: string, vendedorId?: number) {
   const { idVendedor } = await getCompanyContext(vendedorId);
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
+  const existingZone = await prisma.zona.findUnique({ where: { nombre: nombre.trim() } });
+
+  if (existingZone) {
+    const alreadyLinked = await prisma.zonaEmpresa.findUnique({
+      where: { idZona_idVendedor: { idZona: existingZone.idZona, idVendedor } },
+    });
+    if (alreadyLinked) {
+      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}" para esta empresa`);
+    }
+    await prisma.zonaEmpresa.create({
+      data: { idZona: existingZone.idZona, idVendedor },
+    });
+    revalidatePath("/dashboard/logistic-admin/zonas");
+    revalidatePath("/dashboard/admin-delivery/zonas");
+    return existingZone;
+  }
+
   try {
-    const zona = await prisma.zona.create({ data: { nombre: nombre.trim(), idVendedor } });
+    const zona = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const z = await tx.zona.create({ data: { nombre: nombre.trim() } });
+      await tx.zonaEmpresa.create({ data: { idZona: z.idZona, idVendedor } });
+      return z;
+    });
     revalidatePath("/dashboard/logistic-admin/zonas");
     revalidatePath("/dashboard/admin-delivery/zonas");
     return zona;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}" para esta empresa`);
+      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}"`);
     }
     throw new Error("No se pudo crear la zona");
   }
@@ -47,22 +69,20 @@ export async function updateZone(idZona: number, nombre: string, vendedorId?: nu
   const { idVendedor } = await getCompanyContext(vendedorId);
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
-  const existing = vendedorId !== undefined
-    ? await prisma.zona.findUnique({ where: { idZona } })
-    : await prisma.zona.findFirst({ where: { idZona, idVendedor } });
-  if (!existing) throw new Error("Zona no encontrada");
+  const zona = await prisma.zona.findUnique({ where: { idZona } });
+  if (!zona) throw new Error("Zona no encontrada");
 
   try {
-    const zona = await prisma.zona.update({
+    const updated = await prisma.zona.update({
       where: { idZona },
       data: { nombre: nombre.trim() },
     });
     revalidatePath("/dashboard/logistic-admin/zonas");
     revalidatePath("/dashboard/admin-delivery/zonas");
-    return zona;
+    return updated;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}" para esta empresa`);
+      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}"`);
     }
     throw new Error("No se pudo actualizar la zona");
   }
@@ -71,12 +91,67 @@ export async function updateZone(idZona: number, nombre: string, vendedorId?: nu
 export async function deleteZone(idZona: number, vendedorId?: number) {
   const { idVendedor } = await getCompanyContext(vendedorId);
 
-  const zona = vendedorId !== undefined
-    ? await prisma.zona.findUnique({ where: { idZona } })
-    : await prisma.zona.findFirst({ where: { idZona, idVendedor } });
-  if (!zona) throw new Error("Zona no encontrada");
+  const junction = await prisma.zonaEmpresa.findUnique({
+    where: { idZona_idVendedor: { idZona, idVendedor } },
+  });
+  if (!junction) throw new Error("Zona no encontrada para esta empresa");
 
-  await prisma.zona.delete({ where: { idZona } });
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.chofer.updateMany({
+      where: { idZona, idVendedor },
+      data: { idZona: null },
+    });
+    await tx.zonaEmpresa.delete({
+      where: { idZona_idVendedor: { idZona, idVendedor } },
+    });
+  });
+
+  revalidatePath("/dashboard/logistic-admin/zonas");
+  revalidatePath("/dashboard/admin-delivery/zonas");
+}
+
+export async function globalDeleteZone(idZona: number) {
+  const { userId, sessionClaims } = await auth();
+  if (!userId) throw new Error("No autorizado");
+
+  const roles = resolveRolesFromClaims(sessionClaims);
+  if (!roles.includes(ADMIN_DELIVERY_ROLE)) throw new Error("No autorizado");
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.chofer.updateMany({
+      where: { idZona },
+      data: { idZona: null },
+    });
+    await tx.zonaEmpresa.deleteMany({ where: { idZona } });
+    await tx.zona.delete({ where: { idZona } });
+  });
+
+  revalidatePath("/dashboard/logistic-admin/zonas");
+  revalidatePath("/dashboard/admin-delivery/zonas");
+}
+
+export async function disassociateVendorFromZone(idZona: number, idVendedor: number) {
+  const { userId, sessionClaims } = await auth();
+  if (!userId) throw new Error("No autorizado");
+
+  const roles = resolveRolesFromClaims(sessionClaims);
+  if (!roles.includes(ADMIN_DELIVERY_ROLE)) throw new Error("No autorizado");
+
+  const junction = await prisma.zonaEmpresa.findUnique({
+    where: { idZona_idVendedor: { idZona, idVendedor } },
+  });
+  if (!junction) throw new Error("La empresa no está vinculada a esta zona");
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.chofer.updateMany({
+      where: { idZona, idVendedor },
+      data: { idZona: null },
+    });
+    await tx.zonaEmpresa.delete({
+      where: { idZona_idVendedor: { idZona, idVendedor } },
+    });
+  });
+
   revalidatePath("/dashboard/logistic-admin/zonas");
   revalidatePath("/dashboard/admin-delivery/zonas");
 }
@@ -86,8 +161,10 @@ export async function deleteZone(idZona: number, vendedorId?: number) {
 export async function assignDriverZone(idChofer: number, idZona: number) {
   const { idVendedor } = await getCompanyContext();
 
-  const zona = await prisma.zona.findFirst({ where: { idZona, idVendedor } });
-  if (!zona) throw new Error("Zona no encontrada");
+  const junction = await prisma.zonaEmpresa.findUnique({
+    where: { idZona_idVendedor: { idZona, idVendedor } },
+  });
+  if (!junction) throw new Error("Zona no encontrada para esta empresa");
 
   const result = await prisma.chofer.updateMany({
     where: { idChofer, idVendedor },

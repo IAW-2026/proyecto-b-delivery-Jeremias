@@ -41,6 +41,7 @@ type ChoferRecord = {
 type ZonaResumen = {
   idZona: number;
   zona: string;
+  empresas: string[];
   idVendedor: number;
   pedidosTotales: number;
   pedidosAsignados: number;
@@ -63,12 +64,13 @@ type ZonaFueraCatalogo = {
 type ZonaCatalogoRecord = {
   idZona: number;
   nombre: string;
-  idVendedor: number;
+  empresas: { idVendedor: number }[];
 };
 
 type ZonaSelectorRecord = {
   idZona: number;
   nombre: string;
+  empresas: { idVendedor: number }[];
 };
 
 function isArchivedChofer(chofer: ChoferRecord) {
@@ -235,7 +237,8 @@ function buildZonasResumen(orders: LogisticOrder[], zonasCatalogo: ZonaCatalogoR
     const resumen: ZonaResumen = {
       idZona: zona.idZona,
       zona: zona.nombre,
-      idVendedor: zona.idVendedor,
+      empresas: zona.empresas.map((e) => String(e.idVendedor)),
+      idVendedor: zona.empresas[0]?.idVendedor ?? 0,
       pedidosTotales: stats?.pedidosTotales ?? 0,
       pedidosAsignados: stats?.pedidosAsignados ?? 0,
       pedidosReady: stats?.pedidosReady ?? 0,
@@ -363,7 +366,8 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   const zonasCatalogo = await safePrismaQuery<ZonaCatalogoRecord[]>(
     () =>
       prisma.zona.findMany({
-        where: idVendedorToQuery ? { idVendedor: idVendedorToQuery } : {},
+        where: idVendedorToQuery ? { empresas: { some: { idVendedor: idVendedorToQuery } } } : {},
+        include: { empresas: { select: { idVendedor: true } } },
         orderBy: { nombre: "asc" },
       }),
     [],
@@ -456,7 +460,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
   for (const c of visibleChoferes) if (c.idVendedor) distinctVendorIds.add(c.idVendedor);
   for (const v of vehiculosWithAssignment) if (v.idVendedor) distinctVendorIds.add(v.idVendedor);
   for (const o of ordersWithArchivedFlag) if (o.idVendedor) distinctVendorIds.add(o.idVendedor);
-  for (const z of zonasCatalogo) if (z.idVendedor) distinctVendorIds.add(z.idVendedor);
+  for (const z of zonasCatalogo) for (const e of z.empresas) if (e.idVendedor) distinctVendorIds.add(e.idVendedor);
 
   const vendorProfiles = await safePrismaQuery<
     { idVendedor: number | null; nombreEmpresa: string | null }[]
@@ -489,7 +493,7 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
     orders: ordersWithArchivedFlag,
     zonas: zonasResumen.zonas,
     zonasFueraCatalogo: zonasResumen.zonasFueraCatalogo,
-    zonasCatalogo: zonasCatalogo.map((zona) => ({ idZona: zona.idZona, nombre: zona.nombre })),
+    zonasCatalogo: zonasCatalogo.map((zona) => ({ idZona: zona.idZona, nombre: zona.nombre, empresas: zona.empresas })),
     vendorNames,
     databaseUnavailable,
     dbError,
