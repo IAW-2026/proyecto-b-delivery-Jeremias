@@ -50,7 +50,11 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
 
     setIsSaving(true);
     try {
-      await actions.createZone(nombre, selectedVendorId);
+      const result = await actions.createZone(nombre, selectedVendorId);
+      if (!result.ok) {
+        setError(result.error ?? "No se pudo guardar la zona");
+        return;
+      }
       setForm(emptyForm);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la zona");

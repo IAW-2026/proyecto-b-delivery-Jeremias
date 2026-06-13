@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import UserMenu from "@/app/components/UserMenu";
+import { getUserRole } from "@/lib/actions/user-role";
 
 export type RoleNavigationItem = {
   href: string;
@@ -34,14 +35,9 @@ export default function RoleDashboardShell({ children, displayName, navigationIt
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch("/api/user-role");
-        if (res.status === 403) {
-          window.location.href = "/blocked";
-        } else if (res.status === 401) {
-          window.location.href = "/signin";
-        }
+        await getUserRole();
       } catch {
-        // ignore network errors
+        window.location.href = "/signin";
       }
     }, 30000);
 

@@ -28,40 +28,39 @@ async function getCompanyContext(vendedorId?: number) {
 // ─── Zonas ─────────────────────────────────────────────
 
 export async function createZone(nombre: string, vendedorId?: number) {
-  const { idVendedor } = await getCompanyContext(vendedorId);
-  if (!nombre.trim()) throw new Error("Nombre de zona requerido");
-
-  const existingZone = await prisma.zona.findUnique({ where: { nombre: nombre.trim() } });
-
-  if (existingZone) {
-    const alreadyLinked = await prisma.zonaEmpresa.findUnique({
-      where: { idZona_idVendedor: { idZona: existingZone.idZona, idVendedor } },
-    });
-    if (alreadyLinked) {
-      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}" para esta empresa`);
-    }
-    await prisma.zonaEmpresa.create({
-      data: { idZona: existingZone.idZona, idVendedor },
-    });
-    revalidatePath("/dashboard/logistic-admin/zonas");
-    revalidatePath("/dashboard/admin-delivery/zonas");
-    return existingZone;
-  }
-
   try {
-    const zona = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const { idVendedor } = await getCompanyContext(vendedorId);
+    if (!nombre.trim()) return { ok: false, error: "Nombre de zona requerido" };
+
+    const existingZone = await prisma.zona.findUnique({ where: { nombre: nombre.trim() } });
+
+    if (existingZone) {
+      const alreadyLinked = await prisma.zonaEmpresa.findUnique({
+        where: { idZona_idVendedor: { idZona: existingZone.idZona, idVendedor } },
+      });
+      if (alreadyLinked) {
+        return { ok: false, error: `La empresa ya está vinculada a "${nombre.trim()}"` };
+      }
+      await prisma.zonaEmpresa.create({
+        data: { idZona: existingZone.idZona, idVendedor },
+      });
+      revalidatePath("/dashboard/logistic-admin/zonas");
+      revalidatePath("/dashboard/admin-delivery/zonas");
+      return { ok: true };
+    }
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const z = await tx.zona.create({ data: { nombre: nombre.trim() } });
       await tx.zonaEmpresa.create({ data: { idZona: z.idZona, idVendedor } });
-      return z;
     });
     revalidatePath("/dashboard/logistic-admin/zonas");
     revalidatePath("/dashboard/admin-delivery/zonas");
-    return zona;
+    return { ok: true };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new Error(`Ya existe una zona con el nombre "${nombre.trim()}"`);
+      return { ok: false, error: `Ya existe una zona con el nombre "${nombre.trim()}"` };
     }
-    throw new Error("No se pudo crear la zona");
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo crear la zona" };
   }
 }
 
@@ -633,4 +632,63 @@ export async function setVehicleState(
   revalidatePath("/dashboard/logistic-admin/vehiculos");
   revalidatePath("/dashboard/logistic-admin/choferes");
   revalidatePath("/dashboard/admin-delivery/vehiculos");
+}
+
+export async function getLogisticAdminProfile() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("No autorizado");
+
+  const userProfile = await prisma.userProfile.findUnique({ where: { clerkUserId: userId } });
+  if (!userProfile) return { nombre: null, apellido: null, nombreEmpresa: null, telefono: null };
+
+  const parts = (userProfile.nombre ?? "").trim().split(/\s+/);
+  const nombre = parts.shift() ?? "";
+  const apellido = parts.join(" ");
+
+  return {
+    nombre: nombre || null,
+    apellido: apellido || null,
+    nombreEmpresa: userProfile.nombreEmpresa ?? null,
+    telefono: userProfile.telefono ?? null,
+  };
+}
+
+export async function updateLogisticAdminProfile(data: {
+  nombre?: string;
+  apellido?: string;
+  telefono?: string | null;
+  nombreEmpresa?: string | null;
+}) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("No autorizado");
+
+  const fullName = [data.nombre ?? "", data.apellido ?? ""].filter(Boolean).join(" ").trim();
+  if (!fullName) throw new Error("El nombre es obligatorio");
+
+  const telefono = data.telefono?.trim() || null;
+  const nombreEmpresa = data.nombreEmpresa?.trim() || null;
+
+  const updated = await prisma.userProfile.upsert({
+    where: { clerkUserId: userId },
+    create: { clerkUserId: userId, role: "logistic_admin", idVendedor: 0, nombre: fullName, telefono },
+    update: { nombre: fullName, telefono, ...(nombreEmpresa !== null ? { nombreEmpresa } : {}) },
+  });
+
+  return {
+    nombre: updated.nombre,
+    nombreEmpresa: updated.nombreEmpresa ?? null,
+    telefono: updated.telefono ?? null,
+  };
+}
+
+export async function getChoferRequests() {
+  const { idVendedor } = await getCompanyContext();
+  if (!idVendedor) return [];
+
+  const requests = await prisma.choferRequest.findMany({
+    where: { idVendedor, status: "pending" },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return requests;
 }

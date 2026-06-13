@@ -68,12 +68,9 @@ export function useChoferesController({ choferes, searchParams, page, totalFilte
 
     async function loadRequests() {
       try {
-        const response = await fetch("/api/logistic-admin/chofer-requests", { cache: "no-store" });
-        if (!response.ok) return;
-
-        const payload = (await response.json()) as { requests?: ChoferRequest[] };
+        const requests = await actions.getChoferRequests();
         if (!cancelled) {
-          setRequests(payload.requests ?? []);
+          setRequests(requests);
         }
       } finally {
         if (!cancelled) {

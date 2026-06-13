@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrders, type LogisticOrder, type OrderStatus } from "@/lib/logisticAdminStore";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims, syncClerkRoleMetadata, revokeAllClerkSessions } from "@/lib/roles";
 import { normalizeOrderStatus, normalizeZonaName } from "@/lib/shared/utils";
+import { getMockVendors } from "@/lib/mocks/ARCHIVED/vendors";
 
 type VendorHint = {
   id: number;
@@ -328,17 +329,13 @@ export async function getLogisticAdminData(): Promise<LogisticAdminViewData> {
 
   if (!userProfile && userId && !isGlobalAdmin) {
     try {
-      const base = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-      const resp = await fetch(`${base}/api/vendors?userId=${userId}`, { cache: "no-store" });
-      if (resp.ok) {
-        const data = (await resp.json()) as Array<{ id_vendedor?: number; nombre?: string }>;
-        if (Array.isArray(data) && data.length > 0) {
-          inferredVendorId = data[0].id_vendedor ?? null;
-          inferredVendorName = data[0].nombre ?? null;
-        }
+      const mockVendors = getMockVendors();
+      if (mockVendors.length > 0) {
+        inferredVendorId = mockVendors[0].id;
+        inferredVendorName = mockVendors[0].nombre ?? null;
       }
     } catch (err) {
-      console.error("Error resolving vendor from external service:", err);
+      console.error("Error resolving vendor from mock data:", err);
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createInitialProfile, normalizeProfile, type AdminProfileForm, type AdminProfilePayload } from "./utils";
+import { getLogisticAdminProfile, updateLogisticAdminProfile } from "@/lib/actions/logistic-admin";
 
 type UsePerfilControllerParams = {
   fallbackName?: string | null;
@@ -22,21 +23,13 @@ export function usePerfilController({ fallbackName }: UsePerfilControllerParams)
 
     async function loadProfile() {
       try {
-        const response = await fetch("/api/logistic-admin/profile", { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as { profile?: AdminProfilePayload } | null;
+        const payload = await getLogisticAdminProfile();
 
         if (cancelled) return;
 
-        if (response.ok && payload?.profile !== undefined) {
-          const loadedProfile = normalizeProfile(payload.profile, fallbackName);
-          setProfile(loadedProfile);
-          setForm(loadedProfile);
-          return;
-        }
-
-        const baseProfile = normalizeProfile(null, fallbackName);
-        setProfile(baseProfile);
-        setForm(baseProfile);
+        const loadedProfile = normalizeProfile(payload, fallbackName);
+        setProfile(loadedProfile);
+        setForm(loadedProfile);
       } catch {
         if (!cancelled) {
           const baseProfile = normalizeProfile(null, fallbackName);
@@ -76,21 +69,9 @@ export function usePerfilController({ fallbackName }: UsePerfilControllerParams)
     setStatus("saving");
 
     try {
-      const response = await fetch("/api/logistic-admin/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
+      const payload = await updateLogisticAdminProfile(form);
 
-      const payload = (await response.json().catch(() => null)) as { profile?: AdminProfilePayload; error?: string } | null;
-
-      if (!response.ok || payload?.profile === undefined) {
-        throw new Error(payload?.error ?? "No se pudo guardar el perfil");
-      }
-
-      const savedProfile = normalizeProfile(payload.profile, fallbackName);
+      const savedProfile = normalizeProfile(payload, fallbackName);
       setProfile(savedProfile);
       setForm(savedProfile);
       setIsEditing(false);

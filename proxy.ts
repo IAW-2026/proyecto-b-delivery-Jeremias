@@ -32,22 +32,26 @@ async function ensureProperRoles(userId: string) {
     let updatedRoles = [...rolesArray];
     let needsUpdate = hasLegacyKey;
 
-    // Regla 1: si no hay roles, asignar delivery
-    if (rolesArray.length === 0) {
+    if (rolesArray.includes("seller")) {
+      // Casos 1 y 2: seller siempre deriva en logistic_admin
+      const newRoles = rolesArray.filter((r) => r !== "delivery");
+      if (!newRoles.includes("logistic_admin")) {
+        newRoles.push("logistic_admin");
+      }
+      if (newRoles.length !== rolesArray.length || !newRoles.every((r, i) => r === rolesArray[i])) {
+        updatedRoles = newRoles;
+        needsUpdate = true;
+      }
+    } else if (rolesArray.length === 0) {
+      // Caso 3: sin roles → delivery
       updatedRoles = ["delivery"];
       needsUpdate = true;
-    }
-    // Regla 2: si no tiene delivery, agregarlo
-    else if (!rolesArray.includes("delivery")) {
-      updatedRoles = [...rolesArray, "delivery"];
+    } else if (rolesArray.includes("logistic_admin") && rolesArray.includes("delivery")) {
+      // Caso 6: ambos → limpiar delivery
+      updatedRoles = rolesArray.filter((r) => r !== "delivery");
       needsUpdate = true;
     }
-
-    // Regla 3: si tiene seller, agregar logistic_admin (si no lo tiene)
-    if (rolesArray.includes("seller") && !updatedRoles.includes("logistic_admin")) {
-      updatedRoles = [...updatedRoles, "logistic_admin"];
-      needsUpdate = true;
-    }
+    // Casos 4, 5 y 7: no tocar
 
     if (needsUpdate) {
       await client.users.updateUserMetadata(userId, {

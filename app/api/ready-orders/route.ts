@@ -12,6 +12,13 @@ type ReadyOrderInput = {
   zona: string;
 };
 
+function validateApiKey(request: NextRequest): boolean {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return false;
+  const token = authHeader.slice(7);
+  return token === process.env.DELIVERY_API_KEY;
+}
+
 function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
   if (!payload || typeof payload !== "object") return null;
 
@@ -46,6 +53,10 @@ function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
 }
 
 export async function POST(request: NextRequest) {
+  if (!validateApiKey(request)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {

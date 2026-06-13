@@ -1,33 +1,19 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
+import { resolveRolesFromClaims } from "@/lib/roles";
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
 
   if (!userId) {
     redirect("/signin");
   }
 
-  let userRole: { role?: string[] } | null = null;
-  try {
-    const cookieHeader = cookies().toString();
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/user-role`,
-      {
-        cache: "no-store",
-        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-      }
-    );
+  const roles = resolveRolesFromClaims(sessionClaims);
 
-    userRole = await response.json();
-  } catch (error) {
-    console.error("Error fetching user role (fallback):", error);
-  }
-
-  if (userRole?.role?.includes("admin_delivery")) redirect("/dashboard/admin-delivery");
-  if (userRole?.role?.includes("logistic_admin")) redirect("/dashboard/logistic-admin");
-  if (userRole?.role?.includes("delivery")) redirect("/dashboard/chofer");
+  if (roles.includes("admin_delivery")) redirect("/dashboard/admin-delivery");
+  if (roles.includes("logistic_admin")) redirect("/dashboard/logistic-admin");
+  if (roles.includes("delivery")) redirect("/dashboard/chofer");
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-8 py-12 text-zinc-950">

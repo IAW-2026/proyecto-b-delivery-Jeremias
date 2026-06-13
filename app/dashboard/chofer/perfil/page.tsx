@@ -3,6 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { splitFullName } from "@/lib/shared/utils";
+import { getChoferProfile, updateChoferProfile } from "@/lib/actions/chofer";
 
 type ChoferProfileForm = {
   nombre: string;
@@ -55,15 +56,12 @@ export default function PerfilPage() {
 
     async function loadProfile() {
       try {
-        const response = await fetch("/api/chofer/profile", { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as
-          | { chofer?: Partial<ChoferProfileForm> | null }
-          | null;
+        const choferData = await getChoferProfile();
 
         if (cancelled) return;
 
-        if (response.ok && payload?.chofer) {
-          const loadedProfile = normalizeProfile(payload.chofer, fallbackName);
+        if (choferData) {
+          const loadedProfile = normalizeProfile(choferData as Partial<ChoferProfileForm> | null, fallbackName);
           setProfile(loadedProfile);
           setForm(loadedProfile);
           return;
@@ -111,23 +109,17 @@ export default function PerfilPage() {
     setStatus("saving");
 
     try {
-      const response = await fetch("/api/chofer/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
+      const chofer = await updateChoferProfile({
+        nombre: form.nombre,
+        apellido: form.apellido,
+        telefono: form.telefono,
+        disponible: form.disponible,
+        cbuCvu: form.cbuCvu,
+        alias: form.alias,
+        cuilCuit: form.cuilCuit,
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { chofer?: Partial<ChoferProfileForm> | null; error?: string }
-        | null;
-
-      if (!response.ok || !payload?.chofer) {
-        throw new Error(payload?.error ?? "No se pudo guardar el perfil");
-      }
-
-      const savedProfile = normalizeProfile(payload.chofer, fallbackName);
+      const savedProfile = normalizeProfile(chofer as Partial<ChoferProfileForm> | null, fallbackName);
       setProfile(savedProfile);
       setForm(savedProfile);
       setIsEditing(false);

@@ -2,6 +2,7 @@
 
 import { UserButton, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import { getUserRole } from "@/lib/actions/user-role";
 
 function resolveRoleLabel(roles: string[]) {
   if (roles.includes("admin_delivery")) return "Admin delivery";
@@ -26,12 +27,7 @@ export default function UserMenu({ initialDisplayName }: { initialDisplayName?: 
 
     async function loadRole() {
       try {
-        const response = await fetch("/api/user-role", {
-          cache: "no-store",
-        });
-
-        const data = (await response.json()) as { role?: string[] };
-        const roles = Array.isArray(data.role) ? data.role : [];
+        const roles = await getUserRole();
         setResolvedRole(resolveRoleLabel(roles));
       } catch {
         setResolvedRole("Sin rol");

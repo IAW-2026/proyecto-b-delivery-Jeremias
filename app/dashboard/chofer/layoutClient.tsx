@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import RoleDashboardShell from "../_components/RoleDashboardShell";
 import { choferNavigationItems } from "./navigation";
+import { getChoferStatusData } from "@/lib/actions/chofer";
 
 export default function ChoferLayoutClient({
   children,
@@ -20,12 +21,9 @@ export default function ChoferLayoutClient({
 
     async function loadChoferAccess() {
       try {
-        const response = await fetch("/api/chofer/status", { cache: "no-store" });
-        if (!response.ok) return;
-
-        const payload = (await response.json()) as { chofer?: { estado?: string } };
+        const statusData = await getChoferStatusData();
         if (!cancelled) {
-          setCanSeeOperationalPages(payload.chofer?.estado === "activo");
+          setCanSeeOperationalPages(statusData?.chofer?.estado === "activo");
         }
       } catch {
         if (!cancelled) {

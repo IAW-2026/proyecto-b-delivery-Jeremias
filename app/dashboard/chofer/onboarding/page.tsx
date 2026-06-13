@@ -4,6 +4,8 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getMockVendors, type Vendor as MockVendor } from "@/lib/mocks/ARCHIVED/vendors";
+import { getChoferRequest, createChoferRequest } from "@/lib/actions/chofer-requests";
+import { getChoferProfile } from "@/lib/actions/chofer";
 
 type State = "selection" | "waiting";
 
@@ -42,27 +44,24 @@ export default function OnboardingPage() {
 
     async function loadRequestStatus() {
       try {
-        const response = await fetch("/api/chofer-requests", { cache: "no-store" });
-        if (!response.ok) return;
+        const request = await getChoferRequest();
+        if (cancelled || !request) return;
 
-        const payload = (await response.json()) as { request?: ChoferRequest | null };
-        if (cancelled || !payload.request) return;
+        setExistingRequest(request);
+        setVendorName(request.vendorName);
 
-        setExistingRequest(payload.request);
-        setVendorName(payload.request.vendorName);
-
-        if (payload.request.status === "pending") {
+        if (request.status === "pending") {
           setState("waiting");
         }
 
-        if (payload.request.status === "approved") {
+        if (request.status === "approved") {
           router.replace("/dashboard/chofer");
         }
 
-        if (payload.request.status === "rejected") {
+        if (request.status === "rejected") {
           setErrorMessage(
-            payload.request.reason
-              ? `Tu solicitud fue rechazada: ${payload.request.reason}`
+            request.reason
+              ? `Tu solicitud fue rechazada: ${request.reason}`
               : "Tu solicitud fue rechazada. Podés enviar una nueva solicitud."
           );
         }
@@ -85,26 +84,22 @@ export default function OnboardingPage() {
 
     async function loadLocalProfile() {
       try {
-        const resp = await fetch("/api/chofer/profile", { cache: "no-store" });
-        if (resp.ok) {
-          const payload = (await resp.json().catch(() => null)) as { chofer?: { nombre?: string | null; estado?: string; idVendedor?: number | null } } | null;
-          const choferData = payload?.chofer;
-          if (!cancelled && choferData) {
-            if (choferData.estado && choferData.estado !== "activo") {
-              if (choferData.estado === "inactivo") {
-                setInactiveReason("Tu cuenta fue desactivada. Contactá al administrador.");
-                return;
-              }
-              if (choferData.estado === "rechazado") {
-                setErrorMessage("Tu solicitud fue rechazada.");
-                return;
-              }
-            }
-            const localName = choferData.nombre?.trim();
-            if (localName) {
-              setFormData((current) => (current.nombre ? current : { ...current, nombre: localName }));
+        const choferData = await getChoferProfile();
+        if (!cancelled && choferData) {
+          if (choferData.estado && choferData.estado !== "activo") {
+            if (choferData.estado === "inactivo") {
+              setInactiveReason("Tu cuenta fue desactivada. Contactá al administrador.");
               return;
             }
+            if (choferData.estado === "rechazado") {
+              setErrorMessage("Tu solicitud fue rechazada.");
+              return;
+            }
+          }
+          const localName = choferData.nombre?.trim();
+          if (localName) {
+            setFormData((current) => (current.nombre ? current : { ...current, nombre: localName }));
+            return;
           }
         }
       } catch {
@@ -125,34 +120,14 @@ export default function OnboardingPage() {
   }, [isLoaded, user?.fullName, user?.firstName, user?.lastName]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadVendors() {
-      try {
-        const response = await fetch("/api/vendors", { cache: "no-store" });
-        if (!response.ok) throw new Error("vendors response not ok");
-
-        const payload = (await response.json()) as { vendors?: VendorOption[] };
-        if (!cancelled && Array.isArray(payload.vendors) && payload.vendors.length > 0) {
-          setVendors(payload.vendors);
-        }
-      } catch {
-        if (!cancelled) {
-          setVendors(getMockVendors().map((vendor: MockVendor) => ({
-            id: vendor.id,
-            nombre: vendor.nombre,
-            descripcion: vendor.descripcion,
-            direccion: vendor.direccion,
-          })));
-        }
-      }
-    }
-
-    void loadVendors();
-
-    return () => {
-      cancelled = true;
-    };
+    setVendors(
+      getMockVendors().map((vendor: MockVendor) => ({
+        id: vendor.id,
+        nombre: vendor.nombre,
+        descripcion: vendor.descripcion,
+        direccion: vendor.direccion,
+      }))
+    );
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -164,25 +139,15 @@ export default function OnboardingPage() {
     try {
       const vendor = vendors.find((entry) => entry.id === selectedVendor);
 
-      const response = await fetch("/api/chofer-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: formData.nombre,
-          telefono: formData.telefono,
-          idVendedor: selectedVendor,
-          vendorName: vendor?.nombre ?? "",
-        }),
+      const request = await createChoferRequest({
+        nombre: formData.nombre,
+        telefono: formData.telefono,
+        idVendedor: selectedVendor,
+        vendorName: vendor?.nombre ?? "",
       });
 
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error || "No se pudo enviar la solicitud");
-      }
-
-      const request = (await response.json()) as { request?: ChoferRequest };
-      setExistingRequest(request.request ?? null);
-      setVendorName(vendor?.nombre ?? request.request?.vendorName ?? "Empresa seleccionada");
+      setExistingRequest(request);
+      setVendorName(vendor?.nombre ?? request.vendorName ?? "Empresa seleccionada");
       setState("waiting");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Error inesperado");
