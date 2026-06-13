@@ -150,7 +150,7 @@ export default function ZonasManager({
 
             {searchQuery ? (
               <Link
-                href={buildZonasQueryHref({ query: "", page: 1 }, filterState, basePath)}
+                href={buildZonasQueryHref({ query: "", page: 1 }, filterState, `${basePath}/zonas`)}
                 className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Limpiar búsqueda
@@ -265,14 +265,14 @@ export default function ZonasManager({
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredZonas}</p>
             <div className="flex items-center gap-2">
               <Link
-                href={buildZonasQueryHref({ page: Math.max(1, page - 1) }, filterState, basePath)}
+                href={buildZonasQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/zonas`)}
                 aria-disabled={page <= 1}
                 className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
               >
                 Anterior
               </Link>
               <Link
-                href={buildZonasQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, basePath)}
+                href={buildZonasQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/zonas`)}
                 aria-disabled={page >= totalPages}
                 className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
               >

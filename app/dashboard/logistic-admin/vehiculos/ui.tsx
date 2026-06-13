@@ -158,7 +158,7 @@ export default function VehiculosManager({
 
             {searchQuery ? (
               <Link
-                href={buildVehiculosQueryHref({ query: "", page: 1 }, filterState, basePath)}
+                href={buildVehiculosQueryHref({ query: "", page: 1 }, filterState, `${basePath}/vehiculos`)}
                 className="mt-3 inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Limpiar búsqueda
@@ -451,10 +451,10 @@ export default function VehiculosManager({
           <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredVehiculos}</p>
             <div className="flex items-center gap-2">
-              <Link href={buildVehiculosQueryHref({ page: Math.max(1, page - 1) }, filterState, basePath)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
+              <Link href={buildVehiculosQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/vehiculos`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
                 Anterior
               </Link>
-              <Link href={buildVehiculosQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, basePath)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
+              <Link href={buildVehiculosQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/vehiculos`)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
                 Siguiente
               </Link>
             </div>
