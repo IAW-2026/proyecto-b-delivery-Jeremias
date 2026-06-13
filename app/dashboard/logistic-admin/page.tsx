@@ -1,5 +1,5 @@
-import LogisticAdminBoard from "./ui";
-import { getLogisticAdminData } from "./data";
+import LogisticAdminBoard from "@/components/logistic-admin/dashboard-ui";
+import { getLogisticAdminData } from "@/lib/logistic-admin/data";
 
 export default async function LogisticAdminPage() {
   const data = await getLogisticAdminData();

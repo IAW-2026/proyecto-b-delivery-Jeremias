@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import BlockedClient from "./blocked-client";
+import BlockedClient from "@/components/blocked-client";
 import { getUserAccessControl } from "@/lib/userAccess";
 
 export const dynamic = "force-dynamic";

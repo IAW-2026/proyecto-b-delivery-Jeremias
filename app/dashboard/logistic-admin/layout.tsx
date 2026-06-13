@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getLocalDisplayName } from "@/lib/localDisplayName";
-import LogisticAdminLayoutClient from "./layout-client";
+import LogisticAdminLayoutClient from "@/components/logistic-admin/layout-client";
 
 export default async function LogisticAdminLayout({
   children,

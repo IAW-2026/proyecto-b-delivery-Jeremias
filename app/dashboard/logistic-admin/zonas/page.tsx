@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { getLogisticAdminData } from "../data";
-import ZonasManager from "./ui";
+import { getLogisticAdminData } from "@/lib/logistic-admin/data";
+import ZonasManager from "@/components/logistic-admin/zonas-ui";
 import { pageSize } from "@/lib/shared/utils";
-import { filterZonas, parseZonasFilters } from "./utils";
+import { filterZonas, parseZonasFilters } from "@/lib/logistic-admin/zonas-utils";
 
 export default async function LogisticAdminZonasPage({
   searchParams,

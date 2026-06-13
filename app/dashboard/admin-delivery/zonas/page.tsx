@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { getLogisticAdminData } from "../../logistic-admin/data";
-import AdminDeliveryZonasUi from "./ui";
+import { getLogisticAdminData } from "@/lib/logistic-admin/data";
+import AdminDeliveryZonasUi from "@/components/admin-delivery/zonas-ui";
 import { pageSize } from "@/lib/shared/utils";
-import { filterZonas, parseZonasFilters, type SearchParamsInput } from "./utils";
+import { filterZonas, parseZonasFilters, type SearchParamsInput } from "@/lib/admin-delivery/zonas-utils";
 
 const basePath = "/dashboard/admin-delivery";
 

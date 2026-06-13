@@ -1,5 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
-import PerfilPage from "./ui";
+import PerfilPage from "@/components/logistic-admin/perfil-ui";
 
 export default async function LogisticAdminPerfilPage() {
   const clerkUser = await currentUser();

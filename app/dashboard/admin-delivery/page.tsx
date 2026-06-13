@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getLogisticAdminData } from "../logistic-admin/data";
-import { adminCardClass, adminPageShell } from "../logistic-admin/styles";
+import { getLogisticAdminData } from "@/lib/logistic-admin/data";
+import { adminCardClass, adminPageShell } from "@/lib/logistic-admin/styles";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
 
 export const dynamic = "force-dynamic";

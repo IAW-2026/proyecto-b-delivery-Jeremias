@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { getLogisticAdminData } from "../data";
-import VehiculosManager from "./ui";
+import { getLogisticAdminData } from "@/lib/logistic-admin/data";
+import VehiculosManager from "@/components/logistic-admin/vehiculos-ui";
 import { pageSize } from "@/lib/shared/utils";
-import { filterVehiculos, parseVehiculosFilters } from "./utils";
+import { filterVehiculos, parseVehiculosFilters } from "@/lib/logistic-admin/vehiculos-utils";
 
 export default async function LogisticAdminVehiculosPage({
   searchParams,

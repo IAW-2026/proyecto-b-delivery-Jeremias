@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import MisPedidosUI from "./ui";
+import MisPedidosUI from "@/components/chofer/mis-pedidos-ui";
 import { getChoferStatus } from "@/lib/choferStatus";
 import { pageSize, parsePage } from "@/lib/shared/utils";
-import { filterPedidos, isPedidoStatus, type PedidoStatus, type SearchParamsInput } from "./utils";
+import { filterPedidos, isPedidoStatus, type PedidoStatus, type SearchParamsInput } from "@/lib/chofer/mis-pedidos-utils";
 
 type SearchParams = Promise<SearchParamsInput>;
 
@@ -12,7 +12,7 @@ export default async function MisPedidosPage({ searchParams }: { searchParams: S
   const data = await getChoferStatus(userId);
   const query = await searchParams;
 
-  const searchValue = typeof query.query === "string" ? query.query : "";
+  const searchValue = typeof query.q === "string" ? query.q : "";
   const statusValue: "todos" | PedidoStatus = typeof query.status === "string" && isPedidoStatus(query.status) ? query.status : "todos";
   const requestedPage = parsePage(query.page);
 
@@ -24,7 +24,7 @@ export default async function MisPedidosPage({ searchParams }: { searchParams: S
 
   if (requestedPage !== safePage) {
     const params = new URLSearchParams();
-    if (searchValue) params.set("query", searchValue);
+    if (searchValue) params.set("q", searchValue);
     if (statusValue !== "todos") params.set("status", statusValue);
     params.set("page", String(safePage));
 

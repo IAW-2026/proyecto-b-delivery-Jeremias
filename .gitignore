@@ -30,6 +30,7 @@
 /OpenCode/
 /Entregables/
 /ArchivosDelCompaOpenCode/
+/Archivos/
 
 # debug
 npm-debug.log*

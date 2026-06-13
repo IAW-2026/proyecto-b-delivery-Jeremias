@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getLocalDisplayName } from "@/lib/localDisplayName";
-import ChoferLayoutClient from "./layoutClient";
+import ChoferLayoutClient from "@/components/chofer/layout-client";
 
 export default async function ChoferLayout({
   children,

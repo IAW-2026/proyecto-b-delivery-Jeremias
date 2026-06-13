@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { getLogisticAdminData } from "../../logistic-admin/data";
-import AdminDeliveryVehiculosUi from "./ui";
+import { getLogisticAdminData } from "@/lib/logistic-admin/data";
+import AdminDeliveryVehiculosUi from "@/components/admin-delivery/vehiculos-ui";
 import { pageSize } from "@/lib/shared/utils";
-import { filterVehiculos, parseVehiculosFilters, type SearchParamsInput } from "./utils";
+import { filterVehiculos, parseVehiculosFilters, type SearchParamsInput } from "@/lib/admin-delivery/vehiculos-utils";
 
 const basePath = "/dashboard/admin-delivery";
 

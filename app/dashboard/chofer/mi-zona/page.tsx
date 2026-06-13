@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getChoferStatus } from "@/lib/choferStatus";
-import MiZonaUI from "./ui";
+import MiZonaUI from "@/components/chofer/mi-zona-ui";
 
 export default async function MiZonaPage() {
   const { userId } = await auth();

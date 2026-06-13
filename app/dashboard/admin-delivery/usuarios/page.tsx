@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getAdminDeliveryUsersData } from "@/lib/adminDeliveryUsers";
 import { getVendors } from "@/lib/vendors";
-import AdminDeliveryUsersUi from "./ui";
+import AdminDeliveryUsersUi from "@/components/admin-delivery/usuarios-ui";
 
 export const dynamic = "force-dynamic";
 

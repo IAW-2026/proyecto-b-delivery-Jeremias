@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getChoferStatus } from "@/lib/choferStatus";
-import MiVehiculoUI from "./ui";
+import MiVehiculoUI from "@/components/chofer/mi-vehiculo-ui";
 
 export default async function MiVehiculoPage() {
   const { userId } = await auth();

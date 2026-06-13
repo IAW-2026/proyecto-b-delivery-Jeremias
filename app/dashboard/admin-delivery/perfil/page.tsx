@@ -1,5 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
-import AdminDeliveryPerfilUi from "./ui";
+import AdminDeliveryPerfilUi from "@/components/admin-delivery/perfil-ui";
 
 async function safeCurrentUser() {
   try {

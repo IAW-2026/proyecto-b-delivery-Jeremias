@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { getLogisticAdminData } from "../../logistic-admin/data";
-import AdminDeliveryPedidosUi from "./ui";
+import { getLogisticAdminData } from "@/lib/logistic-admin/data";
+import AdminDeliveryPedidosUi from "@/components/admin-delivery/pedidos-ui";
 import { pageSize } from "@/lib/shared/utils";
-import { filterOrders, parsePedidosFilters, type SearchParamsInput } from "./utils";
+import { filterOrders, parsePedidosFilters, type SearchParamsInput } from "@/lib/admin-delivery/pedidos-utils";
 
 const basePath = "/dashboard/admin-delivery";
 

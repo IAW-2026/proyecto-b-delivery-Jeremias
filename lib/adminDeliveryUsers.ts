@@ -70,11 +70,11 @@ export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDa
   }
 
   // 2. Traemos la data local de Prisma
-  const dbUserProfiles = await prisma.userProfile.findMany();
+  const dbUserProfiles = await prisma.userProfile.findMany().catch(() => []);
   const dbAccessControls = await prisma.userAccessControl.findMany().catch(() => []);
   const dbChoferes = await prisma.chofer.findMany({
     select: { clerkUserId: true, nombre: true }
-  });
+  }).catch(() => []);
 
   // 3. Mapeamos y cruzamos los datos
   const allMappedUsers: AdminDeliveryUserRow[] = clerkUsers

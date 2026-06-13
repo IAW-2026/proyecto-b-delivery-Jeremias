@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getLocalDisplayName } from "@/lib/localDisplayName";
-import AdminDeliveryLayoutClient from "./layout-client";
+import AdminDeliveryLayoutClient from "@/components/admin-delivery/layout-client";
 
 export const dynamic = "force-dynamic";
 
