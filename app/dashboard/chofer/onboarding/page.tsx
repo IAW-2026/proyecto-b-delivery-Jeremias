@@ -38,6 +38,7 @@ export default function OnboardingPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [existingRequest, setExistingRequest] = useState<ChoferRequest | null>(null);
   const [inactiveReason, setInactiveReason] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +57,7 @@ export default function OnboardingPage() {
 
         if (request.status === "approved") {
           router.replace("/dashboard/chofer");
+          return;
         }
 
         if (request.status === "rejected") {
@@ -67,6 +69,8 @@ export default function OnboardingPage() {
         }
       } catch {
         // If status lookup fails, keep the selection flow available.
+      } finally {
+        if (!cancelled) setIsInitialLoading(false);
       }
     }
 
@@ -159,6 +163,8 @@ export default function OnboardingPage() {
   }
 
   const isWaiting = state === "waiting";
+
+  if (isInitialLoading) return null;
 
   if (inactiveReason) {
     return (
