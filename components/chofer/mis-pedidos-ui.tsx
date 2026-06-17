@@ -85,10 +85,6 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
     setError(null);
   }
 
-  function openMotivo(pedidoId: number) {
-    setMotivoPedidoId(pedidoId);
-  }
-
   function closeMotivo() {
     setMotivoPedidoId(null);
   }
@@ -234,7 +230,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
               </tr>
             </thead>
             <tbody>
-              {pedidos.map((pedido, idx) => (
+              {pedidos.map((pedido) => (
                 <Fragment key={pedido.idPedido}>
                   <tr className="border-t border-slate-100 text-sm text-slate-700 hover:bg-slate-50/50">
                   <td className="px-3 py-3.5">

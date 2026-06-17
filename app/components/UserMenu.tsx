@@ -14,13 +14,7 @@ function resolveRoleLabel(roles: string[]) {
 export default function UserMenu({ initialDisplayName }: { initialDisplayName?: string }) {
   const { isSignedIn, isLoaded, user } = useUser();
   const [resolvedRole, setResolvedRole] = useState<string>("Sin rol");
-  const [displayName, setDisplayName] = useState<string>(initialDisplayName?.trim() || "Usuario");
-
-  useEffect(() => {
-    if (initialDisplayName?.trim()) {
-      setDisplayName(initialDisplayName.trim());
-    }
-  }, [initialDisplayName]);
+  const displayName = initialDisplayName?.trim() || "Usuario";
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user?.id) return;

@@ -1,5 +1,5 @@
 import type { LogisticAdminViewData } from "@/lib/logistic-admin/data";
-import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
+import { normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions = ["activo", "inactivo", "pendiente", "rechazado"] as const;
 

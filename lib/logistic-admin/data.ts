@@ -145,7 +145,6 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     select: { idVendedor: true, nombreEmpresa: true, role: true },
   });
 
-  const idVendedor = userProfile?.idVendedor ?? null;
   const vendorName = userProfile?.nombreEmpresa ?? null;
 
   let inferredVendorId: string | null = null;

@@ -1,6 +1,7 @@
 "use client";
 
 export default function AdminDeliveryError({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   error,
   reset,
 }: {

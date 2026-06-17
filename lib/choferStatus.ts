@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Pedido } from "@prisma/client";
 
 type ChoferPedido = {
   idPedido: number;
@@ -82,7 +83,7 @@ export async function getChoferStatus(clerkUserId?: string | null): Promise<Chof
 
   const displayName = clerkUserId ? await getDBDisplayName(clerkUserId) : "Chofer nuevo";
   const choferId = dbChofer?.idChofer ?? 0;
-  const [pendingOrders, allAssignedOrders]: [any[], any[]] = await Promise.all([
+  const [pendingOrders, allAssignedOrders]: [Pedido[], Pedido[]] = await Promise.all([
     prisma.pedido.findMany({
       where: {
         idChoferAsignado: choferId,

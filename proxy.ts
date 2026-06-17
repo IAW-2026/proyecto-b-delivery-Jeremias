@@ -2,7 +2,7 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isUserBlocked } from "@/lib/userAccess";
-import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
+import { resolveRolesFromClaims } from "@/lib/roles";
 
 async function resolveRoles(sessionClaims: unknown) {
   return resolveRolesFromClaims(sessionClaims);

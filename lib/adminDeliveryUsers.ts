@@ -48,7 +48,7 @@ function buildDisplayName(params: {
 
 export async function getAdminDeliveryUsersData(options: GetAdminDeliveryUsersDataOptions = {}) {
   const { excludeClerkUserId = null } = options;
-  let clerkUsers: User[] = [];
+  const clerkUsers: User[] = [];
   let clerkUnavailable = false;
 
   // 1. Intentamos traer los usuarios de Clerk (paginación completa)

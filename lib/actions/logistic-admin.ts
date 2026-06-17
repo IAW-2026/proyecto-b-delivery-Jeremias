@@ -65,7 +65,7 @@ export async function createZone(nombre: string, vendedorId?: string) {
 }
 
 export async function updateZone(idZona: number, nombre: string, vendedorId?: string) {
-  const { idVendedor } = await getCompanyContext(vendedorId);
+  await getCompanyContext(vendedorId);
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
   const zona = await prisma.zona.findUnique({ where: { idZona } });

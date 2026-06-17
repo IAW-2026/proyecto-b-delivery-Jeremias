@@ -5,6 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 // runtime constructor (any) — prefer named export, fallback to default or module itself
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- PrismaClient constructor shape varies across runtime/build environments
 const PrismaClientCtor: any = (PrismaPkg as any).PrismaClient ?? (PrismaPkg as any).default ?? PrismaPkg;
 
 const prismaClientSingleton = () => {
@@ -52,6 +53,7 @@ export const prisma = new Proxy(
       try {
         // If DATABASE_URL is missing, let the caller handle the absent client by
         // receiving an error when attempting to use it. Construct when needed.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Proxy trap, runtime type varies
         return (createPrismaInstance() as any)[prop];
       } catch (err) {
         // Re-throw with clearer message to aid debugging during build/runtime.
@@ -59,6 +61,7 @@ export const prisma = new Proxy(
       }
     },
     apply(_, thisArg, args) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Proxy trap, runtime type varies
       return (createPrismaInstance() as any).apply(thisArg, args);
     },
   }

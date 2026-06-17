@@ -1,5 +1,5 @@
 import type { LogisticAdminViewData } from "@/lib/logistic-admin/data";
-import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
+import { normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export type Zona = LogisticAdminViewData["zonas"][number];
 

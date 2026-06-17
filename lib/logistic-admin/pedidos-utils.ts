@@ -1,5 +1,5 @@
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
-import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
+import { normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export function statusNeedsChofer(status: OrderStatus) {
   return status === "en_camino" || status === "entregado";

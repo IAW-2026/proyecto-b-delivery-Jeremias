@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createInitialProfile, normalizeProfile, type AdminProfileForm, type AdminProfilePayload } from "./perfil-utils";
+import { createInitialProfile, normalizeProfile, type AdminProfileForm } from "./perfil-utils";
 import { getLogisticAdminProfile, updateLogisticAdminProfile } from "@/lib/actions/logistic-admin";
 
 type UsePerfilControllerParams = {

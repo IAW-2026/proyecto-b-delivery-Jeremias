@@ -38,7 +38,7 @@ export async function setLocalRole(
       where: { clerkUserId: targetUserId },
       select: { nombre: true },
     });
-    let nombre = nameProfile?.nombre?.trim() || "Chofer";
+    const nombre = nameProfile?.nombre?.trim() || "Chofer";
 
     await prisma.chofer.upsert({
       where: { clerkUserId: targetUserId },

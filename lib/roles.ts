@@ -78,6 +78,7 @@ export async function syncClerkRoleMetadata(userId: string, role: string): Promi
     const client = await clerkClient();
 
     // Fetch current user to preserve other metadata
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Clerk SDK types don't expose full metadata type
     let current: any = {};
     try {
       current = await client.users.getUser(userId);
@@ -109,6 +110,7 @@ export async function revokeAllClerkSessions(userId: string): Promise<boolean> {
     const client = await clerkClient();
 
     const list = await client.sessions.getSessionList({ userId });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Clerk SDK response shape not precisely typed
     const sessions = Array.isArray((list as any).data) ? (list as any).data : (list as any).sessions ?? (list as any).data ?? [];
 
     for (const s of sessions) {
@@ -116,7 +118,7 @@ export async function revokeAllClerkSessions(userId: string): Promise<boolean> {
       if (!sid) continue;
       try {
         await client.sessions.revokeSession(sid);
-      } catch (e) {
+      } catch {
         // best-effort
       }
     }

@@ -46,7 +46,6 @@ export default function VehiculosManager({
   
 
   const {
-    vendorOptions: hasVendorOptions,
     selectedVendorId,
     setSelectedVendorId,
     filterState,

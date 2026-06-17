@@ -26,7 +26,7 @@ type UsePedidosControllerParams = {
   basePath?: string;
 };
 
-export function usePedidosController({ orders, allFilteredOrders, choferes, searchParams, page, totalFilteredOrders, basePath = "/dashboard/logistic-admin" }: UsePedidosControllerParams) {
+export function usePedidosController({ orders, allFilteredOrders, choferes, searchParams, page, totalFilteredOrders }: UsePedidosControllerParams) {
   const filterState: PedidosFilterState = parsePedidosFilters(searchParams);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);

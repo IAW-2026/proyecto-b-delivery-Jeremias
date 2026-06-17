@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { LogisticAdminViewData } from "./data";
 import { pageSize } from "@/lib/shared/utils";
 import { type ChoferesFilterState, type SearchParamsInput, parseChoferesFilters } from "./choferes-utils";
@@ -27,7 +26,6 @@ type UseChoferesControllerParams = {
 };
 
 export function useChoferesController({ choferes, searchParams, page, totalFilteredChoferes, basePath = "/dashboard/logistic-admin" }: UseChoferesControllerParams) {
-  const router = useRouter();
   const filterState: ChoferesFilterState = parseChoferesFilters(searchParams);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [editingChoferId, setEditingChoferId] = useState<number | null>(null);

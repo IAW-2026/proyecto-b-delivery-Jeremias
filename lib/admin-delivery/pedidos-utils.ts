@@ -1,5 +1,5 @@
 import type { LogisticOrder, OrderStatus } from "@/lib/logisticAdminStore";
-import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
+import { normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions: OrderStatus[] = ["ready", "en_camino", "entregado", "cancelado", "revision"];
 

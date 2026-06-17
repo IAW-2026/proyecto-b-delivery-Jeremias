@@ -46,7 +46,7 @@ export default function ZonasManager({
     vendorOptions,
   });
 
-  const { vendorOptions: hasVendorOptions, selectedVendorId, setSelectedVendorId, filterState, form, setForm, editForm, setEditForm, isSaving, editingZonaId, error, pageStart, pageEnd, showEmpresasForZone, setShowEmpresasForZone, handlers } = controller;
+  const { selectedVendorId, setSelectedVendorId, filterState, form, setForm, editForm, setEditForm, isSaving, editingZonaId, error, pageStart, pageEnd, showEmpresasForZone, setShowEmpresasForZone, handlers } = controller;
   const { handleSubmit, startEdit, cancelEdit, handleUpdateZone, handleDelete, handleDisassociateVendor, submitSearch } = handlers;
 
   const empresasDialogRef = useRef<HTMLDivElement>(null);

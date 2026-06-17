@@ -1,5 +1,5 @@
 import type { LogisticAdminViewData } from "./data";
-import { pageSize, normalizeSearchValue, parsePage } from "@/lib/shared/utils";
+import { normalizeSearchValue, parsePage } from "@/lib/shared/utils";
 
 export const statusOptions = [
   { value: "activo", label: "Activos" },
