@@ -13,7 +13,7 @@ export type AdminDeliveryUserRow = {
   blockedReason: string | null;
   blockedAt: string | null;
   localRole: string;
-  idVendedor: number | null;
+  idVendedor: string | null;
   nombreEmpresa: string | null;
   adminPhone: string | null;
 };

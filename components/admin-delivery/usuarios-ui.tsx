@@ -157,7 +157,7 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
                             value={vendorDrafts[user.clerkUserId] ?? 0}
                             onChange={(event) => {
                               const val = event.currentTarget.value;
-                              updateVendorDraft(user.clerkUserId, Number(val));
+                              updateVendorDraft(user.clerkUserId, val);
                             }}
                             disabled={isBusy}
                             className="w-full min-w-[180px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none disabled:opacity-60"

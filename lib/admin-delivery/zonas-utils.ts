@@ -22,7 +22,7 @@ export function parseZonasFilters(query: SearchParamsInput): ZonasFilterState {
   };
 }
 
-export function filterZonas(zonas: Zona[], searchQuery: string, vendorNames?: Record<number, string>) {
+export function filterZonas(zonas: Zona[], searchQuery: string, vendorNames?: Record<string, string>) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 
   if (!normalizedQuery) {

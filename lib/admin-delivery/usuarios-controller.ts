@@ -28,10 +28,10 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     }
     return initialDrafts;
   });
-  const [vendorDrafts, setVendorDrafts] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
+  const [vendorDrafts, setVendorDrafts] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
     for (const user of users) {
-      initial[user.clerkUserId] = user.idVendedor ?? 0;
+      initial[user.clerkUserId] = user.idVendedor ?? "";
     }
     return initial;
   });
@@ -108,7 +108,7 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
 
     setVendorDrafts((current) => ({
       ...current,
-      [user.clerkUserId]: user.idVendedor ?? 0,
+      [user.clerkUserId]: user.idVendedor ?? "",
     }));
   }
 
@@ -120,7 +120,7 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
 
     setVendorDrafts((current) => ({
       ...current,
-      [user.clerkUserId]: user.idVendedor ?? 0,
+      [user.clerkUserId]: user.idVendedor ?? "",
     }));
 
     setEditingUserId((current) => (current === user.clerkUserId ? null : current));
@@ -133,7 +133,7 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
     }));
   }
 
-  function updateVendorDraft(clerkUserId: string, vendorId: number) {
+  function updateVendorDraft(clerkUserId: string, vendorId: string) {
     setVendorDrafts((current) => ({
       ...current,
       [clerkUserId]: vendorId,
@@ -142,9 +142,9 @@ export function useUsuariosController(users: AdminDeliveryUserRow[], vendors: Ve
 
   function saveRole(user: AdminDeliveryUserRow) {
     const nextRole = roleDrafts[user.clerkUserId] ?? "delivery";
-    const selectedVendorId = vendorDrafts[user.clerkUserId] ?? 0;
+    const selectedVendorId = vendorDrafts[user.clerkUserId] ?? "";
 
-    const selectedVendor = selectedVendorId > 0
+    const selectedVendor = selectedVendorId !== ""
       ? vendors.find((v) => v.id === selectedVendorId)
       : undefined;
     const nombreEmpresa = selectedVendor?.nombre ?? null;

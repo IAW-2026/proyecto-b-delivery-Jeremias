@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 type ReadyOrderInput = {
   idPedidoExterno: number;
-  idVendedor: number;
+  idVendedor: string;
   cliente: string;
   direccion: string;
   telefono: string | null;
@@ -32,7 +32,7 @@ function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
 
     const p = item as Record<string, unknown>;
     const idPedidoExterno = Number(p.id_pedido_externo);
-    const idVendedor = Number(p.id_vendedor);
+    const idVendedor = String(p.id_vendedor ?? "");
     const cliente = String(p.cliente ?? "").trim();
     const direccion = String(p.direccion ?? "").trim();
     const telefono = p.telefono != null ? String(p.telefono).trim() : null;
@@ -40,7 +40,7 @@ function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
     const zona = String(p.zona ?? "").trim();
 
     if (!Number.isInteger(idPedidoExterno) || idPedidoExterno <= 0) return null;
-    if (!Number.isInteger(idVendedor) || idVendedor <= 0) return null;
+    if (!idVendedor) return null;
     if (!cliente) return null;
     if (!direccion) return null;
     if (!Number.isInteger(cantBidones) || cantBidones <= 0) return null;
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   const results: Array<{
     idPedido: number;
     idPedidoExterno: number;
-    idVendedor: number;
+    idVendedor: string;
     created: boolean;
   }> = [];
 

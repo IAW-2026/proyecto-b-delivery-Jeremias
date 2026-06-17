@@ -24,7 +24,7 @@ async function assertAdminDeliveryAccess() {
 export async function setLocalRole(
   targetUserId: string,
   role: string,
-  idVendedor: number,
+  idVendedor: string,
   nombreEmpresa: string | null
 ) {
   await assertAdminDeliveryAccess();
@@ -33,7 +33,7 @@ export async function setLocalRole(
     throw new Error("Rol inválido");
   }
 
-  if (role === "delivery" && idVendedor > 0) {
+  if (role === "delivery" && idVendedor !== "") {
     const nameProfile = await prisma.userProfile.findUnique({
       where: { clerkUserId: targetUserId },
       select: { nombre: true },
@@ -74,7 +74,7 @@ export async function promoteAdminDelivery(targetUserId: string, nombre: string,
     create: {
       clerkUserId: targetUserId,
       role: "admin_delivery",
-      idVendedor: 0,
+      idVendedor: "",
       nombre: nombre || targetUserId,
       telefono: telefono || null,
     },

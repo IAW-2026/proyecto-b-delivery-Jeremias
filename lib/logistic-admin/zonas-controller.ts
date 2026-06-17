@@ -16,7 +16,7 @@ type UseZonasControllerParams = {
   page: number;
   totalFilteredZonas: number;
   basePath?: string;
-  vendorOptions?: Record<number, string>;
+  vendorOptions?: Record<string, string>;
 };
 
 const emptyForm: FormState = {
@@ -32,8 +32,8 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
   const [editingZonaId, setEditingZonaId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showEmpresasForZone, setShowEmpresasForZone] = useState<Zona | null>(null);
-  const vendorIds = vendorOptions ? Object.keys(vendorOptions).map(Number).sort() : [];
-  const [selectedVendorId, setSelectedVendorId] = useState<number>(vendorIds[0] ?? 0);
+  const vendorIds = vendorOptions ? Object.keys(vendorOptions).sort() : [];
+  const [selectedVendorId, setSelectedVendorId] = useState<string>(vendorIds[0] ?? "");
 
   const pageStart = zonas.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredZonas, page * pageSize);
@@ -137,7 +137,7 @@ export function useZonasController({ zonas, searchParams, page, totalFilteredZon
     }
   }
 
-  async function handleDisassociateVendor(idVendedor: number) {
+  async function handleDisassociateVendor(idVendedor: string) {
     if (!showEmpresasForZone) return;
     setIsSaving(true);
     setError(null);

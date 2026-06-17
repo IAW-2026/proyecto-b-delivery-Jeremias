@@ -43,7 +43,7 @@ export function filterChoferes(
   choferes: Chofer[],
   searchQuery: string,
   statusFilter: "todos" | ChoferStatus,
-  vendorNames?: Record<number, string>
+  vendorNames?: Record<string, string>
 ) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 

@@ -5,10 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims, syncClerkRoleMetadata, revokeAllClerkSessions } from "@/lib/roles";
 import { normalizeOrderStatus, normalizeZonaName } from "@/lib/shared/utils";
 import type { OrderStatus } from "@/lib/logisticAdminStore";
-import { getMockVendors } from "@/lib/mocks/ARCHIVED/vendors";
+import { fetchVendors } from "@/lib/vendors";
 
 type VendorHint = {
-  id: number;
+  id: string;
   nombre?: string;
 };
 
@@ -17,7 +17,7 @@ type VehiculoRecord = {
   patente: string;
   tipo: string;
   capacidadBidones: number;
-  idVendedor: number;
+  idVendedor: string;
   estado: string;
   motivoPausa: string | null;
   assignedToChoferId?: number | null;
@@ -32,12 +32,12 @@ type ChoferRecord = {
   disponible: boolean;
   idVehiculo: number | null;
   idZona: number | null;
-  idVendedor: number;
+  idVendedor: string;
   zonaNombre: string;
   zona: { nombre: string } | null;
   vehiculoPatente: string | null;
   vehiculoTipo: string | null;
-  vehiculo?: { patente: string; tipo: string; idVehiculo: number; capacidadBidones: number; idVendedor: number; estado?: string } | null;
+  vehiculo?: { patente: string; tipo: string; idVehiculo: number; capacidadBidones: number; idVendedor: string; estado?: string } | null;
   totalPedidos: number;
 };
 
@@ -75,20 +75,20 @@ type DashboardOrder = {
   assignedToChoferId: number | null;
   assignedToChoferName: string | null;
   updatedAt: string;
-  idVendedor: number;
+  idVendedor: string;
 };
 
 export type LogisticAdminViewData = {
   roles: string[];
-  idVendedor: number | null;
+  idVendedor: string | null;
   vendorName: string | null;
   userName: string;
-  companyId: number | null;
+  companyId: string | null;
   companyName: string | null;
   inferredVendor?: VendorHint;
   databaseUnavailable: boolean;
   dbError?: string;
-  vendorNames: Record<number, string>;
+  vendorNames: Record<string, string>;
   vehiculos: VehiculoRecord[];
   choferes: ChoferRecord[];
   zonas: ZonaRecord[];
@@ -112,8 +112,8 @@ type ZonaResumen = {
 };
 
 function buildZonasResumen(
-  zonas: { idZona: number; nombre: string; empresas: { idVendedor: number }[]; choferes: { idChofer: number }[] }[],
-  vendorMap: Map<number, string>,
+  zonas: { idZona: number; nombre: string; empresas: { idVendedor: string }[]; choferes: { idChofer: number }[] }[],
+  vendorMap: Map<string, string>,
   pedidosByZona: Map<string, { count: number; asignados: number; ready: number; cancelados: number; bidones: number }>
 ): ZonaResumen[] {
   return zonas.map((zona) => {
@@ -122,7 +122,7 @@ function buildZonasResumen(
       idZona: zona.idZona,
       nombre: zona.nombre,
       zona: zona.nombre,
-      empresas: zona.empresas.map((e) => String(e.idVendedor)),
+      empresas: zona.empresas.map((e) => e.idVendedor),
       pedidosTotales: stats.count,
       pedidosAsignados: stats.asignados,
       pedidosReady: stats.ready,
@@ -148,18 +148,19 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
   const idVendedor = userProfile?.idVendedor ?? null;
   const vendorName = userProfile?.nombreEmpresa ?? null;
 
-  let inferredVendorId: number | null = null;
+  let inferredVendorId: string | null = null;
   let inferredVendorName: string | null = null;
 
   if (!userProfile && userId && !isGlobalAdmin) {
     try {
-      const mockVendors = getMockVendors();
-      if (mockVendors.length > 0) {
-        inferredVendorId = mockVendors[0].id;
-        inferredVendorName = mockVendors[0].nombre ?? null;
+      const vendors = await fetchVendors();
+      const matchedVendor = vendors.find((v) => v.clerkUserId === userId);
+      if (matchedVendor) {
+        inferredVendorId = matchedVendor.id;
+        inferredVendorName = matchedVendor.nombre ?? null;
       }
     } catch (err) {
-      console.error("Error resolving vendor from mock data:", err);
+      console.error("Error resolving vendor from seller API:", err);
     }
   }
 
@@ -167,16 +168,24 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     try {
       const synced = await syncClerkRoleMetadata(userId, "logistic_admin");
       console.debug("syncClerkRoleMetadata inferred result", userId, synced);
-      const revoked = await revokeAllClerkSessions(userId).catch(() => false);
-      console.debug("revokeAllClerkSessions inferred result", userId, revoked);
 
-      await prisma.userProfile.create({
-        data: {
+      await prisma.userProfile.upsert({
+        where: { clerkUserId: userId },
+        update: {
+          idVendedor: inferredVendorId,
+          nombreEmpresa: inferredVendorName,
+          role: "logistic_admin",
+        },
+        create: {
           clerkUserId: userId,
           idVendedor: inferredVendorId,
+          nombreEmpresa: inferredVendorName,
           role: "logistic_admin",
         },
       });
+
+      const revoked = await revokeAllClerkSessions(userId).catch(() => false);
+      console.debug("revokeAllClerkSessions inferred result", userId, revoked);
     } catch (err) {
       console.debug("Could not persist inferred userRole:", err);
     }
@@ -237,12 +246,12 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     select: { idVendedor: true, nombreEmpresa: true },
     distinct: ["idVendedor"],
   });
-  const vendorMap = new Map<number, string>();
+  const vendorMap = new Map<string, string>();
   for (const v of vendors) {
     if (v.idVendedor) vendorMap.set(v.idVendedor, v.nombreEmpresa ?? `Empresa #${v.idVendedor}`);
   }
 
-  const vehiculos: VehiculoRecord[] = dbVehiculos.map((v: { idVehiculo: number; patente: string; tipo: string; capacidadBidones: number; idVendedor: number; estado: string; motivoPausa: string | null; choferes: { idChofer: number; nombre: string }[] }) => ({
+  const vehiculos: VehiculoRecord[] = dbVehiculos.map((v: { idVehiculo: number; patente: string; tipo: string; capacidadBidones: number; idVendedor: string; estado: string; motivoPausa: string | null; choferes: { idChofer: number; nombre: string }[] }) => ({
     idVehiculo: v.idVehiculo,
     patente: v.patente,
     tipo: v.tipo,
@@ -254,7 +263,7 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     assignedToChoferName: v.choferes[0]?.nombre ?? null,
   }));
 
-  const choferes: ChoferRecord[] = dbChoferes.map((c: { idChofer: number; nombre: string; telefono: string | null; estado: string; disponible: boolean; idVehiculo: number | null; idZona: number | null; idVendedor: number; zona: { nombre: string } | null; vehiculo: { idVehiculo: number; patente: string; tipo: string; capacidadBidones: number; idVendedor: number; estado: string } | null; _count: { pedidosAsignados: number } }) => ({
+  const choferes: ChoferRecord[] = dbChoferes.map((c: { idChofer: number; nombre: string; telefono: string | null; estado: string; disponible: boolean; idVehiculo: number | null; idZona: number | null; idVendedor: string; zona: { nombre: string } | null; vehiculo: { idVehiculo: number; patente: string; tipo: string; capacidadBidones: number; idVendedor: string; estado: string } | null; _count: { pedidosAsignados: number } }) => ({
     idChofer: c.idChofer,
     nombre: c.nombre,
     telefono: c.telefono,
@@ -271,7 +280,7 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     totalPedidos: c._count.pedidosAsignados,
   }));
 
-  const pedidos: DashboardOrder[] = dbPedidos.map((pedido: { idPedido: number; cliente: string; direccion: string; telefono: string | null; cantBidones: number; zona: string; estado: string; idChoferAsignado: number | null; choferAsignado: { idChofer: number; nombre: string } | null; updatedAt: Date | null; idVendedor: number }) => {
+  const pedidos: DashboardOrder[] = dbPedidos.map((pedido: { idPedido: number; cliente: string; direccion: string; telefono: string | null; cantBidones: number; zona: string; estado: string; idChoferAsignado: number | null; choferAsignado: { idChofer: number; nombre: string } | null; updatedAt: Date | null; idVendedor: string }) => {
     const status = normalizeOrderStatus(pedido.estado) as OrderStatus;
     return {
       idPedido: pedido.idPedido,
@@ -323,13 +332,13 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
   const userName = userProfile?.nombre ?? vendorName ?? inferredVendorName ?? "Usuario";
   const companyId = idVendedorToQuery;
   const companyName = vendorName ?? inferredVendorName ?? null;
-  const vendorNames: Record<number, string> = Object.fromEntries(vendorMap);
+  const vendorNames: Record<string, string> = Object.fromEntries(vendorMap);
 
   if (!isGlobalAdmin && !inferredVendorId && !userProfile) {
     redirect(`/api/vendors/link`);
   }
 
-  if (!isGlobalAdmin && (idVendedorToQuery === null || idVendedorToQuery === 0)) {
+  if (!isGlobalAdmin && (idVendedorToQuery === null || idVendedorToQuery === "")) {
     redirect("/signin");
   }
 

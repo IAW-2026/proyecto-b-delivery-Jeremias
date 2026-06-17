@@ -9,7 +9,7 @@ async function resolveRoles(sessionClaims: unknown) {
 }
 
 // Asegura que un usuario autenticado tenga los roles adecuados en Clerk.
-// Clave canónica: publicMetadata.role (arreglo). `roles` es la clave legacy.
+// Clave canónica: publicMetadata.roles (arreglo). `role` es la clave legacy.
 async function ensureProperRoles(userId: string) {
   try {
     const { clerkClient } = await import("@clerk/nextjs/server");
@@ -18,16 +18,16 @@ async function ensureProperRoles(userId: string) {
     const user = await client.users.getUser(userId);
     const publicMetadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
 
-    const canonicalRoles = Array.isArray(publicMetadata.role)
-      ? (publicMetadata.role as string[])
-      : typeof publicMetadata.role === "string"
-        ? [publicMetadata.role as string]
+    const canonicalRoles = Array.isArray(publicMetadata.roles)
+      ? (publicMetadata.roles as string[])
+      : typeof publicMetadata.roles === "string"
+        ? [publicMetadata.roles as string]
         : [];
-    const legacyRoles = Array.isArray(publicMetadata.roles) ? (publicMetadata.roles as string[]) : [];
+    const legacyRoles = Array.isArray(publicMetadata.role) ? (publicMetadata.role as string[]) : [];
 
     // Fusionar clave canónica + legacy (migración)
     const rolesArray = [...new Set([...canonicalRoles, ...legacyRoles])];
-    const hasLegacyKey = publicMetadata.roles !== undefined;
+    const hasLegacyKey = publicMetadata.role !== undefined;
 
     let updatedRoles = [...rolesArray];
     let needsUpdate = hasLegacyKey;
@@ -56,9 +56,9 @@ async function ensureProperRoles(userId: string) {
     if (needsUpdate) {
       await client.users.updateUserMetadata(userId, {
         publicMetadata: {
-          role: updatedRoles,
+          roles: updatedRoles,
           // Eliminar la clave legacy para evitar roles fantasma
-          roles: null,
+          role: null,
         },
       });
       console.log(`[Role Assignment] Updated roles for user ${userId}: ${JSON.stringify(rolesArray)} -> ${JSON.stringify(updatedRoles)}`);

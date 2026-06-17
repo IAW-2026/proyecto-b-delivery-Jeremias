@@ -12,7 +12,7 @@ type Vehiculo = {
   patente: string;
   tipo: string;
   capacidadBidones: number;
-  idVendedor: number;
+  idVendedor: string;
   estado?: string;
 };
 
@@ -51,9 +51,9 @@ type ChoferRequest = {
 
 type Props = {
   userName: string;
-  companyId: number | null;
+  companyId: string | null;
   companyName: string | null;
-  inferredVendor?: { id: number; nombre?: string } | undefined;
+  inferredVendor?: { id: string; nombre?: string } | undefined;
   databaseUnavailable: boolean;
   dbError?: string;
   choferes: Chofer[];

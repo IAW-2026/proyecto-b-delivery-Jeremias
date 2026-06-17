@@ -13,7 +13,7 @@ type Chofer = {
   idVehiculo: number | null;
   estado: string;
   zona: { nombre: string } | null;
-  idVendedor: number;
+  idVendedor: string;
 };
 
 type UsePedidosControllerParams = {
@@ -50,7 +50,7 @@ export function usePedidosController({ orders, allFilteredOrders, choferes, sear
 
   const activeChoferes = useMemo(() => choferes.filter((chofer) => chofer.estado === "activo"), [choferes]);
 
-  function getAssignablesForZone(zoneName: string, vendorId?: number | null) {
+  function getAssignablesForZone(zoneName: string, vendorId?: string | null) {
     const normalizedZone = normalizeZonaName(zoneName);
 
     return activeChoferes.filter((chofer) => {

@@ -14,7 +14,7 @@ type Chofer = {
   idVehiculo: number | null;
   estado: string;
   zona: { nombre: string } | null;
-  idVendedor: number;
+  idVendedor: string;
 };
 
 type Props = {
@@ -28,7 +28,7 @@ type Props = {
   totalPages: number;
   totalFilteredOrders: number;
   basePath?: string;
-  vendorNames: Record<number, string>;
+  vendorNames: Record<string, string>;
 };
 
 

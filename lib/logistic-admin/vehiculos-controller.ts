@@ -18,7 +18,7 @@ type UseVehiculosControllerParams = {
   page: number;
   totalFilteredVehiculos: number;
   basePath?: string;
-  vendorOptions?: Record<number, string>;
+  vendorOptions?: Record<string, string>;
 };
 
 const emptyForm: FormState = {
@@ -38,8 +38,8 @@ export function useVehiculosController({ vehiculos, searchParams, page, totalFil
   const [detailsVehicleId, setDetailsVehicleId] = useState<number | null>(null);
   const [pauseReasons, setPauseReasons] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const vendorIds = vendorOptions ? Object.keys(vendorOptions).map(Number).sort() : [];
-  const [selectedVendorId, setSelectedVendorId] = useState<number>(vendorIds[0] ?? 0);
+  const vendorIds = vendorOptions ? Object.keys(vendorOptions).sort() : [];
+  const [selectedVendorId, setSelectedVendorId] = useState<string>(vendorIds[0] ?? "");
 
   const pageStart = vehiculos.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEnd = Math.min(totalFilteredVehiculos, page * pageSize);

@@ -13,7 +13,7 @@ export async function getChoferRequest() {
 export async function createChoferRequest(data: {
   nombre: string;
   telefono: string;
-  idVendedor: number;
+  idVendedor: string;
   vendorName?: string;
 }) {
   const { userId } = await auth();
@@ -24,7 +24,7 @@ export async function createChoferRequest(data: {
   const idVendedor = data.idVendedor;
   const vendorName = data.vendorName?.trim() || `Empresa #${idVendedor}`;
 
-  if (!nombre || !telefono || !Number.isInteger(idVendedor) || idVendedor <= 0) {
+  if (!nombre || !telefono || !idVendedor) {
     throw new Error("Datos de solicitud incompletos");
   }
 

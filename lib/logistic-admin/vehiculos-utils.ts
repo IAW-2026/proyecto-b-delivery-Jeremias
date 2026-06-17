@@ -40,7 +40,7 @@ export function filterVehiculos(
   vehiculos: Vehiculo[],
   searchQuery: string,
   statusFilter: "todos" | VehiculoStatus,
-  vendorNames?: Record<number, string>
+  vendorNames?: Record<string, string>
 ) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 

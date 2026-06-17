@@ -16,7 +16,7 @@ type ChoferVehiculo = {
   patente: string;
   tipo: string;
   capacidadBidones: number;
-  idVendedor: number;
+  idVendedor: string;
 };
 
 export type ChoferStatus = {

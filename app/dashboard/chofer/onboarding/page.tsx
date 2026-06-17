@@ -3,9 +3,9 @@
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getMockVendors, type Vendor as MockVendor } from "@/lib/mocks/ARCHIVED/vendors";
 import { getChoferRequest, createChoferRequest } from "@/lib/actions/chofer-requests";
 import { getChoferProfile } from "@/lib/actions/chofer";
+import { getLogisticAdminEmpresas } from "@/lib/actions/vendors";
 
 type State = "selection" | "waiting";
 
@@ -13,14 +13,14 @@ type ChoferRequest = {
   id: number;
   nombre: string;
   telefono: string;
-  idVendedor: number;
+  idVendedor: string;
   vendorName: string;
   status: "pending" | "approved" | "rejected";
   reason: string | null;
 };
 
 type VendorOption = {
-  id: number;
+  id: string;
   nombre: string;
   descripcion?: string;
   direccion?: string;
@@ -30,7 +30,7 @@ export default function OnboardingPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [state, setState] = useState<State>("selection");
-  const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
   const [formData, setFormData] = useState({ nombre: "", telefono: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vendorName, setVendorName] = useState<string>("");
@@ -120,14 +120,16 @@ export default function OnboardingPage() {
   }, [isLoaded, user?.fullName, user?.firstName, user?.lastName]);
 
   useEffect(() => {
-    setVendors(
-      getMockVendors().map((vendor: MockVendor) => ({
-        id: vendor.id,
-        nombre: vendor.nombre,
-        descripcion: vendor.descripcion,
-        direccion: vendor.direccion,
-      }))
-    );
+    getLogisticAdminEmpresas().then((empresas) => {
+      setVendors(
+        empresas.map((e) => ({
+          id: e.id,
+          nombre: e.nombre,
+          descripcion: e.descripcion,
+          direccion: e.direccion,
+        }))
+      );
+    });
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {

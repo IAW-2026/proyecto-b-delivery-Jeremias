@@ -11,7 +11,7 @@ model Vehiculo {
   patente          String   @unique
   tipo             String
   capacidadBidones Int      @map("capacidad_bidones")
-  idVendedor       Int      @map("id_vendedor")
+  idVendedor       String      @map("id_vendedor")
   estado           String   @default("activo")
   motivoPausa      String?  @map("motivo_pausa")
   choferes         Chofer[]
@@ -31,7 +31,7 @@ model Chofer {
   clerkUserId String    @unique @map("clerk_user_id")
   cuilCuit    String?   @map("cuil_cuit")
   disponible  Boolean   @default(true)
-  idVendedor  Int       @map("id_vendedor")
+  idVendedor  String    @map("id_vendedor")
   nombreEmpresa String? @map("nombre_empresa")
   vehiculo    Vehiculo? @relation(fields: [idVehiculo], references: [idVehiculo])
   zona        zona?     @relation(fields: [idZona], references: [idZona])
@@ -44,7 +44,7 @@ model UserProfile {
   id              Int      @id @default(autoincrement())
   clerkUserId     String   @unique @map("clerk_user_id")
   role            String
-  idVendedor      Int      @default(0) @map("id_vendedor")
+  idVendedor      String   @default("") @map("id_vendedor")
   nombreEmpresa   String?  @map("nombre_empresa")
   nombre          String?
   telefono        String?
@@ -59,7 +59,7 @@ model ChoferRequest {
   clerkUserId  String   @unique @map("clerk_user_id")
   nombre       String
   telefono     String
-  idVendedor   Int      @map("id_vendedor")
+  idVendedor   String   @map("id_vendedor")
   vendorName   String   @map("vendor_name")
   status       String   @default("pending")
   reviewedBy   String?  @map("reviewed_by")
@@ -96,7 +96,7 @@ model Pedido {
   cantBidones Int
   zona        String
   // Empresa dueña del pedido (vendedor). Se usa para acotar la visibilidad por logistic_admin.
-  idVendedor  Int           @default(0) @map("id_vendedor")
+  idVendedor  String        @default("") @map("id_vendedor")
   // ID del pedido en el sistema externo que nos lo envía (referencia para upsert).
   idPedidoExterno Int?       @map("id_pedido_externo")
 
@@ -120,7 +120,7 @@ model zona {
 model ZonaEmpresa {
   id         Int @id @default(autoincrement())
   idZona     Int @map("id_zona")
-  idVendedor Int @map("id_vendedor")
+  idVendedor String @map("id_vendedor")
 
   zona zona @relation(fields: [idZona], references: [idZona], onDelete: Cascade)
 

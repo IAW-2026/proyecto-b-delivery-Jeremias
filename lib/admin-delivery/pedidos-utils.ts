@@ -53,7 +53,7 @@ export function filterOrders(
   searchQuery: string,
   statusFilter: "todos" | OrderStatus,
   assignmentFilter: "todos" | "sin_asignar",
-  vendorNames?: Record<number, string>
+  vendorNames?: Record<string, string>
 ) {
   const normalizedQuery = normalizeSearchValue(searchQuery.trim());
 

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 
-async function getCompanyContext(vendedorId?: number) {
+async function getCompanyContext(vendedorId?: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("No autorizado");
 
@@ -19,7 +19,7 @@ async function getCompanyContext(vendedorId?: number) {
     select: { idVendedor: true },
   });
 
-  const idVendedor = userRole?.idVendedor ?? null;
+  const idVendedor: string | null = userRole?.idVendedor ?? null;
   if (idVendedor === null) throw new Error("Contexto de empresa requerido");
 
   return { userId, idVendedor };
@@ -27,7 +27,7 @@ async function getCompanyContext(vendedorId?: number) {
 
 // ─── Zonas ─────────────────────────────────────────────
 
-export async function createZone(nombre: string, vendedorId?: number) {
+export async function createZone(nombre: string, vendedorId?: string) {
   try {
     const { idVendedor } = await getCompanyContext(vendedorId);
     if (!nombre.trim()) return { ok: false, error: "Nombre de zona requerido" };
@@ -64,7 +64,7 @@ export async function createZone(nombre: string, vendedorId?: number) {
   }
 }
 
-export async function updateZone(idZona: number, nombre: string, vendedorId?: number) {
+export async function updateZone(idZona: number, nombre: string, vendedorId?: string) {
   const { idVendedor } = await getCompanyContext(vendedorId);
   if (!nombre.trim()) throw new Error("Nombre de zona requerido");
 
@@ -87,7 +87,7 @@ export async function updateZone(idZona: number, nombre: string, vendedorId?: nu
   }
 }
 
-export async function deleteZone(idZona: number, vendedorId?: number) {
+export async function deleteZone(idZona: number, vendedorId?: string) {
   const { idVendedor } = await getCompanyContext(vendedorId);
 
   const junction = await prisma.zonaEmpresa.findUnique({
@@ -129,7 +129,7 @@ export async function globalDeleteZone(idZona: number) {
   revalidatePath("/dashboard/admin-delivery/zonas");
 }
 
-export async function disassociateVendorFromZone(idZona: number, idVendedor: number) {
+export async function disassociateVendorFromZone(idZona: number, idVendedor: string) {
   const { userId, sessionClaims } = await auth();
   if (!userId) throw new Error("No autorizado");
 
@@ -489,7 +489,7 @@ export async function rejectChoferRequest(requestId: number, reason?: string) {
 
 // ─── Vendor Link ───────────────────────────────────────
 
-export async function linkVendor(vendorId: number) {
+export async function linkVendor(vendorId: string) {
   const { userId } = await getCompanyContext();
 
   const existing = await prisma.userProfile.findUnique({ where: { clerkUserId: userId } });
@@ -509,7 +509,7 @@ export async function linkVendor(vendorId: number) {
   revalidatePath("/dashboard/logistic-admin");
 }
 
-export async function createVehicle(patente: string, tipo: string, capacidadBidones: number, vendedorId?: number) {
+export async function createVehicle(patente: string, tipo: string, capacidadBidones: number, vendedorId?: string) {
   const { idVendedor } = await getCompanyContext(vendedorId);
 
   if (!patente.trim() || !tipo.trim() || !Number.isFinite(capacidadBidones) || capacidadBidones <= 0) {
@@ -542,7 +542,7 @@ export async function createVehicle(patente: string, tipo: string, capacidadBido
 export async function updateVehicle(
   idVehiculo: number,
   data: { patente?: string; tipo?: string; capacidadBidones?: number },
-  vendedorId?: number
+  vendedorId?: string
 ) {
   const { idVendedor } = await getCompanyContext(vendedorId);
 
@@ -576,7 +576,7 @@ export async function updateVehicle(
   }
 }
 
-export async function deleteVehicle(idVehiculo: number, vendedorId?: number) {
+export async function deleteVehicle(idVehiculo: number, vendedorId?: string) {
   const { idVendedor } = await getCompanyContext(vendedorId);
 
   const vehiculo = vendedorId !== undefined
@@ -600,7 +600,7 @@ export async function setVehicleState(
   idVehiculo: number,
   estado: string,
   motivoPausa?: string | null,
-  vendedorId?: number
+  vendedorId?: string
 ) {
   const { idVendedor } = await getCompanyContext(vendedorId);
 
@@ -670,7 +670,7 @@ export async function updateLogisticAdminProfile(data: {
 
   const updated = await prisma.userProfile.upsert({
     where: { clerkUserId: userId },
-    create: { clerkUserId: userId, role: "logistic_admin", idVendedor: 0, nombre: fullName, telefono },
+    create: { clerkUserId: userId, role: "logistic_admin", idVendedor: "", nombre: fullName, telefono },
     update: { nombre: fullName, telefono, ...(nombreEmpresa !== null ? { nombreEmpresa } : {}) },
   });
 

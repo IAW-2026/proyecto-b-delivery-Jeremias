@@ -17,8 +17,8 @@ type Props = {
   zonasConPedidos: number;
   zonasSinPedidos: number;
   totalPedidos: number;
-  vendorNames?: Record<number, string>;
-  vendorOptions?: Record<number, string>;
+  vendorNames?: Record<string, string>;
+  vendorOptions?: Record<string, string>;
   basePath?: string;
 };
 
@@ -100,7 +100,7 @@ export default function ZonasManager({
           {vendorOptions ? (
             <select
               value={selectedVendorId}
-              onChange={(event) => setSelectedVendorId(Number(event.target.value))}
+              onChange={(event) => setSelectedVendorId(event.target.value)}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
               disabled={isSaving}
             >
@@ -329,14 +329,13 @@ export default function ZonasManager({
             <div className="mt-4 space-y-2">
               {showEmpresasForZone.empresas && showEmpresasForZone.empresas.length > 0 ? (
                 showEmpresasForZone.empresas.map((e) => {
-                  const vid = Number(e);
-                  const nombre = vendorNames?.[vid] ?? `Empresa #${vid}`;
+                  const nombre = vendorNames?.[e] ?? `Empresa #${e}`;
                   return (
-                    <div key={vid} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div key={e} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
                       <p className="text-sm font-medium text-slate-900">{nombre}</p>
                       <button
                         type="button"
-                        onClick={() => void handleDisassociateVendor(vid)}
+                        onClick={() => void handleDisassociateVendor(e)}
                         disabled={isSaving}
                         className={adminButtonClass("danger", "sm")}
                       >

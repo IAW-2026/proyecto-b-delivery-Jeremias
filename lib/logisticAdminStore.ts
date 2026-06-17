@@ -19,7 +19,7 @@ export type LogisticOrder = PedidoEntrante & {
   assignedChoferArchived?: boolean;
   status: OrderStatus;
   updatedAt: string;
-  idVendedor: number | null;
+  idVendedor: string | null;
 };
 
 type ChoferWithZona = {

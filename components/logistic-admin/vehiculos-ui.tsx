@@ -17,8 +17,8 @@ type Props = {
   activosCount: number;
   pausadosCount: number;
   basePath?: string;
-  vendorNames: Record<number, string>;
-  vendorOptions?: Record<number, string>;
+  vendorNames: Record<string, string>;
+  vendorOptions?: Record<string, string>;
 };
 
 export default function VehiculosManager({
@@ -228,7 +228,7 @@ export default function VehiculosManager({
           {vendorOptions ? (
             <select
               value={selectedVendorId}
-              onChange={(event) => setSelectedVendorId(Number(event.target.value))}
+              onChange={(event) => setSelectedVendorId(event.target.value)}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
               disabled={isSaving}
             >
