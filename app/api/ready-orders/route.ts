@@ -37,14 +37,13 @@ function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
     const direccion = String(p.direccion ?? "").trim();
     const telefono = p.telefono != null ? String(p.telefono).trim() : null;
     const cantBidones = Number(p.cant_bidones);
-    const zona = String(p.zona ?? "").trim();
+    const zona = String(p.zona ?? "").trim() || "Sin zona";
 
     if (!Number.isInteger(idPedidoExterno) || idPedidoExterno <= 0) return null;
     if (!idVendedor) return null;
     if (!cliente) return null;
     if (!direccion) return null;
     if (!Number.isInteger(cantBidones) || cantBidones <= 0) return null;
-    if (!zona) return null;
 
     pedidos.push({ idPedidoExterno, idVendedor, cliente, direccion, telefono: telefono || null, cantBidones, zona });
   }
