@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getChoferStatus } from "@/lib/choferStatus";
+import { syncOrderStatus } from "@/lib/notify-buyer";
 
 export async function updatePedidoStatus(idPedido: number, estado: string, motivoRevision?: string) {
   const { userId } = await auth();
@@ -27,6 +28,8 @@ export async function updatePedidoStatus(idPedido: number, estado: string, motiv
       updatedAt: new Date(),
     },
   });
+
+  await syncOrderStatus(pedido.idPedidoExterno, estado).catch(() => {});
 
   revalidatePath("/dashboard/chofer/mis-pedidos");
 }

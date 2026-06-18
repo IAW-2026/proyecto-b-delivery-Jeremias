@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
+import { syncOrderStatus } from "@/lib/notify-buyer";
 
 async function getCompanyContext(vendedorId?: string) {
   const { userId } = await auth();
@@ -301,6 +302,8 @@ export async function assignOrder(idPedido: number, idChofer: number) {
 export async function unassignOrder(idPedido: number) {
   await getCompanyContext();
 
+  const pedido = await prisma.pedido.findUnique({ where: { idPedido }, select: { idPedidoExterno: true } });
+
   await prisma.pedido.update({
     where: { idPedido },
     data: {
@@ -310,6 +313,8 @@ export async function unassignOrder(idPedido: number) {
       choferAsignado: { disconnect: true },
     },
   });
+
+  await syncOrderStatus(pedido?.idPedidoExterno ?? null, "ready").catch(() => {});
 
   revalidatePath("/dashboard/logistic-admin/pedidos");
 }
@@ -326,6 +331,8 @@ export async function deleteOrder(idPedido: number) {
 export async function cancelOrder(idPedido: number) {
   await getCompanyContext();
 
+  const pedido = await prisma.pedido.findUnique({ where: { idPedido }, select: { idPedidoExterno: true } });
+
   await prisma.pedido.update({
     where: { idPedido },
     data: {
@@ -335,6 +342,8 @@ export async function cancelOrder(idPedido: number) {
       choferAsignado: { disconnect: true },
     },
   });
+
+  await syncOrderStatus(pedido?.idPedidoExterno ?? null, "cancelado").catch(() => {});
 
   revalidatePath("/dashboard/logistic-admin/pedidos");
 }
@@ -370,6 +379,8 @@ export async function updateOrderStatus(idPedido: number, status: string) {
         : {}),
     },
   });
+
+  await syncOrderStatus(pedidoDb.idPedidoExterno, status).catch(() => {});
 
   revalidatePath("/dashboard/logistic-admin/pedidos");
 }
