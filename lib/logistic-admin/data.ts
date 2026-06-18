@@ -335,6 +335,14 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
   const companyName = vendorName ?? inferredVendorName ?? null;
   const vendorNames: Record<string, string> = Object.fromEntries(vendorMap);
 
+  if (!isGlobalAdmin && !inferredVendorId && !userProfile) {
+    redirect(`/api/vendors/link`);
+  }
+
+  if (!isGlobalAdmin && (idVendedorToQuery === null || idVendedorToQuery === "")) {
+    redirect("/signin");
+  }
+
   return {
     roles,
     idVendedor: idVendedorToQuery,

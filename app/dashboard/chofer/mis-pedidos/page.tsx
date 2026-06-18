@@ -17,7 +17,7 @@ export default async function MisPedidosPage({ searchParams }: { searchParams: S
   const requestedPage = parsePage(query.page);
 
   const pendingPedidos = data.pedidos;
-  const filteredPedidos = filterPedidos(data.allPedidos, searchValue, statusValue);
+  const filteredPedidos = filterPedidos(data.allPedidos, searchValue, statusValue === "todos" ? null : statusValue);
   const filteredCount = filteredPedidos.length;
   const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const safePage = Math.min(requestedPage, totalPages);
