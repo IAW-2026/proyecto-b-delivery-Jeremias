@@ -185,6 +185,10 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
 
       const revoked = await revokeAllClerkSessions(userId).catch(() => false);
       console.debug("revokeAllClerkSessions inferred result", userId, revoked);
+
+      if (revoked) {
+        redirect("/signin");
+      }
     } catch (err) {
       console.debug("Could not persist inferred userRole:", err);
     }
@@ -332,14 +336,6 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
   const companyId = idVendedorToQuery;
   const companyName = vendorName ?? inferredVendorName ?? null;
   const vendorNames: Record<string, string> = Object.fromEntries(vendorMap);
-
-  if (!isGlobalAdmin && !inferredVendorId && !userProfile) {
-    redirect(`/api/vendors/link`);
-  }
-
-  if (!isGlobalAdmin && (idVendedorToQuery === null || idVendedorToQuery === "")) {
-    redirect("/signin");
-  }
 
   return {
     roles,
