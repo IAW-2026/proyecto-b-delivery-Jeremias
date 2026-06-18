@@ -19,16 +19,25 @@ function validateApiKey(request: NextRequest): boolean {
   return token === process.env.DELIVERY_API_KEY;
 }
 
-function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
-  if (!payload || typeof payload !== "object") return null;
+function normalizePayload(payload: unknown): {
+  pedidos: ReadyOrderInput[] | null;
+  error: string | null;
+} {
+  if (!payload || typeof payload !== "object") {
+    return { pedidos: null, error: "El body debe ser un objeto JSON" };
+  }
 
   const body = payload as { pedidos?: unknown };
-  if (!Array.isArray(body.pedidos) || body.pedidos.length === 0) return null;
+  if (!Array.isArray(body.pedidos) || body.pedidos.length === 0) {
+    return { pedidos: null, error: "El body debe incluir un array 'pedidos' con al menos un elemento" };
+  }
 
   const pedidos: ReadyOrderInput[] = [];
 
-  for (const item of body.pedidos) {
-    if (!item || typeof item !== "object") return null;
+  for (const [idx, item] of body.pedidos.entries()) {
+    if (!item || typeof item !== "object") {
+      return { pedidos: null, error: `El pedido en la posición ${idx} debe ser un objeto` };
+    }
 
     const p = item as Record<string, unknown>;
     const idPedidoExterno = String(p.id_pedido_externo ?? "").trim();
@@ -39,16 +48,26 @@ function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
     const cantBidones = Number(p.cant_bidones);
     const zona = String(p.zona ?? "").trim() || "Sin zona";
 
-    if (!idPedidoExterno) return null;
-    if (!idVendedor) return null;
-    if (!cliente) return null;
-    if (!direccion) return null;
-    if (!Number.isInteger(cantBidones) || cantBidones <= 0) return null;
+    if (!idPedidoExterno) {
+      return { pedidos: null, error: `El pedido en la posición ${idx} debe tener 'id_pedido_externo'` };
+    }
+    if (!idVendedor) {
+      return { pedidos: null, error: `El pedido en la posición ${idx} debe tener 'id_vendedor'` };
+    }
+    if (!cliente) {
+      return { pedidos: null, error: `El pedido en la posición ${idx} debe tener 'cliente'` };
+    }
+    if (!direccion) {
+      return { pedidos: null, error: `El pedido en la posición ${idx} debe tener 'direccion'` };
+    }
+    if (!Number.isInteger(cantBidones) || cantBidones <= 0) {
+      return { pedidos: null, error: `El pedido en la posición ${idx} debe tener 'cant_bidones' como número entero positivo` };
+    }
 
     pedidos.push({ idPedidoExterno, idVendedor, cliente, direccion, telefono: telefono || null, cantBidones, zona });
   }
 
-  return pedidos;
+  return { pedidos, error: null };
 }
 
 export async function POST(request: NextRequest) {
@@ -64,16 +83,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const pedidos = normalizePayload(body);
+  const { pedidos, error } = normalizePayload(body);
 
-  if (!pedidos) {
-    return NextResponse.json(
-      {
-        error:
-          "El body debe incluir un array 'pedidos' con id_pedido_externo, id_vendedor, cliente, direccion, cant_bidones y zona",
-      },
-      { status: 400 }
-    );
+  if (error || !pedidos) {
+    return NextResponse.json({ error: error ?? "Error desconocido al validar el payload" }, { status: 400 });
   }
 
   const results: Array<{
