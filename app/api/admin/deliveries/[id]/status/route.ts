@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateAdminApiKey } from "@/lib/admin-auth";
+import { syncOrderStatus } from "@/lib/notify-buyer";
 
 const VALID_STATUSES = ["ready", "asignado", "en_camino", "entregado", "cancelado", "revision"];
 
@@ -36,7 +37,7 @@ export async function PATCH(
   try {
     const existing = await prisma.pedido.findUnique({
       where: { idPedido },
-      select: { idPedido: true, idChoferAsignado: true },
+      select: { idPedido: true, idChoferAsignado: true, idPedidoExterno: true },
     });
 
     if (!existing) {
@@ -50,6 +51,8 @@ export async function PATCH(
         updatedAt: new Date(),
       },
     });
+
+    await syncOrderStatus(existing.idPedidoExterno, body.status).catch(() => {});
 
     return NextResponse.json({ ok: true });
   } catch (error) {
