@@ -10,7 +10,7 @@ async function getCompanyContext(vendedorId?: string) {
   const { userId } = await auth();
   if (!userId) throw new Error("No autorizado");
 
-  if (vendedorId !== undefined) {
+  if (vendedorId) {
     return { userId, idVendedor: vendedorId };
   }
 
