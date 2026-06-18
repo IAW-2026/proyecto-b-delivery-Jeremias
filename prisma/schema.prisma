@@ -98,7 +98,7 @@ model Pedido {
   // Empresa dueña del pedido (vendedor). Se usa para acotar la visibilidad por logistic_admin.
   idVendedor  String        @default("") @map("id_vendedor")
   // ID del pedido en el sistema externo que nos lo envía (referencia para upsert).
-  idPedidoExterno Int?       @map("id_pedido_externo")
+  idPedidoExterno String?    @map("id_pedido_externo")
 
   choferAsignado Chofer? @relation("ChoferPedidos", fields: [idChoferAsignado], references: [idChofer])
 
