@@ -223,7 +223,64 @@ export default function LogisticAdminPedidosUi({
               Página {page} de {totalPages}
             </p>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile card view */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {orders.map((order) => {
+              const assignableChoferes = getAssignablesForZone(order.zona, order.idVendedor);
+              const currentChofer = choferes.find((chofer) => String(chofer.idChofer) === String(order.assignedToChoferId));
+
+              return (
+                <div key={order.idPedido} className="px-4 py-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900">#{order.idPedido}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-slate-100">
+                      {order.status === "revision" && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}
+                      {formatStatus(order.status)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                    <span className="text-slate-500">Cliente</span>
+                    <span className="text-slate-900 truncate font-medium">{order.cliente}</span>
+                    <span className="text-slate-500">Zona</span>
+                    <span className="text-slate-900">{order.zona}</span>
+                    <span className="text-slate-500">Bidones</span>
+                    <span className="text-slate-900">{order.cantBidones}</span>
+                    <span className="text-slate-500">Chofer</span>
+                    <span className="text-slate-900 truncate">{order.assignedToChoferName ?? "Sin asignar"}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openDetails(order.idPedido)}
+                      className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 min-h-[36px]"
+                    >
+                      Detalles
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(order)}
+                      disabled={busyId === order.idPedido}
+                      className={adminButtonClass("edit", "sm")}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(order)}
+                      disabled={busyId === order.idPedido}
+                      className={adminButtonClass("danger", "sm")}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
@@ -349,9 +406,21 @@ export default function LogisticAdminPedidosUi({
                 })}
               </tbody>
             </table>
-          </div>
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            </div>
+          <div className="hidden md:flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredOrders}</p>
+            <div className="flex items-center gap-2">
+              <Link href={buildPedidosQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/pedidos`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
+                Anterior
+              </Link>
+              <Link href={buildPedidosQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/pedidos`)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
+                Siguiente
+              </Link>
+            </div>
+          </div>
+          {/* Mobile pagination */}
+          <div className="flex md:hidden items-center justify-between border-t border-slate-100 px-4 py-3 gap-2">
+            <p className="text-xs text-slate-500">Pág {page} de {totalPages}</p>
             <div className="flex items-center gap-2">
               <Link href={buildPedidosQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/pedidos`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
                 Anterior
@@ -370,9 +439,9 @@ export default function LogisticAdminPedidosUi({
           if (!order) return null;
 
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeMotivo}>
-              <div ref={motivoDialogRef} role="dialog" aria-modal="true" aria-labelledby={`motivo-revision-${order.idPedido}`} tabIndex={-1} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
-                <div className="flex items-start justify-between gap-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-3 py-4 md:px-4 md:py-6" onClick={closeMotivo}>
+              <div ref={motivoDialogRef} role="dialog" aria-modal="true" aria-labelledby={`motivo-revision-${order.idPedido}`} tabIndex={-1} className="w-[95vw] max-w-lg rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3 md:gap-4">
                   <div>
                     <h2 id={`motivo-revision-${order.idPedido}`} className="text-xl font-semibold text-slate-900">
                       Motivo de revisión
@@ -401,14 +470,14 @@ export default function LogisticAdminPedidosUi({
           if (!order) return null;
 
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeDetails}>
-              <div ref={detailsDialogRef} role="dialog" aria-modal="true" aria-labelledby={`detalles-pedido-${order.idPedido}`} tabIndex={-1} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 id={`detalles-pedido-${order.idPedido}`} className="text-xl font-semibold text-slate-900">
-                      Detalles del pedido #{order.idPedido}
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-3 py-4 md:px-4 md:py-6" onClick={closeDetails}>
+              <div ref={detailsDialogRef} role="dialog" aria-modal="true" aria-labelledby={`detalles-pedido-${order.idPedido}`} tabIndex={-1} className="w-[95vw] max-w-lg rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3 md:gap-4">
+                  <div className="min-w-0">
+                    <h2 id={`detalles-pedido-${order.idPedido}`} className="text-lg md:text-xl font-semibold text-slate-900 truncate">
+                      Pedido #{order.idPedido}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-0.5 text-sm text-slate-500 truncate">
                       {order.cliente}
                     </p>
                   </div>
@@ -417,8 +486,8 @@ export default function LogisticAdminPedidosUi({
                   </button>
                 </div>
 
-                <div className="mt-5 space-y-3">
-                  <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 text-sm">
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-[100px_1fr] md:grid-cols-[140px_1fr] gap-x-3 md:gap-x-4 gap-y-2 md:gap-y-3 text-sm">
                     <span className="font-medium text-slate-500">Fecha</span>
                     <span className="text-slate-900">
                       {order.updatedAt

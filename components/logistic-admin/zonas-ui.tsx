@@ -182,7 +182,53 @@ export default function ZonasManager({
               Página {page} de {totalPages}
             </p>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile card view */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {zonas.map((zona) => (
+              <div key={zona.idZona} className="px-4 py-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold text-slate-900">{zona.zona}</span>
+                    <span className="text-xs text-slate-500 ml-2">ID {zona.idZona}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                  <span className="text-slate-500">Pedidos</span>
+                  <span className="text-slate-900">{zona.pedidosTotales}</span>
+                  <span className="text-slate-500">Bidones</span>
+                  <span className="text-slate-900">{zona.bidonesTotales}</span>
+                  <span className="text-slate-500">Choferes</span>
+                  <span className="text-slate-900">{zona.choferesAsignados}</span>
+                  {vendorNames && zona.empresas && zona.empresas.length > 0 ? (
+                    <>
+                      <span className="text-slate-500">Empresas</span>
+                      <span className="text-slate-900 truncate">
+                        <button
+                          type="button"
+                          onClick={() => setShowEmpresasForZone(zona)}
+                          className="text-sky-600 hover:text-sky-800 text-xs font-medium"
+                        >
+                          Ver {zona.empresas.length}
+                        </button>
+                      </span>
+                    </>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button type="button" onClick={() => startEdit(zona)} disabled={isSaving} className={adminButtonClass("edit", "sm")}>
+                    Editar
+                  </button>
+                  <button type="button" onClick={() => void handleDelete(zona)} disabled={isSaving} className={adminButtonClass("danger", "sm")}>
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -191,7 +237,7 @@ export default function ZonasManager({
                 <th className="px-3 py-3 text-center whitespace-nowrap">Pedidos</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap">Bidones</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap">Choferes</th>
-                <th className="px-3 py-3 text-center whitespace-nowrap">Acciones</th>
+                <th className="sticky right-0 bg-slate-50 z-10 px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -237,7 +283,7 @@ export default function ZonasManager({
                     <td className="px-3 py-3.5 text-center">
                       <p className="font-medium text-slate-900 whitespace-nowrap">{zona.choferesAsignados}</p>
                     </td>
-                    <td className="px-3 py-3.5 text-center">
+                    <td className="sticky right-0 bg-white z-10 px-3 py-3.5 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
                       <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
                         {editingZonaId === zona.idZona ? (
                           <>
@@ -279,7 +325,7 @@ export default function ZonasManager({
             </tbody>
           </table>
           </div>
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="hidden md:flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredZonas}</p>
             <div className="flex items-center gap-2">
               <Link
@@ -298,26 +344,37 @@ export default function ZonasManager({
               </Link>
             </div>
           </div>
+          <div className="flex md:hidden items-center justify-between border-t border-slate-100 px-4 py-3 gap-2">
+            <p className="text-xs text-slate-500">Pág {page} de {totalPages}</p>
+            <div className="flex items-center gap-2">
+              <Link href={buildZonasQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/zonas`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
+                Anterior
+              </Link>
+              <Link href={buildZonasQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/zonas`)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
+                Siguiente
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 
       {showEmpresasForZone ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={() => setShowEmpresasForZone(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-3 py-4 md:px-4 md:py-6" onClick={() => setShowEmpresasForZone(null)}>
           <div
             ref={empresasDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="empresas-dialog-title"
             tabIndex={-1}
-            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none"
+            className="w-[95vw] max-w-lg rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-2xl outline-none"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 id="empresas-dialog-title" className="text-xl font-semibold text-slate-900">
+            <div className="flex items-start justify-between gap-3 md:gap-4">
+              <div className="min-w-0">
+                <h2 id="empresas-dialog-title" className="text-lg md:text-xl font-semibold text-slate-900 truncate">
                   Empresas vinculadas
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">&quot;{showEmpresasForZone.zona}&quot;</p>
+                <p className="mt-0.5 text-sm text-slate-500 truncate">&quot;{showEmpresasForZone.zona}&quot;</p>
               </div>
               <button type="button" onClick={() => setShowEmpresasForZone(null)} className={adminButtonClass("cancel", "sm")}>
                 Cerrar

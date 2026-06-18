@@ -130,28 +130,30 @@ export default function PerfilPage() {
   }
 
   if (isLoading) {
-    return <div>Cargando perfil...</div>;
+    return (
+      <div className="p-4 text-sm text-slate-500">Cargando perfil...</div>
+    );
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl text-sky-400 font-semibold mb-1">Perfil del Chofer</h2>
-          <p className="text-sm text-black">{`${profile.nombre} ${profile.apellido}`.trim()}</p>
+      <div className="mb-6 flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl md:text-2xl text-sky-400 font-semibold mb-1">Perfil del Chofer</h2>
+          <p className="text-sm text-black truncate">{`${profile.nombre} ${profile.apellido}`.trim()}</p>
         </div>
         {!isEditing ? (
           <button
             type="button"
             onClick={handleEditClick}
-            className="px-4 py-2 rounded-md border border-blue-600 text-blue-700 bg-white hover:bg-blue-50"
+            className="shrink-0 px-4 py-2.5 min-h-[40px] rounded-md border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 text-sm"
           >
             Modificar datos
           </button>
         ) : null}
       </div>
 
-      <div className="max-w-2xl bg-white p-6 rounded-lg shadow">
+      <div className="max-w-2xl bg-white p-4 md:p-6 rounded-lg shadow">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Nombre</label>

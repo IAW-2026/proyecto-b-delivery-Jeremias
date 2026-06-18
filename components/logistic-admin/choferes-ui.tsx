@@ -89,11 +89,11 @@ export default function ChoferesManager({
   return (
     <div className={`mx-auto max-w-7xl p-4 text-slate-800 md:p-6 ${adminPageShell}`}>
       <header className={adminHeaderClass}>
-        <p className="text-sm uppercase tracking-[0.2em] text-sky-400">Panel logístico</p>
-        <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
+        <p className="text-xs md:text-sm uppercase tracking-[0.2em] text-sky-400">Panel logístico</p>
+        <h1 className="text-2xl md:text-3xl font-semibold" style={{ color: "#00AEEF" }}>
           Choferes
         </h1>
-        <p className="max-w-2xl text-sm text-slate-600">Estado del equipo de choferes, disponibilidad, vehículo asignado y barrio operativo.</p>
+        <p className="max-w-2xl text-xs md:text-sm text-slate-600">Estado del equipo de choferes, disponibilidad, vehículo asignado y barrio operativo.</p>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -241,7 +241,56 @@ export default function ChoferesManager({
               Página {page} de {totalPages}
             </p>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile card view */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {choferes.map((chofer) => (
+              <div key={chofer.idChofer} className="px-4 py-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-semibold text-slate-900 truncate block">{chofer.nombre}</span>
+                    <span className="text-xs text-slate-500">Tel: {chofer.telefono ?? "Sin teléfono"}</span>
+                  </div>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wide ${estadoClass(chofer.estado)}`}>
+                    {formatEstado(chofer.estado)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                  <span className="text-slate-500">Empresa</span>
+                  <span className="text-slate-900 truncate">{vendorNames[chofer.idVendedor] ?? `Empresa #${chofer.idVendedor}`}</span>
+                  <span className="text-slate-500">Zona</span>
+                  <span className="text-slate-900">{chofer.zona?.nombre ?? <span className="italic text-slate-400">Sin zona</span>}</span>
+                  <span className="text-slate-500">Vehículo</span>
+                  <span className="text-slate-900 truncate">
+                    {chofer.vehiculo?.patente ? `${chofer.vehiculo.patente} (${chofer.vehiculo.tipo})` : <span className="italic text-slate-400">Sin asignar</span>}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button type="button" onClick={() => startEdit(chofer)} className={adminButtonClass("edit", "sm")}>
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetEstado(chofer, chofer.estado === "activo" ? "inactivo" : "activo")}
+                    disabled={savingId === chofer.idChofer}
+                    className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors disabled:opacity-60 min-h-[36px] ${
+                      chofer.estado === "activo"
+                        ? "border-amber-200 bg-amber-50/60 text-amber-700 hover:bg-amber-50"
+                        : "border-emerald-200 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-50"
+                    }`}
+                  >
+                    {savingId === chofer.idChofer ? "..." : chofer.estado === "activo" ? "Desactivar" : "Activar"}
+                  </button>
+                  <button type="button" onClick={() => handleDelete(chofer)} disabled={savingId === chofer.idChofer} className={adminButtonClass("danger", "sm")}>
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -250,7 +299,7 @@ export default function ChoferesManager({
                 <th className="px-3 py-3">Empresa</th>
                 <th className="px-3 py-3">Zona</th>
                 <th className="px-3 py-3">Vehículo</th>
-                <th className="px-3 py-3 text-center whitespace-nowrap">Acciones</th>
+                <th className="sticky right-0 bg-slate-50 z-10 px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -311,8 +360,8 @@ export default function ChoferesManager({
                       </p>
                     )}
                   </td>
-                  <td className="px-3 py-4 text-center">
-                    <div className="flex flex-wrap justify-center gap-2">
+                  <td className="sticky right-0 bg-white z-10 px-3 py-4 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
+                    <div className="flex flex-nowrap justify-center gap-2">
                       {editingChoferId === chofer.idChofer ? (
                         <>
                           <button type="button" onClick={() => saveEdit(chofer)} disabled={savingId === chofer.idChofer} className={adminButtonClass("save", "sm")}>
@@ -351,8 +400,27 @@ export default function ChoferesManager({
             </tbody>
           </table>
           </div>
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="hidden md:flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredChoferes}</p>
+            <div className="flex items-center gap-2">
+              <Link
+                href={buildChoferesQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/choferes`)}
+                aria-disabled={page <= 1}
+                className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Anterior
+              </Link>
+              <Link
+                href={buildChoferesQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/choferes`)}
+                aria-disabled={page >= totalPages}
+                className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}
+              >
+                Siguiente
+              </Link>
+            </div>
+          </div>
+          <div className="flex md:hidden items-center justify-between border-t border-slate-100 px-4 py-3 gap-2">
+            <p className="text-xs text-slate-500">Pág {page} de {totalPages}</p>
             <div className="flex items-center gap-2">
               <Link
                 href={buildChoferesQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/choferes`)}

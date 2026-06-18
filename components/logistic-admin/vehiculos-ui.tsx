@@ -260,7 +260,67 @@ export default function VehiculosManager({
               Página {page} de {totalPages}
             </p>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile card view */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {vehiculos.map((vehiculo) => (
+              <div key={vehiculo.idVehiculo} className="px-4 py-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-900">{vehiculo.patente}</span>
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${vehiculo.estado === "pausado" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                    {vehiculo.estado === "pausado" ? "Pausado" : "Activo"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                  <span className="text-slate-500">Tipo</span>
+                  <span className="text-slate-900">{vehiculo.tipo}</span>
+                  <span className="text-slate-500">Capacidad</span>
+                  <span className="text-slate-900">{vehiculo.capacidadBidones} bidones</span>
+                  <span className="text-slate-500">Chofer</span>
+                  <span className="text-slate-900 truncate">{vehiculo.assignedToChoferName ?? "Sin asignar"}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {editingId !== vehiculo.idVehiculo && (
+                    <>
+                      <button type="button" onClick={() => startEdit(vehiculo)} disabled={isSaving} className={adminButtonClass("edit", "sm")}>
+                        Editar
+                      </button>
+                      <button type="button" onClick={() => void handleDelete(vehiculo)} disabled={isSaving} className={adminButtonClass("danger", "sm")}>
+                        Eliminar
+                      </button>
+                      <button type="button" onClick={() => void handleTogglePause(vehiculo)} disabled={isSaving} className={adminButtonClass("warning", "sm")}>
+                        {vehiculo.estado === "pausado" ? "Reanudar" : "Pausar"}
+                      </button>
+                    </>
+                  )}
+                </div>
+                {pausingVehicleId === vehiculo.idVehiculo ? (
+                  <div className="space-y-2 pt-2 border-t border-amber-200">
+                    <label className="block text-xs font-semibold text-amber-700">Motivo de pausa</label>
+                    <textarea
+                      value={pauseReasons[vehiculo.idVehiculo] ?? ""}
+                      onChange={(event) => setPauseReasons((current) => ({ ...current, [vehiculo.idVehiculo]: event.target.value }))}
+                      rows={2}
+                      placeholder="Fallas mecánicas, trámite, revisión, etc."
+                      className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      disabled={isSaving}
+                    />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => void handleConfirmPause(vehiculo)} disabled={isSaving} className={adminButtonClass("warning", "sm")}>
+                        {isSaving ? "Guardando..." : "Confirmar pausa"}
+                      </button>
+                      <button type="button" onClick={() => handleCancelPause(vehiculo.idVehiculo)} disabled={isSaving} className={adminButtonClass("cancel", "sm")}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -270,7 +330,7 @@ export default function VehiculosManager({
                 <th className="px-3 py-3">Chofer</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap">Capacidad</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap">Pausa</th>
-                <th className="px-3 py-3 text-center whitespace-nowrap"></th>
+                <th className="sticky right-0 bg-slate-50 z-10 px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]"></th>
               </tr>
             </thead>
             <tbody>
@@ -343,7 +403,7 @@ export default function VehiculosManager({
                         <p className="text-sm text-slate-600">-</p>
                       )}
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="sticky right-0 bg-white z-10 px-3 py-4 shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
                       <div className="flex flex-nowrap items-start justify-center gap-1.5 whitespace-nowrap">
                         {editingId === vehiculo.idVehiculo ? (
                           <>
@@ -402,11 +462,11 @@ export default function VehiculosManager({
                       </td>
                     </tr>
                   ) : null}
-                </Fragment>
+                    </Fragment>
               ))}
             </tbody>
           </table>
-          </div>
+            </div>
 
           {detailsVehicleId !== null ? (
             (() => {
@@ -414,22 +474,22 @@ export default function VehiculosManager({
               if (!vehicle) return null;
 
               return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeDetails}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-3 py-4 md:px-4 md:py-6" onClick={closeDetails}>
                   <div
                     ref={detailsDialogRef}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby={`vehicle-details-${vehicle.idVehiculo}`}
                     tabIndex={-1}
-                    className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none"
+                    className="w-[95vw] max-w-lg rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-2xl outline-none"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h2 id={`vehicle-details-${vehicle.idVehiculo}`} className="text-xl font-semibold text-slate-900">
+                    <div className="flex items-start justify-between gap-3 md:gap-4">
+                      <div className="min-w-0">
+                        <h2 id={`vehicle-details-${vehicle.idVehiculo}`} className="text-lg md:text-xl font-semibold text-slate-900 truncate">
                           Motivo de pausa
                         </h2>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-0.5 text-sm text-slate-500 truncate">
                           {vehicle.patente} · {vehicle.tipo}
                         </p>
                       </div>
@@ -447,8 +507,19 @@ export default function VehiculosManager({
             })()
           ) : null}
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="hidden md:flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFilteredVehiculos}</p>
+            <div className="flex items-center gap-2">
+              <Link href={buildVehiculosQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/vehiculos`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
+                Anterior
+              </Link>
+              <Link href={buildVehiculosQueryHref({ page: Math.min(totalPages, page + 1) }, filterState, `${basePath}/vehiculos`)} aria-disabled={page >= totalPages} className={`${adminButtonClass("cancel", "sm")} ${page >= totalPages ? "pointer-events-none opacity-60" : ""}`}>
+                Siguiente
+              </Link>
+            </div>
+          </div>
+          <div className="flex md:hidden items-center justify-between border-t border-slate-100 px-4 py-3 gap-2">
+            <p className="text-xs text-slate-500">Pág {page} de {totalPages}</p>
             <div className="flex items-center gap-2">
               <Link href={buildVehiculosQueryHref({ page: Math.max(1, page - 1) }, filterState, `${basePath}/vehiculos`)} aria-disabled={page <= 1} className={`${adminButtonClass("cancel", "sm")} ${page <= 1 ? "pointer-events-none opacity-60" : ""}`}>
                 Anterior

@@ -33,12 +33,15 @@ export default function UserMenu({ initialDisplayName }: { initialDisplayName?: 
 
   return (
     <div className="flex items-center gap-3 p-1 rounded-md">
-      <UserButton appearance={{ elements: { avatarBox: "w-12 h-12 rounded-full" } }} />
-      <div className="select-none">
-        <p className="font-semibold text-gray-900">
+      <UserButton appearance={{ elements: { avatarBox: "size-10 md:size-12 rounded-full" } }} />
+      <div className="select-none min-w-0 hidden md:block">
+        <p className="font-semibold text-gray-900 truncate text-sm md:text-base">
           {displayName}
         </p>
-        <p className="text-sm text-gray-500">{resolvedRole}</p>
+        <p className="text-xs md:text-sm text-gray-500 truncate">{resolvedRole}</p>
+      </div>
+      <div className="select-none min-w-0 block md:hidden">
+        <p className="text-xs font-semibold text-gray-500 truncate">{resolvedRole}</p>
       </div>
     </div>
   );

@@ -27,17 +27,17 @@ export default function PerfilPage({ fallbackName }: Props) {
   return (
     <div className={adminPageShell}>
       <header className={adminHeaderClass}>
-        <p className="text-sm uppercase tracking-[0.2em] text-sky-400">Panel logístico</p>
-        <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
-          Perfil - Admin Logístico
+        <p className="text-xs md:text-sm uppercase tracking-[0.2em] text-sky-400">Panel logístico</p>
+        <h1 className="text-2xl md:text-3xl font-semibold" style={{ color: "#00AEEF" }}>
+          Perfil
         </h1>
-        <p className="text-sm text-slate-600">Actualizá tu información local sin mezclarla con la lógica de navegación o fetch.</p>
+        <p className="text-xs md:text-sm text-slate-600">Actualizá tu información local sin mezclarla con la lógica de navegación o fetch.</p>
       </header>
 
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="mb-1 text-black font-semibold">{fullName || "Sin nombre"}</h2>
-          <p className="text-sm text-slate-600">{profile.nombreEmpresa || "Empresa no informada"}</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="mb-1 text-black font-semibold text-base md:text-lg truncate">{fullName || "Sin nombre"}</h2>
+          <p className="text-sm text-slate-600 truncate">{profile.nombreEmpresa || "Empresa no informada"}</p>
         </div>
         {!isEditing ? (
           <button type="button" onClick={handleEditClick} className={adminButtonClass("edit")}>
@@ -46,7 +46,7 @@ export default function PerfilPage({ fallbackName }: Props) {
         ) : null}
       </div>
 
-      <div className={`${adminCardClass} max-w-2xl p-6`}>
+      <div className={`${adminCardClass} max-w-2xl p-4 md:p-6`}>
         <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">Nombre</label>

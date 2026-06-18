@@ -217,7 +217,87 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
             <p>Mostrando {pageStart}-{pageEnd} de {totalFiltered} pedidos</p>
             <p>Página {page} de {totalPages}</p>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile card view */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {pedidos.map((pedido) => (
+              <div key={pedido.idPedido} className="px-4 py-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 truncate">{pedido.cliente}</p>
+                    <p className="text-xs text-gray-500 line-clamp-2">{pedido.direccion}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium shrink-0 ${
+                    pedido.estado === "ready" ? "bg-blue-100 text-blue-800"
+                    : pedido.estado === "en_camino" ? "bg-yellow-100 text-yellow-800"
+                    : pedido.estado === "entregado" ? "bg-green-100 text-green-800"
+                    : pedido.estado === "revision" ? "bg-violet-100 text-violet-800"
+                    : "bg-red-100 text-red-800"
+                  }`}>
+                    {pedido.estado === "ready" ? "Listo"
+                      : pedido.estado === "en_camino" ? "En camino"
+                      : pedido.estado === "revision" ? "Revisión"
+                      : pedido.estado === "cancelado" ? "Cancelado"
+                      : pedido.estado}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                  <span className="text-slate-500">Zona</span>
+                  <span className="text-slate-900">{pedido.zona}</span>
+                  <span className="text-slate-500">Bidones</span>
+                  <span className="text-slate-900 font-medium">{pedido.cantBidones}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button type="button" onClick={() => openDetails(pedido.idPedido)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 min-h-[36px]">
+                    Detalles
+                  </button>
+                  {pedido.estado === "ready" && (
+                    <button onClick={() => handleCambiarEstado(pedido.idPedido, "en_camino")} disabled={pendingId === pedido.idPedido} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-60">
+                      🚚 En Camino
+                    </button>
+                  )}
+                  {pedido.estado === "en_camino" && (
+                    <>
+                      <button onClick={() => handleCambiarEstado(pedido.idPedido, "entregado")} disabled={pendingId === pedido.idPedido} className="rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-60">
+                        ✓ Entregar
+                      </button>
+                      <button onClick={() => handleOpenRevision(pedido)} disabled={pendingId === pedido.idPedido} className="rounded-lg bg-slate-600 px-3 py-2 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-60">
+                        ⚠ Revisión
+                      </button>
+                    </>
+                  )}
+                  {pedido.estado === "revision" && (
+                    <button onClick={() => handleCambiarEstado(pedido.idPedido, "ready")} disabled={pendingId === pedido.idPedido} className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-60">
+                      ↺ Volver a Listo
+                    </button>
+                  )}
+                </div>
+                {revisionPendingId === pedido.idPedido ? (
+                  <div className="space-y-2 pt-2 border-t border-violet-200">
+                    <textarea
+                      value={revisionReasons[pedido.idPedido] ?? ""}
+                      onChange={(event) => setRevisionReasons((current) => ({ ...current, [pedido.idPedido]: event.target.value }))}
+                      rows={2}
+                      placeholder="Ej: bidones dañados..."
+                      className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
+                      disabled={pendingId === pedido.idPedido}
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={() => handleCambiarEstado(pedido.idPedido, "revision", revisionReasons[pedido.idPedido] ?? "")} disabled={pendingId === pedido.idPedido} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-60">
+                        Guardar
+                      </button>
+                      <button onClick={() => handleCancelRevision(pedido.idPedido)} disabled={pendingId === pedido.idPedido} className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-300 disabled:opacity-60">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -226,7 +306,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                 <th className="px-3 py-3 text-center whitespace-nowrap">Bidones</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap">Estado</th>
                 <th className="px-3 py-3 text-center whitespace-nowrap">Detalles</th>
-                <th className="px-3 py-3 text-center whitespace-nowrap">Acciones</th>
+                <th className="sticky right-0 bg-slate-50 z-10 px-3 py-3 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -281,7 +361,7 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                   </td>
-                  <td className="px-3 py-3.5 text-center align-middle whitespace-nowrap">
+                  <td className="sticky right-0 bg-white z-10 px-3 py-3.5 text-center align-middle whitespace-nowrap shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
                     {pedido.estado === "ready" && (
                       <button
                         type="button"
@@ -375,13 +455,24 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
             </tbody>
           </table>
           </div>
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="hidden md:flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">Resultados filtrados: {totalFiltered}</p>
             <div className="flex items-center gap-2">
               <Link href={buildQueryHref("/dashboard/chofer/mis-pedidos", { page: String(Math.max(1, page - 1)), ...(searchQuery ? { q: searchQuery } : {}), ...(statusFilter !== "todos" ? { status: statusFilter } : {}) })} aria-disabled={page <= 1} className={`${page <= 1 ? "pointer-events-none opacity-60" : ""} rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50`}>
                 Anterior
               </Link>
               <Link href={buildQueryHref("/dashboard/chofer/mis-pedidos", { page: String(Math.min(totalPages, page + 1)), ...(searchQuery ? { q: searchQuery } : {}), ...(statusFilter !== "todos" ? { status: statusFilter } : {}) })} aria-disabled={page >= totalPages} className={`${page >= totalPages ? "pointer-events-none opacity-60" : ""} rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50`}>
+                Siguiente
+              </Link>
+            </div>
+          </div>
+          <div className="flex md:hidden items-center justify-between border-t border-slate-100 px-4 py-3 gap-2">
+            <p className="text-xs text-slate-500">Pág {page} de {totalPages}</p>
+            <div className="flex items-center gap-2">
+              <Link href={buildQueryHref("/dashboard/chofer/mis-pedidos", { page: String(Math.max(1, page - 1)), ...(searchQuery ? { q: searchQuery } : {}), ...(statusFilter !== "todos" ? { status: statusFilter } : {}) })} aria-disabled={page <= 1} className={`${page <= 1 ? "pointer-events-none opacity-60" : ""} rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50`}>
+                Anterior
+              </Link>
+              <Link href={buildQueryHref("/dashboard/chofer/mis-pedidos", { page: String(Math.min(totalPages, page + 1)), ...(searchQuery ? { q: searchQuery } : {}), ...(statusFilter !== "todos" ? { status: statusFilter } : {}) })} aria-disabled={page >= totalPages} className={`${page >= totalPages ? "pointer-events-none opacity-60" : ""} rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50`}>
                 Siguiente
               </Link>
             </div>
@@ -399,22 +490,22 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
           if (!pedido) return null;
 
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeMotivo}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-3 py-4 md:px-4 md:py-6" onClick={closeMotivo}>
               <div
                 ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={`motivo-pedido-${pedido.idPedido}`}
                 tabIndex={-1}
-                className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none"
+                className="w-[95vw] max-w-lg rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-2xl outline-none"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 id={`motivo-pedido-${pedido.idPedido}`} className="text-xl font-semibold text-slate-900">
+                <div className="flex items-start justify-between gap-3 md:gap-4">
+                  <div className="min-w-0">
+                    <h2 id={`motivo-pedido-${pedido.idPedido}`} className="text-lg md:text-xl font-semibold text-slate-900 truncate">
                       Motivo de revisión
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-0.5 text-sm text-slate-500 truncate">
                       Pedido #{pedido.idPedido} · {pedido.cliente}
                     </p>
                   </div>
@@ -470,24 +561,24 @@ export default function MisPedidosUI({ pedidos, totalFiltered, totalBidones, sea
           if (!pedido) return null;
 
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6" onClick={closeDetails}>
-              <div ref={detailsDialogRef} role="dialog" aria-modal="true" aria-labelledby={`detalles-pedido-${pedido.idPedido}`} tabIndex={-1} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 id={`detalles-pedido-${pedido.idPedido}`} className="text-xl font-semibold text-slate-900">
-                      Detalles del pedido #{pedido.idPedido}
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-3 py-4 md:px-4 md:py-6" onClick={closeDetails}>
+              <div ref={detailsDialogRef} role="dialog" aria-modal="true" aria-labelledby={`detalles-pedido-${pedido.idPedido}`} tabIndex={-1} className="w-[95vw] max-w-lg rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-2xl outline-none" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-start justify-between gap-3 md:gap-4">
+                  <div className="min-w-0">
+                    <h2 id={`detalles-pedido-${pedido.idPedido}`} className="text-lg md:text-xl font-semibold text-slate-900 truncate">
+                      Pedido #{pedido.idPedido}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-0.5 text-sm text-slate-500 truncate">
                       {pedido.cliente}
                     </p>
                   </div>
-                  <button type="button" onClick={closeDetails} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200">
+                  <button type="button" onClick={closeDetails} className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200">
                     Cerrar
                   </button>
                 </div>
 
-                <div className="mt-5 space-y-3">
-                  <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 text-sm">
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-[100px_1fr] md:grid-cols-[140px_1fr] gap-x-3 md:gap-x-4 gap-y-2 md:gap-y-3 text-sm">
                     <span className="font-medium text-slate-500">Dirección</span>
                     <span className="text-slate-900">{pedido.direccion}</span>
 

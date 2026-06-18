@@ -75,4 +75,60 @@ input:disabled, textarea:disabled, select:disabled {
   color: #6b7280;
 }
 
+/* Responsive typography — headings scale down on mobile */
+@media (max-width: 640px) {
+  h1, .text-3xl, .text-4xl {
+    font-size: 1.5rem !important;
+    line-height: 2rem !important;
+  }
+  h2, .text-2xl {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+  h3, .text-xl {
+    font-size: 1.125rem !important;
+    line-height: 1.5rem !important;
+  }
+  .text-lg {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+  button, a, select, input[type="button"], input[type="submit"] {
+    min-height: 44px;
+  }
+  button.py-1, button.py-1\.5, a.py-1, a.py-1\.5 {
+    min-height: 44px;
+  }
+  .table-action-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
 

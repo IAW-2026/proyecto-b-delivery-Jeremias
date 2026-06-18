@@ -168,10 +168,10 @@ export default function OnboardingPage() {
 
   if (inactiveReason) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 p-8 flex items-center">
-        <div className="max-w-md mx-auto text-center">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Cuenta desactivada</h1>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 p-4 md:p-8 flex items-center">
+        <div className="max-w-md mx-auto text-center w-full">
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Cuenta desactivada</h1>
             <p className="text-gray-600">{inactiveReason}</p>
           </div>
         </div>
@@ -181,18 +181,18 @@ export default function OnboardingPage() {
 
   if (state === "selection") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-4 md:p-8">
         <div className="max-w-2xl mx-auto">
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold mb-2" style={{ color: "#00AEEF" }}>
+          <div className="mb-6 md:mb-8 text-center">
+            <h1 className="text-2xl md:text-4xl font-bold mb-2" style={{ color: "#00AEEF" }}>
               Bienvenido, chofer
             </h1>
-            <p className="text-gray-600 text-lg">
+            <p className="text-gray-600 text-sm md:text-lg">
               Completa tu perfil de chofer para comenzar a trabajar
             </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -276,13 +276,13 @@ export default function OnboardingPage() {
 
   if (state === "waiting") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 flex items-center">
-        <div className="max-w-md mx-auto text-center">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="text-6xl mb-4">⏳</div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Solicitud enviada</h1>
-            <p className="text-xl text-gray-700 mb-2">Tu solicitud está siendo revisada por</p>
-            <p className="text-2xl font-bold mb-6" style={{ color: "#00AEEF" }}>
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 md:p-8 flex items-center">
+        <div className="max-w-md mx-auto text-center w-full">
+          <div className="bg-white rounded-lg shadow-lg p-4 md:p-8">
+            <div className="text-4xl md:text-6xl mb-4">⏳</div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Solicitud enviada</h1>
+            <p className="text-base md:text-xl text-gray-700 mb-2">Tu solicitud está siendo revisada por</p>
+            <p className="text-xl md:text-2xl font-bold mb-6" style={{ color: "#00AEEF" }}>
               {vendorName}
             </p>
             <p className="text-gray-600 mb-2">

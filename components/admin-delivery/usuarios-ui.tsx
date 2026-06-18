@@ -94,7 +94,62 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
       </section>
 
       <section className={`${adminCardClass} overflow-hidden p-0`}>
-        <div className="overflow-x-auto">
+        {/* Mobile card view */}
+        <div className="divide-y divide-slate-100 md:hidden">
+          {filteredUsers.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-slate-500">No encontramos usuarios con ese filtro.</p>
+          ) : (
+            filteredUsers.map((user) => {
+              const isBusy = pendingUserId === user.clerkUserId;
+              const isEditingRole = editingUserId === user.clerkUserId;
+              const isNameAnId = user.fullName.toLowerCase().startsWith("user_");
+              const showRegisteredName = !isNameAnId && user.fullName.trim().length > 0;
+
+              return (
+                <div key={user.clerkUserId} className="px-4 py-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900 text-sm truncate">
+                        {showRegisteredName ? user.fullName : <span className="font-normal italic text-slate-400">Usuario sin registrar</span>}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {user.email && !user.email.toLowerCase().includes("sin correo") ? user.email : <span className="italic text-slate-400">Sin correo</span>}
+                      </p>
+                    </div>
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium shrink-0 ${
+                      user.isBlocked ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"
+                    }`}>
+                      {user.isBlocked ? "Bloqueado" : "Activo"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                    <span className="text-slate-500">Rol</span>
+                    <span className="text-slate-900">
+                      <span className="inline-flex rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
+                        {roleLabel(getDisplayRole(user))}
+                      </span>
+                    </span>
+                    <span className="text-slate-500">Empresa</span>
+                    <span className="text-slate-900 truncate text-sm">
+                      {user.nombreEmpresa ?? <span className="italic text-slate-400">Sin empresa</span>}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button type="button" onClick={() => startRoleEdit(user)} disabled={isBusy} className={adminButtonClass("edit", "sm")}>
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => toggleBlock(user)} disabled={isBusy} className={adminButtonClass(user.isBlocked ? "success" : "danger", "sm")}>
+                      {isBusy ? "..." : user.isBlocked ? "Desbloquear" : "Bloquear"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
@@ -102,7 +157,7 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
                 <th className="px-3 py-3 font-medium text-center whitespace-nowrap">Rol</th>
                 <th className="px-3 py-3 font-medium">Empresa</th>
                 <th className="px-3 py-3 font-medium text-center whitespace-nowrap">Estado</th>
-                <th className="px-3 py-3 font-medium text-center whitespace-nowrap">Acciones</th>
+                <th className="sticky right-0 bg-slate-50 z-10 px-3 py-3 font-medium text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)] whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
@@ -187,7 +242,7 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
                           {user.isBlocked && user.blockedReason ? <span className="text-xs text-red-600">Motivo: {user.blockedReason}</span> : null}
                         </div>
                       </td>
-                      <td className="px-3 py-3.5 text-center">
+                      <td className="sticky right-0 bg-white z-10 px-3 py-3.5 text-center shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.1)]">
                         <div className="flex flex-col items-center gap-2">
                           {isEditingRole ? (
                             <div className="flex flex-nowrap gap-2 whitespace-nowrap">
@@ -236,7 +291,7 @@ export default function AdminDeliveryUsersUi({ users, vendors }: Props) {
               )}
             </tbody>
           </table>
-        </div>
+          </div>
       </section>
     </div>
   );

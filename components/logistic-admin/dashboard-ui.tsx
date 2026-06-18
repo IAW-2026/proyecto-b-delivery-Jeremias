@@ -205,19 +205,19 @@ export default function LogisticAdminBoard({
         </div>
       ) : null}
       <section className={adminHeaderClass}>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-sky-400">Panel logístico</p>
-            <h1 className="text-3xl font-semibold" style={{ color: "#00AEEF" }}>
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs md:text-sm uppercase tracking-[0.3em] text-sky-400">Panel logístico</p>
+            <h1 className="text-2xl md:text-3xl font-semibold" style={{ color: "#00AEEF" }}>
               Centro operativo
             </h1>
-            <p className="max-w-2xl text-sm text-slate-600">
+            <p className="max-w-2xl text-xs md:text-sm text-slate-600">
               {userName} coordina pedidos, choferes, vehículos y zonas desde un solo panel de control.
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-            <p className="font-medium">Empresa vinculada</p>
-            <p className="text-slate-500">{companyName || "Sin empresa asignada"}</p>
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shrink-0">
+            <p className="font-medium text-xs md:text-sm">Empresa vinculada</p>
+            <p className="text-slate-500 text-xs md:text-sm truncate max-w-[200px]">{companyName || "Sin empresa asignada"}</p>
           </div>
         </div>
       </section>
