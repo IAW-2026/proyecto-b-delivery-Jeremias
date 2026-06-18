@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 type ReadyOrderInput = {
-  idPedidoExterno: number;
+  idPedidoExterno: string;
   idVendedor: string;
   cliente: string;
   direccion: string;
@@ -31,7 +31,7 @@ function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
     if (!item || typeof item !== "object") return null;
 
     const p = item as Record<string, unknown>;
-    const idPedidoExterno = Number(p.id_pedido_externo);
+    const idPedidoExterno = String(p.id_pedido_externo ?? "").trim();
     const idVendedor = String(p.id_vendedor ?? "");
     const cliente = String(p.cliente ?? "").trim();
     const direccion = String(p.direccion ?? "").trim();
@@ -39,7 +39,7 @@ function normalizePayload(payload: unknown): ReadyOrderInput[] | null {
     const cantBidones = Number(p.cant_bidones);
     const zona = String(p.zona ?? "").trim() || "Sin zona";
 
-    if (!Number.isInteger(idPedidoExterno) || idPedidoExterno <= 0) return null;
+    if (!idPedidoExterno) return null;
     if (!idVendedor) return null;
     if (!cliente) return null;
     if (!direccion) return null;
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   const results: Array<{
     idPedido: number;
-    idPedidoExterno: number;
+    idPedidoExterno: string;
     idVendedor: string;
     created: boolean;
   }> = [];
