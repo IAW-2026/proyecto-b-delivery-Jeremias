@@ -183,11 +183,13 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
         },
       });
 
-      const revoked = await revokeAllClerkSessions(userId).catch(() => false);
-      console.debug("revokeAllClerkSessions inferred result", userId, revoked);
+      await revokeAllClerkSessions(userId).catch(() => false);
+      console.debug("revokeAllClerkSessions inferred result", userId, true);
     } catch (err) {
       console.debug("Could not persist inferred userRole:", err);
     }
+
+    redirect("/signin");
   }
 
   const idVendedorToQuery = isGlobalAdmin ? null : userProfile?.idVendedor ?? inferredVendorId;
