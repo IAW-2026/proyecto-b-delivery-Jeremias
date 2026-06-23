@@ -4,6 +4,10 @@ import { validateAdminApiKey } from "@/lib/admin-auth";
 import { parsePage, pageSize } from "@/lib/shared/utils";
 import type { Prisma } from "@prisma/client";
 
+function generateTempPassword(): string {
+  return crypto.randomUUID().slice(0, 12);
+}
+
 export async function GET(request: NextRequest) {
   if (!validateAdminApiKey(request)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -75,5 +79,81 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching drivers:", error);
     return NextResponse.json({ error: "Error al obtener choferes" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  if (!validateAdminApiKey(request)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  let body: { email?: string; nombre?: string; telefono?: string; idVendedor?: string; idZona?: number | null; idVehiculo?: number | null };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  if (!body.email || !body.nombre || !body.idVendedor) {
+    return NextResponse.json({ error: "Faltan campos requeridos: email, nombre, idVendedor" }, { status: 400 });
+  }
+
+  const password = generateTempPassword();
+
+  try {
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const client = await clerkClient();
+
+    const nameParts = body.nombre.trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(" ") || undefined;
+
+    const clerkUser = await client.users.createUser({
+      emailAddress: [body.email.trim()],
+      password,
+      firstName,
+      lastName,
+      publicMetadata: { roles: ["delivery"] },
+    });
+
+    const [chofer, _userProfile] = await Promise.all([
+      prisma.chofer.create({
+        data: {
+          clerkUserId: clerkUser.id,
+          nombre: body.nombre.trim(),
+          telefono: body.telefono?.trim() ?? null,
+          idVendedor: body.idVendedor,
+          idZona: body.idZona ?? null,
+          idVehiculo: body.idVehiculo ?? null,
+          estado: "activo",
+          disponible: true,
+        },
+        include: {
+          vehiculo: { select: { idVehiculo: true, patente: true, tipo: true } },
+          zona: { select: { idZona: true, nombre: true } },
+          _count: { select: { pedidosAsignados: true } },
+        },
+      }),
+      prisma.userProfile.upsert({
+        where: { clerkUserId: clerkUser.id },
+        create: { clerkUserId: clerkUser.id, role: "delivery", idVendedor: body.idVendedor },
+        update: { role: "delivery", idVendedor: body.idVendedor },
+      }),
+    ]);
+
+    return NextResponse.json({
+      ...chofer,
+      zona: chofer.zona ? { idZona: chofer.zona.idZona, nombre: chofer.zona.nombre } : null,
+      vehiculo: chofer.vehiculo ? { idVehiculo: chofer.vehiculo.idVehiculo, patente: chofer.vehiculo.patente, tipo: chofer.vehiculo.tipo } : null,
+      pedidosAsignados: chofer._count.pedidosAsignados,
+      temporaryPassword: password,
+    }, { status: 201 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("already exists") || msg.includes("duplicate")) {
+      return NextResponse.json({ error: "Ya existe un usuario con ese email en Clerk" }, { status: 409 });
+    }
+    console.error("Error creating driver:", error);
+    return NextResponse.json({ error: "Error al crear el chofer" }, { status: 500 });
   }
 }

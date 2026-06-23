@@ -59,3 +59,110 @@ export async function GET(
     return NextResponse.json({ error: "Error al obtener el chofer" }, { status: 500 });
   }
 }
+
+export async function PUT(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!validateAdminApiKey(_request)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const idChofer = Number(id);
+
+  if (!Number.isInteger(idChofer) || idChofer <= 0) {
+    return NextResponse.json({ error: "ID de chofer inválido" }, { status: 400 });
+  }
+
+  let body: { nombre?: string; telefono?: string; idZona?: number | null; idVehiculo?: number | null };
+  try {
+    body = await _request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  try {
+    const existing = await prisma.chofer.findUnique({ where: { idChofer } });
+    if (!existing) {
+      return NextResponse.json({ error: "Chofer no encontrado" }, { status: 404 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (body.nombre !== undefined) updateData.nombre = body.nombre.trim();
+    if (body.telefono !== undefined) updateData.telefono = body.telefono.trim();
+    if (body.idZona !== undefined) updateData.idZona = body.idZona;
+    if (body.idVehiculo !== undefined) updateData.idVehiculo = body.idVehiculo;
+
+    const updated = await prisma.chofer.update({
+      where: { idChofer },
+      data: updateData,
+      include: {
+        vehiculo: { select: { idVehiculo: true, patente: true, tipo: true, capacidadBidones: true } },
+        zona: { select: { idZona: true, nombre: true } },
+        _count: { select: { pedidosAsignados: true } },
+      },
+    });
+
+    return NextResponse.json({
+      idChofer: updated.idChofer,
+      nombre: updated.nombre,
+      telefono: updated.telefono,
+      estado: updated.estado,
+      disponible: updated.disponible,
+      cuilCuit: updated.cuilCuit,
+      cbuCvu: updated.cbuCvu,
+      alias: updated.alias,
+      zona: updated.zona ? { idZona: updated.zona.idZona, nombre: updated.zona.nombre } : null,
+      vehiculo: updated.vehiculo
+        ? { idVehiculo: updated.vehiculo.idVehiculo, patente: updated.vehiculo.patente, tipo: updated.vehiculo.tipo, capacidadBidones: updated.vehiculo.capacidadBidones }
+        : null,
+      pedidosAsignados: updated._count.pedidosAsignados,
+      idVendedor: updated.idVendedor,
+      nombreEmpresa: updated.nombreEmpresa,
+    });
+  } catch (error) {
+    console.error("Error updating driver:", error);
+    return NextResponse.json({ error: "Error al actualizar el chofer" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!validateAdminApiKey(_request)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const idChofer = Number(id);
+
+  if (!Number.isInteger(idChofer) || idChofer <= 0) {
+    return NextResponse.json({ error: "ID de chofer inválido" }, { status: 400 });
+  }
+
+  try {
+    const existing = await prisma.chofer.findUnique({ where: { idChofer } });
+    if (!existing) {
+      return NextResponse.json({ error: "Chofer no encontrado" }, { status: 404 });
+    }
+
+    const activeOrder = await prisma.pedido.findFirst({
+      where: {
+        idChoferAsignado: idChofer,
+        estado: { notIn: ["entregado", "cancelado"] },
+      },
+    });
+    if (activeOrder) {
+      return NextResponse.json({ error: "No se puede eliminar un chofer con pedidos activos" }, { status: 400 });
+    }
+
+    await prisma.chofer.delete({ where: { idChofer } });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Error deleting driver:", error);
+    return NextResponse.json({ error: "Error al eliminar el chofer" }, { status: 500 });
+  }
+}
