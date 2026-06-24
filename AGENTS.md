@@ -16,6 +16,7 @@ Delivery app for agua-ya. Connects sellers, logistic admins, and choferes to man
 - **Framework**: Next.js 16.2.6 (webpack)
 - **Database**: PostgreSQL (Neon) via Prisma 7
 - **Auth**: Clerk (publicMetadata.roles as canonical key, plural)
+- **Admin Auth**: `lib/admin-auth.ts` — Bearer token vs `CONTROL_PLANE_API_KEY` for Fase 1 endpoints
 - **Vendor Integration**: Fetches real vendor data from seller app at `GET /api/vendors` with `X-API-Key` header
 - **Order Integration**: Seller app pushes ready orders via `POST /api/ready-orders` with `Bearer DELIVERY_API_KEY`
 - **Buyer Sync**: Delivery app syncs order status changes (ready, en_camino, entregado, cancelado, revision) to buyer app via PATCH `/api/orders/[id]` with `x-api-key` header
@@ -46,14 +47,26 @@ Delivery app for agua-ya. Connects sellers, logistic admins, and choferes to man
 | `lib/actions/logistic-admin.ts` | Server actions for zones, vehicles, orders (status sync to buyer included) |
 | `lib/actions/chofer.ts` | Server actions for chofer (order status update + buyer sync) |
 | `lib/notify-buyer.ts` | Buyer app sync — maps delivery status to buyer status and makes PATCH call |
+| `lib/admin-auth.ts` | Shared admin API key validator (`validateAdminApiKey`) |
 | `app/api/ready-orders/route.ts` | Order ingestion from seller app |
 | `app/api/admin/deliveries/[id]/status/route.ts` | External admin API for delivery status (also syncs to buyer) |
+| `app/api/admin/drivers/route.ts` | Control Plane — list + create drivers |
+| `app/api/admin/drivers/[id]/route.ts` | Control Plane — detail + update + delete driver |
+| `app/api/admin/vehicles/route.ts` | Control Plane — list + create vehicles |
+| `app/api/admin/vehicles/[id]/route.ts` | Control Plane — detail + update + delete vehicle |
+| `app/api/admin/vehicles/[id]/toggle/route.ts` | Control Plane — toggle vehicle activo/pausado |
+| `app/api/admin/zones/route.ts` | Control Plane — list + create zones |
+| `app/api/admin/zones/[id]/route.ts` | Control Plane — detail + update + delete zone |
+| `app/api/admin/logistics-admins/route.ts` | Control Plane — list + create logistics admins |
+| `app/api/admin/logistics-admins/[clerkUserId]/route.ts` | Control Plane — detail + update + soft-delete logistics admin |
+| `app/api/admin/logistics-admins/[clerkUserId]/toggle/route.ts` | Control Plane — block/unblock logistics admin |
 | `prisma/schema.prisma` | Database schema (Pedido, Chofer, Vehiculo, etc.) |
 
 ## API Keys (`.env.local`)
 - `VENDORS_API_URL` — seller app vendors endpoint
 - `VENDORS_API_KEY` — `vendor-secret-key-2026`
 - `DELIVERY_API_KEY` — `delivery-app-secret-key-2026`
+- `CONTROL_PLANE_API_KEY` — Fase 1 admin endpoints (`aguaya-cp-secret-key-123`)
 - `BUYER_API_URL` — buyer app orders endpoint (`https://proyecto-b-buyer-agua-ya.vercel.app/api/orders/[order_id]`)
 - `BUYER_API_KEY` — API key for buyer app authentication
 
@@ -62,4 +75,4 @@ Delivery app for agua-ya. Connects sellers, logistic admins, and choferes to man
 - **`proxy.ts` warning**: Next.js infers wrong root due to multiple lockfiles; `outputFileTracingRoot` not set in `next.config.ts`.
 - **Database is empty** after reset; first login for any `logistic_admin` triggers upsert + Clerk sync + session revoke.
 - **Prisma migration timeout on Vercel**: Neon free tier pauses after inactivity; `prisma migrate deploy` during build times out. Fix: set `PRISMA_MIGRATION_LOCK_TIMEOUT=30000` in Vercel env vars.
-- **Env vars on Vercel**: `.env.local` is not deployed; `BUYER_API_URL` and `BUYER_API_KEY` must be configured manually in Vercel dashboard.
+- **Env vars on Vercel**: `.env.local` is not deployed; `BUYER_API_URL`, `BUYER_API_KEY`, and `CONTROL_PLANE_API_KEY` must be configured manually in Vercel dashboard.
