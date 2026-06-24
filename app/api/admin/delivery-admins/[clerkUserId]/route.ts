@@ -20,8 +20,8 @@ export async function GET(
       where: { clerkUserId },
     });
 
-    if (!profile || profile.role !== "logistic_admin") {
-      return NextResponse.json({ error: "Administrador logístico no encontrado" }, { status: 404 });
+    if (!profile || profile.role !== "admin_delivery") {
+      return NextResponse.json({ error: "Administrador global no encontrado" }, { status: 404 });
     }
 
     const access = await prisma.userAccessControl.findUnique({
@@ -32,14 +32,13 @@ export async function GET(
     return NextResponse.json({
       clerkUserId: profile.clerkUserId,
       nombre: profile.nombre,
-      idVendedor: profile.idVendedor,
-      nombreEmpresa: profile.nombreEmpresa,
+      telefono: profile.telefono,
       isBlocked: access?.isBlocked ?? false,
       createdAt: profile.createdAt.toISOString(),
     });
   } catch (error) {
-    console.error("Error fetching logistics admin:", error);
-    return NextResponse.json({ error: "Error al obtener el administrador logístico" }, { status: 500 });
+    console.error("Error fetching delivery admin:", error);
+    return NextResponse.json({ error: "Error al obtener el administrador global" }, { status: 500 });
   }
 }
 
@@ -56,7 +55,7 @@ export async function PUT(
     return NextResponse.json({ error: "clerkUserId requerido" }, { status: 400 });
   }
 
-  let body: { nombre?: string; nombreEmpresa?: string };
+  let body: { nombre?: string; telefono?: string };
   try {
     body = await _request.json();
   } catch {
@@ -68,13 +67,13 @@ export async function PUT(
       where: { clerkUserId },
     });
 
-    if (!existing || existing.role !== "logistic_admin") {
-      return NextResponse.json({ error: "Administrador logístico no encontrado" }, { status: 404 });
+    if (!existing || existing.role !== "admin_delivery") {
+      return NextResponse.json({ error: "Administrador global no encontrado" }, { status: 404 });
     }
 
     const updateData: Record<string, unknown> = {};
     if (body.nombre !== undefined) updateData.nombre = body.nombre.trim();
-    if (body.nombreEmpresa !== undefined) updateData.nombreEmpresa = body.nombreEmpresa.trim();
+    if (body.telefono !== undefined) updateData.telefono = body.telefono.trim();
 
     const profile = await prisma.userProfile.update({
       where: { clerkUserId },
@@ -89,14 +88,13 @@ export async function PUT(
     return NextResponse.json({
       clerkUserId: profile.clerkUserId,
       nombre: profile.nombre,
-      idVendedor: profile.idVendedor,
-      nombreEmpresa: profile.nombreEmpresa,
+      telefono: profile.telefono,
       isBlocked: access?.isBlocked ?? false,
       createdAt: profile.createdAt.toISOString(),
     });
   } catch (error) {
-    console.error("Error updating logistics admin:", error);
-    return NextResponse.json({ error: "Error al actualizar el administrador logístico" }, { status: 500 });
+    console.error("Error updating delivery admin:", error);
+    return NextResponse.json({ error: "Error al actualizar el administrador global" }, { status: 500 });
   }
 }
 
@@ -118,8 +116,8 @@ export async function DELETE(
       where: { clerkUserId },
     });
 
-    if (!existing || existing.role !== "logistic_admin") {
-      return NextResponse.json({ error: "Administrador logístico no encontrado" }, { status: 404 });
+    if (!existing || existing.role !== "admin_delivery") {
+      return NextResponse.json({ error: "Administrador global no encontrado" }, { status: 404 });
     }
 
     const { clerkClient } = await import("@clerk/nextjs/server");
@@ -133,7 +131,7 @@ export async function DELETE(
         : typeof metadata.roles === "string"
           ? [metadata.roles as string]
           : [];
-      const filteredRoles = currentRoles.filter((r) => r !== "logistic_admin");
+      const filteredRoles = currentRoles.filter((r) => r !== "admin_delivery");
 
       await client.users.updateUser(clerkUserId, {
         publicMetadata: {
@@ -153,7 +151,7 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Error deleting logistics admin:", error);
-    return NextResponse.json({ error: "Error al eliminar el administrador logístico" }, { status: 500 });
+    console.error("Error deleting delivery admin:", error);
+    return NextResponse.json({ error: "Error al eliminar el administrador global" }, { status: 500 });
   }
 }
