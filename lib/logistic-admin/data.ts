@@ -192,6 +192,22 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     redirect("/signin");
   }
 
+  if (isGlobalAdmin && !userProfile && userId) {
+    try {
+      await prisma.userProfile.upsert({
+        where: { clerkUserId: userId },
+        update: { role: ADMIN_DELIVERY_ROLE },
+        create: {
+          clerkUserId: userId,
+          role: ADMIN_DELIVERY_ROLE,
+          idVendedor: "",
+        },
+      });
+    } catch (err) {
+      console.error("Error creating admin_delivery user profile:", err);
+    }
+  }
+
   const idVendedorToQuery = isGlobalAdmin ? null : userProfile?.idVendedor ?? inferredVendorId;
 
   const zoneEmpresaFilter = idVendedorToQuery !== null
@@ -342,6 +358,7 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
   if (!isGlobalAdmin && (idVendedorToQuery === null || idVendedorToQuery === "")) {
     redirect("/signin");
   }
+
   return {
     roles,
     idVendedor: idVendedorToQuery,
