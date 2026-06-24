@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SignOutButton from "@/components/vendor-link-sign-out";
 
 export default function VendorLinkPage() {
   return (
@@ -36,7 +37,7 @@ export default function VendorLinkPage() {
           </div>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/signin"
             className="inline-flex h-10 items-center justify-center rounded-lg px-6 text-sm font-medium text-white transition-colors hover:opacity-90"
@@ -44,6 +45,7 @@ export default function VendorLinkPage() {
           >
             Volver a iniciar sesión
           </Link>
+          <SignOutButton />
         </div>
       </div>
     </div>
