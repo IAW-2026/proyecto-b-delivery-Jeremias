@@ -194,6 +194,22 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     }
   }
 
+  if (isGlobalAdmin && !userProfile && userId) {
+    try {
+      await prisma.userProfile.upsert({
+        where: { clerkUserId: userId },
+        update: { role: ADMIN_DELIVERY_ROLE },
+        create: {
+          clerkUserId: userId,
+          role: ADMIN_DELIVERY_ROLE,
+          idVendedor: "",
+        },
+      });
+    } catch (err) {
+      console.error("Error creating admin_delivery user profile:", err);
+    }
+  }
+
   const idVendedorToQuery = isGlobalAdmin ? null : userProfile?.idVendedor ?? inferredVendorId;
 
   const zoneEmpresaFilter = idVendedorToQuery !== null
@@ -337,8 +353,6 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
   const companyName = vendorName ?? inferredVendorName ?? null;
   const vendorNames: Record<string, string> = Object.fromEntries(vendorMap);
 
-<<<<<<< Updated upstream
-=======
   if (!isGlobalAdmin && !inferredVendorId && !userProfile) {
     redirect("/vendor-link");
   }
@@ -347,7 +361,6 @@ export const getLogisticAdminData = cache(async function getLogisticAdminData():
     redirect("/signin");
   }
 
->>>>>>> Stashed changes
   return {
     roles,
     idVendedor: idVendedorToQuery,
