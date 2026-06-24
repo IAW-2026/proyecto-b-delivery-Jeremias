@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [items] = await Promise.all([
+    const [total, items] = await Promise.all([
       prisma.userProfile.count({ where }),
       prisma.userProfile.findMany({
         where,
@@ -64,9 +64,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       items: mapped,
-      total: mapped.length,
+      total,
       page,
-      pageCount: Math.ceil(mapped.length / limit),
+      pageCount: Math.ceil(total / limit),
     });
   } catch (error) {
     console.error("Error fetching delivery admins:", error);
