@@ -58,15 +58,18 @@ export async function PUT(
     return NextResponse.json({ error: "ID de zona inválido" }, { status: 400 });
   }
 
-  let body: { nombre?: string };
+  let body: { nombre?: string; empresas?: string[] };
   try {
     body = await _request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.nombre?.trim()) {
-    return NextResponse.json({ error: "Nombre de zona requerido" }, { status: 400 });
+  const nombre = body.nombre?.trim();
+  const empresas = Array.isArray(body.empresas) ? body.empresas.filter((e) => typeof e === "string" && e.trim()) : undefined;
+
+  if (!nombre && empresas === undefined) {
+    return NextResponse.json({ error: "Debe enviar al menos 'nombre' o 'empresas' para actualizar" }, { status: 400 });
   }
 
   try {
@@ -75,15 +78,43 @@ export async function PUT(
       return NextResponse.json({ error: "Zona no encontrada" }, { status: 404 });
     }
 
-    const updated = await prisma.zona.update({
-      where: { idZona },
-      data: { nombre: body.nombre.trim() },
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      if (nombre) {
+        await tx.zona.update({
+          where: { idZona },
+          data: { nombre },
+        });
+      }
+
+      if (empresas !== undefined) {
+        await tx.zonaEmpresa.deleteMany({ where: { idZona } });
+
+        if (empresas.length > 0) {
+          await tx.zonaEmpresa.createMany({
+            data: empresas.map((idVendedor) => ({ idZona, idVendedor })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return tx.zona.findUnique({
+        where: { idZona },
+        include: {
+          empresas: { select: { idVendedor: true } },
+          choferes: { select: { idChofer: true, nombre: true } },
+        },
+      });
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      idZona: updated!.idZona,
+      nombre: updated!.nombre,
+      empresas: updated!.empresas.map((e: { idVendedor: string }) => e.idVendedor),
+      choferes: updated!.choferes,
+    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ error: `Ya existe una zona con el nombre "${body.nombre.trim()}"` }, { status: 409 });
+      return NextResponse.json({ error: `Ya existe una zona con el nombre "${nombre}"` }, { status: 409 });
     }
     console.error("Error updating zone:", error);
     return NextResponse.json({ error: "Error al actualizar la zona" }, { status: 500 });

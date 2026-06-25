@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  let body: { nombre?: string };
+  let body: { nombre?: string; empresas?: string[] };
   try {
     body = await request.json();
   } catch {
@@ -74,12 +74,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nombre de zona requerido" }, { status: 400 });
   }
 
+  const empresas = Array.isArray(body.empresas) ? body.empresas.filter((e) => typeof e === "string" && e.trim()) : [];
+
   try {
-    const zona = await prisma.zona.create({
-      data: { nombre: body.nombre.trim() },
+    const zona = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const z = await tx.zona.create({ data: { nombre: body.nombre!.trim() } });
+
+      if (empresas.length > 0) {
+        await tx.zonaEmpresa.createMany({
+          data: empresas.map((idVendedor) => ({ idZona: z.idZona, idVendedor })),
+          skipDuplicates: true,
+        });
+      }
+
+      return z;
     });
 
-    return NextResponse.json(zona, { status: 201 });
+    const empresasCreadas = await prisma.zonaEmpresa.findMany({
+      where: { idZona: zona.idZona },
+      select: { idVendedor: true },
+    });
+
+    return NextResponse.json({
+      idZona: zona.idZona,
+      nombre: zona.nombre,
+      empresas: empresasCreadas.map((e: { idVendedor: string }) => e.idVendedor),
+    }, { status: 201 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: `Ya existe una zona con el nombre "${body.nombre.trim()}"` }, { status: 409 });
