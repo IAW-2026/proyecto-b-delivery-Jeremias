@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { detectSuburb } from "@/lib/geocode";
+import { matchExistingZone } from "@/lib/match-zone";
 
 type ReadyOrderInput = {
   idPedidoExterno: string;
@@ -97,6 +99,14 @@ export async function POST(request: NextRequest) {
   }> = [];
 
   for (const pedido of pedidos) {
+    if (pedido.zona === "Sin zona") {
+      const suburb = await detectSuburb(pedido.direccion);
+      if (suburb) {
+        const matched = await matchExistingZone(suburb, pedido.idVendedor);
+        pedido.zona = matched ?? suburb;
+      }
+    }
+
     try {
       const existing = await prisma.pedido.findFirst({
         where: {
