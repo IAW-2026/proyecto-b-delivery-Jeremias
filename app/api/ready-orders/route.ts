@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { detectSuburb } from "@/lib/geocode";
+import { matchExistingZone } from "@/lib/match-zone";
 
 type ReadyOrderInput = {
   idPedidoExterno: string;
@@ -46,7 +48,8 @@ function normalizePayload(payload: unknown): {
     const direccion = String(p.direccion ?? "").trim();
     const telefono = p.telefono != null ? String(p.telefono).trim() : null;
     const cantBidones = Number(p.cant_bidones);
-    const zona = String(p.zona ?? "").trim() || "Sin zona";
+    const rawZona = String(p.zona ?? "").trim();
+    const zona = !rawZona || rawZona.toLowerCase() === "sin zona" ? "Sin zona" : rawZona;
 
     if (!idPedidoExterno) {
       return { pedidos: null, error: `El pedido en la posición ${idx} debe tener 'id_pedido_externo'` };
@@ -97,6 +100,14 @@ export async function POST(request: NextRequest) {
   }> = [];
 
   for (const pedido of pedidos) {
+    if (pedido.zona === "Sin zona") {
+      const suburb = await detectSuburb(pedido.direccion);
+      if (suburb) {
+        const matched = await matchExistingZone(suburb, pedido.idVendedor);
+        pedido.zona = matched ?? suburb;
+      }
+    }
+
     try {
       const existing = await prisma.pedido.findFirst({
         where: {
