@@ -13,11 +13,15 @@ export async function updatePedidoStatus(idPedido: number, estado: string, motiv
   const pedido = await prisma.pedido.findUnique({ where: { idPedido } });
   if (!pedido) throw new Error("Pedido no encontrado");
 
-  const allowedStatuses = ["en_camino", "entregado", "revision"];
+  const allowedStatuses = ["en_camino", "entregado", "revision", "ready"];
   if (!allowedStatuses.includes(estado)) throw new Error("Estado inválido");
 
   if (estado === "revision" && !motivoRevision?.trim()) {
     throw new Error("Debés indicar un motivo para marcar en revisión");
+  }
+
+  if (estado === "ready" && pedido.estado !== "revision") {
+    throw new Error("Solo podés volver a listo desde revisión");
   }
 
   await prisma.pedido.update({
