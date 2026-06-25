@@ -47,6 +47,7 @@ Delivery app for agua-ya. Connects sellers, logistic admins, and choferes to man
 | `lib/actions/logistic-admin.ts` | Server actions for zones, vehicles, orders (status sync to buyer included) |
 | `lib/actions/chofer.ts` | Server actions for chofer (order status update + buyer sync) |
 | `lib/notify-buyer.ts` | Buyer app sync — maps delivery status to buyer status and makes PATCH call |
+| `lib/notify-feedback.ts` | Feedback app sync — POST to feedback when delivery is marked "entregado" |
 | `lib/admin-auth.ts` | Shared admin API key validator (`validateAdminApiKey`) |
 | `app/api/ready-orders/route.ts` | Order ingestion from seller app |
 | `app/api/admin/deliveries/[id]/status/route.ts` | External admin API for delivery status (also syncs to buyer) |
@@ -69,10 +70,24 @@ Delivery app for agua-ya. Connects sellers, logistic admins, and choferes to man
 - `CONTROL_PLANE_API_KEY` — Fase 1 admin endpoints (`aguaya-cp-secret-key-123`)
 - `BUYER_API_URL` — buyer app orders endpoint (`https://proyecto-b-buyer-agua-ya.vercel.app/api/orders/[order_id]`)
 - `BUYER_API_KEY` — API key for buyer app authentication
+- `FEEDBACK_API_URL` — feedback app webhook endpoint
+- `FEEDBACK_API_KEY` — API key for feedback app authentication
+
+## Feedback Integration
+- **App**: `proyecto-b-feedback-aquadrom` — receives notification when delivery is marked as "entregado"
+- **Endpoint**: `POST https://proyecto-b-feedback-aquadrom.vercel.app/api/webhooks/pedidos`
+- **Header**: `x-api-key: FEEDBACK_API_KEY`
+- **Body**: `{ "id_pedido": "<CUID_de_la_Buyer_App>" }` (the `idPedidoExterno` from Pedido model)
+- **Implementation**: `lib/notify-feedback.ts` — sends POST when status changes to "entregado"
+- **Dispatched from**: `lib/actions/logistic-admin.ts` (line ~385) and `lib/actions/chofer.ts` (line ~38)
+- **NOT dispatched from**: `PATCH /api/admin/deliveries/[id]/status` (Control Plane external API)
+- **Flow**: Delivery marks "entregado" → POST to Feedback → Feedback queries Buyer App with the CUID → Feedback creates Pedido record
+- **Env vars**: `FEEDBACK_API_URL`, `FEEDBACK_API_KEY`
+- **Preview deploy issue**: Vercel preview URLs have SSO protection; use production or ngrok for external testing
 
 ## Known Issues
 - **Race condition with seller app**: seller app may still write to `publicMetadata.role` (singular), causing role flickering. Need to migrate seller app to `roles` (plural) too.
 - **`proxy.ts` warning**: Next.js infers wrong root due to multiple lockfiles; `outputFileTracingRoot` not set in `next.config.ts`.
 - **Database is empty** after reset; first login for any `logistic_admin` triggers upsert + Clerk sync + session revoke.
 - **Prisma migration timeout on Vercel**: Neon free tier pauses after inactivity; `prisma migrate deploy` during build times out. Fix: set `PRISMA_MIGRATION_LOCK_TIMEOUT=30000` in Vercel env vars.
-- **Env vars on Vercel**: `.env.local` is not deployed; `BUYER_API_URL`, `BUYER_API_KEY`, and `CONTROL_PLANE_API_KEY` must be configured manually in Vercel dashboard.
+- **Env vars on Vercel**: `.env.local` is not deployed; `BUYER_API_URL`, `BUYER_API_KEY`, `CONTROL_PLANE_API_KEY`, `FEEDBACK_API_URL`, and `FEEDBACK_API_KEY` must be configured manually in Vercel dashboard.
