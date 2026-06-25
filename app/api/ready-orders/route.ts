@@ -48,7 +48,8 @@ function normalizePayload(payload: unknown): {
     const direccion = String(p.direccion ?? "").trim();
     const telefono = p.telefono != null ? String(p.telefono).trim() : null;
     const cantBidones = Number(p.cant_bidones);
-    const zona = String(p.zona ?? "").trim() || "Sin zona";
+    const rawZona = String(p.zona ?? "").trim();
+    const zona = !rawZona || rawZona.toLowerCase() === "sin zona" ? "Sin zona" : rawZona;
 
     if (!idPedidoExterno) {
       return { pedidos: null, error: `El pedido en la posición ${idx} debe tener 'id_pedido_externo'` };
