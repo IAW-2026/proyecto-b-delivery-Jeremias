@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ADMIN_DELIVERY_ROLE, resolveRolesFromClaims } from "@/lib/roles";
 import { syncOrderStatus } from "@/lib/notify-buyer";
+import { notifyFeedback } from "@/lib/notify-feedback";
 
 async function getCompanyContext(vendedorId?: string) {
   const { userId } = await auth();
@@ -381,6 +382,9 @@ export async function updateOrderStatus(idPedido: number, status: string) {
   });
 
   await syncOrderStatus(pedidoDb.idPedidoExterno, status).catch(() => {});
+  if (status === "entregado" && pedidoDb.idPedidoExterno) {
+    await notifyFeedback(pedidoDb.idPedidoExterno).catch(() => {});
+  }
 
   revalidatePath("/dashboard/logistic-admin/pedidos");
 }

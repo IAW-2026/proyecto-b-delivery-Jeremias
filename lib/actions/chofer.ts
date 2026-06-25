@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getChoferStatus } from "@/lib/choferStatus";
 import { syncOrderStatus } from "@/lib/notify-buyer";
+import { notifyFeedback } from "@/lib/notify-feedback";
 
 export async function updatePedidoStatus(idPedido: number, estado: string, motivoRevision?: string) {
   const { userId } = await auth();
@@ -34,6 +35,9 @@ export async function updatePedidoStatus(idPedido: number, estado: string, motiv
   });
 
   await syncOrderStatus(pedido.idPedidoExterno, estado).catch(() => {});
+  if (estado === "entregado" && pedido.idPedidoExterno) {
+    await notifyFeedback(pedido.idPedidoExterno).catch(() => {});
+  }
 
   revalidatePath("/dashboard/chofer/mis-pedidos");
 }
