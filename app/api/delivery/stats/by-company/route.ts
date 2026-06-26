@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     },
     select: { idVendedor: true, nombreEmpresa: true },
     distinct: ["idVendedor"],
-    orderBy: { nombreEmpresa: "asc" },
+    orderBy: [{ idVendedor: "asc" }, { nombreEmpresa: "asc" }],
   });
 
   const result = [];
