@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   ) {
     const where: Record<string, unknown> = {};
     if (from || to) {
-      where.createdAt = {};
+      where.assignedAt = {};
       if (from) (where.createdAt as Record<string, Date>).gte = from;
       if (to) (where.createdAt as Record<string, Date>).lte = to;
     }

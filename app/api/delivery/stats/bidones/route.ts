@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = {};
   
   if (dateFrom || dateTo) {
-    where.createdAt = {};
+    where.assignedAt = {};
     if (dateFrom) (where.createdAt as Record<string, Date>).gte = new Date(dateFrom);
     if (dateTo) (where.createdAt as Record<string, Date>).lte = new Date(dateTo);
   }

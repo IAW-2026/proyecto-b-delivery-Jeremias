@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   const dateFilter: Record<string, unknown> = {};
   if (dateFrom || dateTo) {
-    dateFilter.createdAt = {};
+    dateFilter.assignedAt = {};
     if (dateFrom) (dateFilter.createdAt as Record<string, Date>).gte = new Date(dateFrom);
     if (dateTo) (dateFilter.createdAt as Record<string, Date>).lte = new Date(dateTo);
   }
