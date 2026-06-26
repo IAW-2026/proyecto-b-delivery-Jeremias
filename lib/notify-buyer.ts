@@ -20,9 +20,9 @@ export async function syncOrderStatus(idPedidoExterno: string | null, estado: st
 
   try {
     const url = BUYER_API_URL.replace("[order_id]", idPedidoExterno);
-    console.log("[syncOrderStatus] sending POST", { url, orderStatus: buyerStatus });
+    console.log("[syncOrderStatus] sending PATCH", { url, orderStatus: buyerStatus });
     const res = await fetch(url, {
-      method: "POST",
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         "x-api-key": BUYER_API_KEY,
