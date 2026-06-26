@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
+  const empresaId = searchParams.get("empresaId");
 
   const where: Record<string, unknown> = {};
   
@@ -17,6 +18,10 @@ export async function GET(request: NextRequest) {
     where.createdAt = {};
     if (dateFrom) (where.createdAt as Record<string, Date>).gte = new Date(dateFrom);
     if (dateTo) (where.createdAt as Record<string, Date>).lte = new Date(dateTo);
+  }
+
+  if (empresaId) {
+    where.idVendedor = empresaId;
   }
 
   const pedidos = await prisma.pedido.findMany({

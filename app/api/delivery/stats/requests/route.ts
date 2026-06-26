@@ -7,9 +7,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const count = await prisma.choferRequest.count({
-    where: { status: "pending" },
-  });
+  const { searchParams } = new URL(request.url);
+  const empresaId = searchParams.get("empresaId");
+
+  const where: Record<string, unknown> = { status: "pending" };
+  if (empresaId) where.idVendedor = empresaId;
+
+  const count = await prisma.choferRequest.count({ where });
 
   return NextResponse.json({ pendingRequests: count });
 }

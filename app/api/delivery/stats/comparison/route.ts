@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
+  const empresaId = searchParams.get("empresaId");
 
   async function getCounts(
     from: Date | undefined,
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
       if (from) (where.createdAt as Record<string, Date>).gte = from;
       if (to) (where.createdAt as Record<string, Date>).lte = to;
     }
+    if (empresaId) where.idVendedor = empresaId;
 
     const [completed, failed] = await Promise.all([
       prisma.pedido.count({ where: { ...where, estado: "entregado" } }),

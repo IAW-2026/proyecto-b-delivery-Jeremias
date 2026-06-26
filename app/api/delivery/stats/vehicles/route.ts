@@ -7,9 +7,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const empresaId = searchParams.get("empresaId");
+
+  const where: Record<string, unknown> = {};
+  if (empresaId) where.idVendedor = empresaId;
+
   const [active, paused] = await Promise.all([
-    prisma.vehiculo.count({ where: { estado: "activo" } }),
-    prisma.vehiculo.count({ where: { estado: "pausado" } }),
+    prisma.vehiculo.count({ where: { ...where, estado: "activo" } }),
+    prisma.vehiculo.count({ where: { ...where, estado: "pausado" } }),
   ]);
 
   return NextResponse.json({ vehicles: { active, paused } });

@@ -7,9 +7,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const empresaId = searchParams.get("empresaId");
+
+  const where: Record<string, unknown> = {};
+  if (empresaId) where.idVendedor = empresaId;
+
   const [total, available] = await Promise.all([
-    prisma.chofer.count(),
-    prisma.chofer.count({ where: { disponible: true } }),
+    prisma.chofer.count({ where }),
+    prisma.chofer.count({ where: { ...where, disponible: true } }),
   ]);
 
   return NextResponse.json({ drivers: { available, total } });

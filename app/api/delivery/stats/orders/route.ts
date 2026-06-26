@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
   const zone = searchParams.get("zone");
+  const empresaId = searchParams.get("empresaId");
 
   const where: Record<string, unknown> = {};
   
@@ -22,6 +23,10 @@ export async function GET(request: NextRequest) {
   
   if (zone) {
     where.zona = zone;
+  }
+
+  if (empresaId) {
+    where.idVendedor = empresaId;
   }
 
   const [completed, failed] = await Promise.all([
