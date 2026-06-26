@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const result = vehicles.map((vehicle) => {
+  const result = vehicles.map((vehicle: { idVehiculo: number; patente: string; tipo: string; fechaProximoMantenimiento?: Date | null; estado: string; motivoPausa?: string | null }) => {
     const hoy = new Date();
     const diasParaMantenimiento = vehicle.fechaProximoMantenimiento
       ? Math.ceil((vehicle.fechaProximoMantenimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
